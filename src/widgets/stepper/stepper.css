@@ -1,0 +1,1234 @@
+.stepper-widget {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.stepper-widget__card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  min-width: 320px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.stepper-widget__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stepper-widget__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stepper-widget__sub {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.stepper-widget__btn {
+  border-radius: 12px;
+  border: 1px solid #cbd5f1;
+  background: #f8fafc;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.stepper-widget__btn:hover {
+  background: #eef2ff;
+  border-color: #93c5fd;
+}
+
+.stepper-widget__btn:active {
+  transform: translateY(1px);
+}
+
+.stepper-widget__btn--primary {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #ffffff;
+  border: none;
+  text-align: center;
+}
+
+.stepper-widget__btn--primary:hover {
+  opacity: 0.96;
+}
+
+.stepper-widget__btn--ghost {
+  width: auto;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.stepper-widget__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stepper-widget__note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.stepper-widget__error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.stepper-widget__result {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.stepper-widget__toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.stepper-widget__toast-inner {
+  pointer-events: auto;
+  max-width: 520px;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.stepper-widget__toast-text {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.stepper-widget__toast-close {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.stepper-widget__toast-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Rooms grid (Step 2: выбор бани) - устаревший, используем rooms-scroll */
+.stepper-widget__rooms-grid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+  margin-top: 12px;
+}
+
+/* Room card */
+.stepper-widget__room-card {
+  position: relative;
+  border: none;
+  border-radius: 14px;
+  height: 140px;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  background: #e2e8f0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-widget__room-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.stepper-widget__room-card:active {
+  transform: translateY(0);
+}
+
+.stepper-widget__room-card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.stepper-widget__room-card-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #cbd5f1;
+  color: #64748b;
+  z-index: 1;
+}
+
+.stepper-widget__room-card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.3) 50%,
+    rgba(15, 23, 42, 0.7) 100%
+  );
+  z-index: 2;
+}
+
+.stepper-widget__room-card-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 699px) {
+  .stepper-widget__room-card-content {
+    padding: 8px;
+  }
+  
+  .stepper-widget__room-card-title {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+}
+
+.stepper-widget__room-card-title {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(15, 23, 42, 0.5);
+  line-height: 1.3;
+}
+
+.stepper-widget__room-card--all {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+}
+
+.stepper-widget__room-card--all .stepper-widget__room-card-bg {
+  background: linear-gradient(
+    to bottom,
+    rgba(37, 99, 235, 0.2) 0%,
+    rgba(37, 99, 235, 0.4) 100%
+  );
+}
+
+.stepper-widget__room-card--selected {
+  border: 2px solid #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Аккордеон для выбора бани */
+.stepper-widget__accordion {
+  margin-top: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.stepper-widget__accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.stepper-widget__accordion-header:hover {
+  background: #f1f5f9;
+}
+
+.stepper-widget__accordion-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  flex: 1;
+}
+
+.stepper-widget__accordion-icon {
+  transition: transform 0.2s ease;
+  color: #64748b;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.stepper-widget__accordion-icon--open {
+  transform: rotate(180deg);
+}
+
+.stepper-widget__accordion-content {
+  padding: 12px;
+  background: #ffffff;
+}
+
+.stepper-widget__calendar-container {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.stepper-widget__calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stepper-widget__slots-header {
+  margin-bottom: 16px;
+}
+
+.stepper-widget__calendar-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Крупные плашки категорий (Шаг 1) */
+.stepper-widget__categories-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.stepper-widget__category-card {
+  position: relative;
+  border: none;
+  border-radius: 16px;
+  height: 200px;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  background: #e2e8f0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-widget__category-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.stepper-widget__category-card:active {
+  transform: translateY(0);
+}
+
+.stepper-widget__category-card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.stepper-widget__category-card-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.3) 50%,
+    rgba(15, 23, 42, 0.7) 100%
+  );
+  z-index: 2;
+}
+
+.stepper-widget__category-card-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.stepper-widget__category-card-title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 2px 6px rgba(15, 23, 42, 0.5);
+  line-height: 1.3;
+}
+
+/* Сетка для плашек бань (с переносом) */
+.stepper-widget__rooms-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.stepper-widget__room-card {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Адаптация для мобильных: 2 карточки при 320px */
+@media (max-width: 449px) {
+  .stepper-widget__rooms-scroll {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+/* На очень маленьких экранах (320px) - гарантируем 2 карточки */
+@media (max-width: 319px) {
+  .stepper-widget__rooms-scroll {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+}
+
+.stepper-widget__room-card--selected {
+  border: 3px solid #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2), 0 4px 12px rgba(76, 175, 80, 0.3);
+  transform: scale(1.02);
+}
+
+.stepper-widget__room-card:hover:not(.stepper-widget__room-card--selected) {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.stepper-widget__room-card-placeholder--all {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+/* Улучшенная структура недельного календаря */
+.stepper-calendar__room-row {
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
+}
+
+.stepper-calendar__room-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.stepper-calendar__room-name-row {
+  margin-bottom: 12px;
+}
+
+.stepper-calendar__room-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stepper-calendar__weekdays-row,
+.stepper-calendar__numbers-row,
+.stepper-calendar__bars-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.stepper-calendar__weekday-cell,
+.stepper-calendar__number-cell,
+.stepper-calendar__bar-cell {
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-calendar__weekday {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stepper-calendar__day-number {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.stepper-calendar__bar-cell {
+  padding: 2px 0;
+}
+
+/* Скелетоны и ошибки для календаря */
+.stepper-calendar__occupancy-bar-skeleton {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 0%,
+    #f1f5f9 50%,
+    #e2e8f0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.stepper-calendar__occupancy-bar-error {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+/* Time Slots styles */
+.stepper-slots {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+  /* Контейнер со слотами может прокручиваться */
+  overflow-y: auto;
+  max-height: calc(100vh - 300px); /* Оставляем место для панели и других элементов */
+}
+
+/* На мобильных уменьшаем отступы */
+@media (max-width: 699px) {
+  .stepper-slots {
+    margin-top: 16px;
+    padding-top: 16px;
+    max-height: calc(100vh - 250px);
+  }
+}
+
+.stepper-slots__title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stepper-slots__subtitle {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.stepper-slots__grid {
+  display: grid;
+  /* Адаптивная сетка: 3-4 слота на десктопе/планшете, 3 на мобильных, 2 при 320px */
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+/* На очень маленьких экранах (320px) - 2 слота в строке */
+@media (max-width: 319px) {
+  .stepper-slots__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+}
+
+/* На мобильных устройствах (320px - 449px) - 3 слота в строке */
+@media (min-width: 320px) and (max-width: 449px) {
+  .stepper-slots__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+}
+
+/* На десктопе и планшетах (>= 450px) - 3-4 слота в строке */
+@media (min-width: 450px) {
+  .stepper-slots__grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+}
+
+/* На больших экранах (> 700px) - до 4-5 слотов */
+@media (min-width: 700px) {
+  .stepper-slots__grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+.stepper-slots__card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 8px;
+  transition: all 0.15s ease;
+  min-height: 60px; /* Минимальная высота для удобного тач-таргета */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: left;
+  /* Убеждаемся, что вся карточка кликабельна */
+  position: relative;
+}
+
+/* Уменьшение размера для мобильных */
+@media (max-width: 449px) {
+  .stepper-slots__card {
+    padding: 8px 6px;
+    min-height: 70px;
+    /* Гарантируем, что карточка не растягивается слишком широко */
+    max-width: 100%;
+  }
+}
+
+/* Hover эффект только на устройствах с курсором */
+@media (hover: hover) and (pointer: fine) {
+  .stepper-slots__card:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+  }
+}
+
+/* Активное состояние для тач-устройств */
+.stepper-slots__card:active:not(.stepper-slots__card--unavailable) {
+  transform: scale(0.98);
+  background: #f8fafc;
+}
+
+.stepper-slots__card--unavailable {
+  opacity: 0.55;
+  background: #f1f5f9;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.stepper-slots__card--unavailable .stepper-slots__card-time,
+.stepper-slots__card--unavailable .stepper-slots__card-duration,
+.stepper-slots__card--unavailable .stepper-slots__card-price,
+.stepper-slots__card--unavailable .stepper-slots__card-comment {
+  color: #94a3b8 !important;
+  opacity: 0.6;
+}
+
+.stepper-slots__card--selected {
+  border: 2px solid #2563eb;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.stepper-slots__card:not(.stepper-slots__card--unavailable) {
+  cursor: pointer;
+}
+
+/* Время - в одну строку, уменьшенный размер */
+.stepper-slots__card-time {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+/* Длительность - под временем, меньшим шрифтом */
+.stepper-slots__card-duration {
+  color: #64748b;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+/* Уменьшение размера для мобильных */
+@media (max-width: 449px) {
+  .stepper-slots__card-time {
+    font-size: 13px;
+    margin-bottom: 3px;
+  }
+  
+  .stepper-slots__card-duration {
+    font-size: 10px;
+    margin-bottom: 5px;
+  }
+}
+
+/* Цена - крупно и выделено */
+.stepper-slots__card-price {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+/* Уменьшение размера цены для мобильных */
+@media (max-width: 449px) {
+  .stepper-slots__card-price {
+    font-size: 16px;
+    margin-bottom: 3px;
+  }
+}
+
+/* Комментарий - мелким шрифтом, одна строка с обрезанием */
+.stepper-slots__card-comment {
+  font-size: 11px;
+  color: #f59e0b;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+/* Выгодный слот - дополнительное выделение */
+.stepper-slots__card--benefit {
+  border-color: #fbbf24;
+  background: linear-gradient(to bottom, #ffffff, #fffbeb);
+}
+
+.stepper-slots__card--benefit.stepper-slots__card--selected {
+  border-color: #2563eb;
+  background: #eef2ff;
+}
+
+/* Группы слотов */
+.stepper-slots__group {
+  margin-bottom: 32px;
+}
+
+.stepper-slots__group:last-child {
+  margin-bottom: 0;
+}
+
+.stepper-slots__group-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Уменьшаем отступы между группами на мобильных */
+@media (max-width: 699px) {
+  .stepper-slots__group {
+    margin-bottom: 24px;
+  }
+  
+  .stepper-slots__group-title {
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+}
+
+.stepper-slots__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.stepper-slots__empty--error {
+  color: #b91c1c;
+}
+
+/* Нижняя панель выбора гостей */
+.stepper-slots-panel {
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.1);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 20px;
+  margin-top: 24px;
+  z-index: 10;
+  /* Фиксируем панель, чтобы она не скроллилась вместе со слотами */
+}
+
+/* На мобильных уменьшаем padding панели */
+@media (max-width: 699px) {
+  .stepper-slots-panel {
+    padding: 12px 16px;
+    margin-top: 16px;
+  }
+  
+  .stepper-slots-panel__content {
+    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .stepper-slots-panel__slot-info {
+    min-width: auto;
+  }
+  
+  .stepper-slots-panel__guests {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .stepper-slots-panel__continue-btn {
+    width: 100%;
+  }
+}
+
+.stepper-slots-panel__content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stepper-slots-panel__slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.stepper-slots-panel__slot-time {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.stepper-slots-panel__slot-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.stepper-slots-panel__guests {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stepper-slots-panel__guests-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.stepper-slots-panel__guests-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cbd5f1;
+  border-radius: 8px;
+  padding: 4px;
+  background: #f8fafc;
+}
+
+.stepper-slots-panel__guests-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #ffffff;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.stepper-slots-panel__guests-btn:hover:not(:disabled) {
+  background: #eef2ff;
+  transform: scale(1.05);
+}
+
+.stepper-slots-panel__guests-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.stepper-slots-panel__guests-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #94a3b8;
+}
+
+.stepper-slots-panel__guests-count {
+  min-width: 40px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.stepper-slots-panel__guests-max {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.stepper-slots-panel__continue-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+  white-space: nowrap;
+}
+
+.stepper-slots-panel__continue-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.stepper-slots-panel__continue-btn:active {
+  transform: translateY(0);
+}
+
+/* Отступ снизу для контента, когда панель видна */
+.stepper-widget__calendar-container {
+  padding-bottom: 0;
+  transition: padding-bottom 0.2s ease;
+}
+
+.stepper-widget__calendar-container:has(.stepper-slots-panel) {
+  padding-bottom: 20px;
+}
+
+.stepper-slots__card-skeleton {
+  background: #f8fafc;
+  border-radius: 12px;
+  height: 140px;
+  overflow: hidden;
+  position: relative;
+}
+
+.stepper-slots__card-skeleton-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #f8fafc 0%,
+    #f1f5f9 50%,
+    #f8fafc 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Кликабельные дни в календаре */
+.stepper-calendar__day-cell {
+  cursor: pointer;
+}
+
+.stepper-calendar__day-cell:hover {
+  background: #eef2ff;
+}
+
+/* Skeleton для загрузки */
+.stepper-widget__room-card-skeleton {
+  position: relative;
+  border-radius: 14px;
+  height: 140px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.stepper-widget__room-card-skeleton-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 0%,
+    #f1f5f9 50%,
+    #e2e8f0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Calendar styles */
+.stepper-calendar {
+  margin-top: 16px;
+}
+
+.stepper-calendar__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.stepper-calendar__nav-btn {
+  border: 1px solid #cbd5f1;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #0f172a;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-calendar__nav-btn:hover {
+  background: #eef2ff;
+  border-color: #93c5fd;
+}
+
+.stepper-calendar__nav-btn:active {
+  transform: translateY(1px);
+}
+
+.stepper-calendar__date-range,
+.stepper-calendar__month-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: center;
+  flex: 1;
+}
+
+/* Weekdays header */
+.stepper-calendar__weekdays-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.stepper-calendar__weekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Weekly calendar */
+.stepper-calendar--weekly {
+  overflow-x: auto;
+}
+
+/* Monthly calendar */
+.stepper-calendar--monthly {
+  width: 100%;
+}
+
+.stepper-calendar__month-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stepper-calendar__week-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+/* Day cell */
+.stepper-calendar__day-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  min-height: 60px;
+  border-radius: 6px;
+  background: #f8fafc;
+  transition: background 0.15s ease;
+}
+
+.stepper-calendar__day-cell:hover:not(.stepper-calendar__day-cell--past) {
+  background: #f1f5f9;
+}
+
+.stepper-calendar__day-cell--other-month {
+  opacity: 0.3;
+  background: #ffffff;
+}
+
+.stepper-calendar__day-cell--past {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.stepper-calendar__day-cell--past .stepper-calendar__day-number {
+  color: #94a3b8;
+}
+
+.stepper-calendar__day-placeholder {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+  line-height: 6px;
+}
+
+.stepper-calendar__day-cell--selected {
+  border: 2px solid #2563eb;
+  background: #eef2ff;
+}
+
+/* Выделение выбранного дня в недельном календаре */
+.stepper-calendar__number-cell--selected .stepper-calendar__day-number {
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.stepper-calendar__bar-cell--selected {
+  border: 2px solid #2563eb;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.stepper-calendar__number-cell--clickable,
+.stepper-calendar__bar-cell--clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stepper-calendar__number-cell--clickable:hover,
+.stepper-calendar__bar-cell--clickable:hover {
+  background: #eef2ff;
+  border-radius: 4px;
+}
+
+.stepper-calendar__day-number {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1;
+}
+
+/* Occupancy bar */
+.stepper-calendar__occupancy-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  background: #e2e8f0;
+}
+
+.stepper-calendar__occupancy-bar-filled {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.stepper-calendar__occupancy-bar-free {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
