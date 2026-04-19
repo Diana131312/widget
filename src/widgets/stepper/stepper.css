@@ -16,6 +16,14 @@
   box-sizing: border-box;
 }
 
+/* iPhone / узкие экраны: не наследовать «высоту на весь экран» — карточка по контенту, без зазора под футером шага */
+@media (max-width: 767.98px) {
+  .stepper-widget--layout {
+    height: auto;
+    min-height: 0;
+  }
+}
+
 .stepper-widget__card {
   background: #ffffff;
   border-radius: 16px;
@@ -1246,6 +1254,40 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 0.5rem;
+}
+
+/* Шаг 4 (оформление): без внутреннего скролла — растёт по контенту, крутится вся страница */
+.booking-step-three--natural-scroll.booking-step-three {
+  max-height: none;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.booking-step-three--natural-scroll .booking-step-three__scroll-main {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* Шаг 4: отступ снизу под липкую панель (итого + кнопка) */
+.booking-step-three--checkout .booking-step-three__scroll-main--checkout-pad {
+  padding-bottom: max(7.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Липкая панель: итого и «Забронировать» у нижней кромки экрана при прокрутке страницы */
+.booking-step-three__footer--sticky-checkout {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  flex-shrink: 0;
+  margin-top: 0;
+  padding-top: 0.875rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+
 }
 
 .booking-step-three__footer {

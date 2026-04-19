@@ -7,6 +7,8 @@ type Props = {
   draft: BookingDraft;
   productsSubtotal: number;
   total: number;
+  /** Не показывать блок «Итого к оплате» (дублируется в липкой панели шага 4) */
+  omitTotal?: boolean;
 };
 
 function formatBookingHeading(dateStr: string): string {
@@ -19,7 +21,12 @@ function formatBookingHeading(dateStr: string): string {
 }
 
 /** Текстовая калькуляция без «карточек» — в стиле виджета. */
-export const CheckoutPlainSummary: React.FC<Props> = ({ draft, productsSubtotal, total }) => {
+export const CheckoutPlainSummary: React.FC<Props> = ({
+  draft,
+  productsSubtotal,
+  total,
+  omitTotal = false,
+}) => {
   const base = draft.basePrice;
   const dateHeading = formatBookingHeading(draft.date);
 
@@ -33,10 +40,14 @@ export const CheckoutPlainSummary: React.FC<Props> = ({ draft, productsSubtotal,
       <p>Гостей {draft.guestCount}</p>
       <p>Стоимость Бани {base.toLocaleString("ru-RU")} ₽</p>
       <p>Доп. товары {productsSubtotal.toLocaleString("ru-RU")} ₽</p>
-      <div className="my-3 border-t border-gray-200" aria-hidden />
-      <p className="text-base font-semibold text-[#485548]">
-        Итого к оплате {total.toLocaleString("ru-RU")} ₽
-      </p>
+      {!omitTotal ? (
+        <>
+          <div className="my-3 border-t border-gray-200" aria-hidden />
+          <p className="text-base font-semibold text-[#485548]">
+            Итого к оплате {total.toLocaleString("ru-RU")} ₽
+          </p>
+        </>
+      ) : null}
     </div>
   );
 };

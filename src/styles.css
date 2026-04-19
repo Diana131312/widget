@@ -52,6 +52,13 @@
   min-height: 100vh;
 }
 
+@media (max-width: 767.98px) {
+  .app-shell {
+    min-height: 0;
+    align-items: stretch;
+  }
+}
+
 /* Растягиваем виджет на всю высоту; планшет/десктоп md–lg: карточка до 800px по центру; с lg — на всю ширину */
 /* .app-shell > * {
   flex: 1 1 0%;

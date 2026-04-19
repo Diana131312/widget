@@ -199,7 +199,7 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
 
   if (successMessage) {
     return (
-      <div className="booking-step-three relative flex min-h-0 w-full flex-1 flex-col">
+      <div className="booking-step-three booking-step-three--natural-scroll relative flex w-full flex-col">
         <div className="booking-step-three__scroll-main">
           <div className="mt-4 space-y-3 text-[#485548]">
             <p className="text-base font-semibold leading-snug">Заявка на бронирование принята.</p>
@@ -226,9 +226,8 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   }
 
   return (
-    <div className="booking-step-three relative flex min-h-0 w-full flex-1 flex-col">
-      <div className="booking-step-three__scroll-main">
-   
+    <div className="booking-step-three booking-step-three--natural-scroll booking-step-three--checkout relative flex w-full flex-col">
+      <div className="booking-step-three__scroll-main booking-step-three__scroll-main--checkout-pad">
         <div className="mt-4 flex flex-col gap-0">
           <BookingContactFields
             variant="plain"
@@ -288,20 +287,28 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
         </div>
 
         <div className="mt-10">
-          <CheckoutPlainSummary draft={draft} productsSubtotal={productsSubtotal} total={total} />
-        </div>
-
-        <div className="mt-10 pb-1">
-          <Button
-            type="button"
-            className="h-11 w-full rounded-xl bg-[#485548] text-sm font-medium text-white hover:bg-[#485548]/90 disabled:opacity-50"
-            disabled={!formValid || isSubmitting}
-            onClick={() => void handleSubmit()}
-          >
-            {isSubmitting ? "Отправка..." : "Забронировать"}
-          </Button>
+          <CheckoutPlainSummary
+            draft={draft}
+            productsSubtotal={productsSubtotal}
+            total={total}
+            omitTotal
+          />
         </div>
       </div>
+
+      <footer className="booking-step-three__footer booking-step-three__footer--sticky-checkout">
+        <p className="text-base font-semibold tabular-nums text-[#485548]">
+          Итого к оплате {total.toLocaleString("ru-RU")} ₽
+        </p>
+        <Button
+          type="button"
+          className="mt-3 h-11 w-full rounded-xl bg-[#485548] text-sm font-medium text-white hover:bg-[#485548]/90 disabled:opacity-50"
+          disabled={!formValid || isSubmitting}
+          onClick={() => void handleSubmit()}
+        >
+          {isSubmitting ? "Отправка..." : "Забронировать"}
+        </Button>
+      </footer>
 
       {otpOpen && (
         <div className="widget-modal-overlay" role="dialog" aria-modal="true">

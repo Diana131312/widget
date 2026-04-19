@@ -252,8 +252,9 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
       <div
         className={cn(
           "stepper-widget stepper-widget--layout",
-          "w-full ",
-          "min-h-[95dvh] min-h-[95vh]"
+          "w-full",
+          /* На телефоне не тянем оболочку на весь экран — иначе flex-1 у шага даёт пустоту под контентом (Safari). */
+          "min-h-0 md:min-h-[95dvh] md:min-h-[95vh]"
         )}
       >
         <div
@@ -328,7 +329,7 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
             </div>
           </header>
 
-          <div className="stepper-widget__step flex min-h-0 flex-1 flex-col px-0 pb-3 pt-1 md:px-1">
+          <div className="stepper-widget__step flex min-h-0 flex-col px-0 pb-3 pt-1 md:flex-1 md:px-1">
             {view === "cabinet" && authUser ? (
               <CabinetModal
                 user={authUser}
