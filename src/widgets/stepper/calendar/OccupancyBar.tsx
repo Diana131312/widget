@@ -3,6 +3,8 @@ import { WORK_DAY_START, WORK_DAY_END } from "./types";
 
 type Props = {
   bookedRanges: Array<{ start: string; end: string }>;
+  bookedPercent?: number;
+  workHours?: boolean[];
   workDayStart?: string;
   workDayEnd?: string;
 };
@@ -13,8 +15,10 @@ type Props = {
  */
 export const OccupancyBar: React.FC<Props> = ({
   bookedRanges,
+  bookedPercent,
+  workHours,
   workDayStart = WORK_DAY_START, // "09:00"
-  workDayEnd = WORK_DAY_END, // "23:00"
+  workDayEnd = WORK_DAY_END, // "24:00"
 }) => {
   const workStartMinutes = timeToMinutes(workDayStart);
   const workEndMinutes = timeToMinutes(workDayEnd);
@@ -44,31 +48,41 @@ export const OccupancyBar: React.FC<Props> = ({
     return total + overlap;
   }, 0);
 
-  const freeMinutes = workDuration - bookedMinutes;
-  const bookedPercent = workDuration > 0 ? (bookedMinutes / workDuration) * 100 : 0;
-  const freePercent = workDuration > 0 ? (freeMinutes / workDuration) * 100 : 100;
+  const computedBookedPercent = workDuration > 0 ? (bookedMinutes / workDuration) * 100 : 0;
+  const safeBookedPercent = Math.max(
+    0,
+    Math.min(100, bookedPercent ?? computedBookedPercent)
+  );
 
-  // Ограничиваем проценты до 0-100 для безопасности
-  const safeBookedPercent = Math.max(0, Math.min(100, bookedPercent));
-  const safeFreePercent = Math.max(0, Math.min(100, freePercent));
+  const workHourCount = Math.max(0, Math.round(workDuration / 60));
+  const safeWorkHours =
+    Array.isArray(workHours) && workHours.length > 0
+      ? workHours.slice(0, workHourCount)
+      : null;
 
   return (
     <div className="stepper-calendar__occupancy-bar">
-      {safeBookedPercent > 0 && (
+      {safeWorkHours ? (
+        safeWorkHours.map((isFree, index) => (
+          <div
+            key={index}
+            className={
+              isFree
+                ? "stepper-calendar__occupancy-bar-free"
+                : "stepper-calendar__occupancy-bar-filled"
+            }
+            style={{
+              width: `${100 / safeWorkHours.length}%`,
+              backgroundColor: isFree ? "#22c55e" : "#ef4444",
+            }}
+          />
+        ))
+      ) : (
         <div
           className="stepper-calendar__occupancy-bar-filled"
           style={{
             width: `${safeBookedPercent}%`,
-            backgroundColor: "#ef4444", // red-500
-          }}
-        />
-      )}
-      {safeFreePercent > 0 && (
-        <div
-          className="stepper-calendar__occupancy-bar-free"
-          style={{
-            width: `${safeFreePercent}%`,
-            backgroundColor: "#22c55e", // green-500
+            backgroundColor: "#ef4444",
           }}
         />
       )}

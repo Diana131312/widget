@@ -6,6 +6,8 @@ import {
   addWeeks,
   format,
   isSameDay,
+  isPast,
+  startOfDay,
 } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { WeeklyOccupancyData } from "./types";
@@ -52,6 +54,16 @@ export const WeeklyCalendar: React.FC<Props> = ({
     [currentWeekStart, weekEnd]
   );
 
+  const weekDaysMeta = useMemo(
+    () =>
+      weekDays.map((day) => ({
+        day,
+        key: day.toISOString(),
+        isPastDay: isPast(startOfDay(day)) && !isSameDay(day, new Date()),
+      })),
+    [weekDays]
+  );
+
   const weekRangeText = useMemo(() => {
     const startDay = format(currentWeekStart, "d", { locale: ru });
     const endDay = format(weekEnd, "d MMMM yyyy", { locale: ru });
@@ -72,9 +84,9 @@ export const WeeklyCalendar: React.FC<Props> = ({
 
   const getDayOccupancy = (roomId: string, date: Date) => {
     const room = data.find((r) => r.roomId === roomId);
-    if (!room) return { bookedRanges: [] };
+    if (!room) return { bookedRanges: [], bookedPercent: 0, workHours: [] };
     const day = room.days.find((d) => isSameDay(d.date, date));
-    return day || { bookedRanges: [] };
+    return day || { bookedRanges: [], bookedPercent: 0, workHours: [] };
   };
 
   return (
@@ -114,8 +126,11 @@ export const WeeklyCalendar: React.FC<Props> = ({
 
             {/* Дни недели */}
             <div className="stepper-calendar__weekdays-row">
-              {weekDays.map((day) => (
-                <div key={day.toISOString()} className="stepper-calendar__weekday-cell">
+              {weekDaysMeta.map(({ day, key, isPastDay }) => (
+                <div
+                  key={key}
+                  className={`stepper-calendar__weekday-cell ${isPastDay ? "stepper-calendar__weekday-cell--past" : ""}`}
+                >
                   <div className="stepper-calendar__weekday">
                     {format(day, "EEE", { locale: ru }).toUpperCase()}
                   </div>
@@ -125,14 +140,16 @@ export const WeeklyCalendar: React.FC<Props> = ({
 
             {/* Числа */}
             <div className="stepper-calendar__numbers-row">
-              {weekDays.map((day) => {
-                const isSelected = selectedDate && selectedRoomId === room.roomId && isSameDay(day, selectedDate);
+              {weekDaysMeta.map(({ day, key, isPastDay }) => {
+                const isSelected =
+                  selectedDate && selectedRoomId === room.roomId && isSameDay(day, selectedDate);
+                const clickable = Boolean(onDateClick && !isPastDay);
                 return (
                   <div
-                    key={day.toISOString()}
-                    className={`stepper-calendar__number-cell ${isSelected ? "stepper-calendar__number-cell--selected" : ""} ${onDateClick ? "stepper-calendar__number-cell--clickable" : ""}`}
+                    key={key}
+                    className={`stepper-calendar__number-cell ${isSelected ? "stepper-calendar__number-cell--selected" : ""} ${clickable ? "stepper-calendar__number-cell--clickable" : ""} ${isPastDay ? "stepper-calendar__number-cell--past" : ""}`}
                     onClick={() => {
-                      if (onDateClick) {
+                      if (clickable && onDateClick) {
                         onDateClick(room.roomId, day);
                       }
                     }}
@@ -147,13 +164,25 @@ export const WeeklyCalendar: React.FC<Props> = ({
 
             {/* Линии занятости или скелетоны/ошибки */}
             <div className="stepper-calendar__bars-row">
-              {weekDays.map((day) => {
-                const isSelected = selectedDate && selectedRoomId === room.roomId && isSameDay(day, selectedDate);
-                
+              {weekDaysMeta.map(({ day, key, isPastDay }) => {
+                const isSelected =
+                  selectedDate && selectedRoomId === room.roomId && isSameDay(day, selectedDate);
+
+                if (isPastDay) {
+                  return (
+                    <div
+                      key={key}
+                      className={`stepper-calendar__bar-cell stepper-calendar__bar-cell--past ${isSelected ? "stepper-calendar__bar-cell--selected" : ""}`}
+                    >
+                      <div className="stepper-calendar__day-placeholder">—</div>
+                    </div>
+                  );
+                }
+
                 if (isRoomLoading) {
                   return (
                     <div
-                      key={day.toISOString()}
+                      key={key}
                       className={`stepper-calendar__bar-cell ${isSelected ? "stepper-calendar__bar-cell--selected" : ""}`}
                     >
                       <div className="stepper-calendar__occupancy-bar-skeleton" />
@@ -164,7 +193,7 @@ export const WeeklyCalendar: React.FC<Props> = ({
                 if (hasRoomError) {
                   return (
                     <div
-                      key={day.toISOString()}
+                      key={key}
                       className={`stepper-calendar__bar-cell ${isSelected ? "stepper-calendar__bar-cell--selected" : ""}`}
                     >
                       <div className="stepper-calendar__occupancy-bar-error">
@@ -179,17 +208,22 @@ export const WeeklyCalendar: React.FC<Props> = ({
                 }
 
                 const occupancy = getDayOccupancy(room.roomId, day);
+                const clickable = Boolean(onDateClick);
                 return (
                   <div
-                    key={day.toISOString()}
-                    className={`stepper-calendar__bar-cell ${isSelected ? "stepper-calendar__bar-cell--selected" : ""} ${onDateClick ? "stepper-calendar__bar-cell--clickable" : ""}`}
+                    key={key}
+                    className={`stepper-calendar__bar-cell ${isSelected ? "stepper-calendar__bar-cell--selected" : ""} ${clickable ? "stepper-calendar__bar-cell--clickable" : ""}`}
                     onClick={() => {
-                      if (onDateClick) {
+                      if (clickable && onDateClick) {
                         onDateClick(room.roomId, day);
                       }
                     }}
                   >
-                    <OccupancyBar bookedRanges={occupancy.bookedRanges} />
+                    <OccupancyBar
+                      bookedRanges={occupancy.bookedRanges}
+                      bookedPercent={occupancy.bookedPercent}
+                      workHours={occupancy.workHours}
+                    />
                   </div>
                 );
               })}

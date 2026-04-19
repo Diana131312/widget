@@ -56,6 +56,15 @@ export function parseUrlState(): UrlState {
     state.categoryId = category;
   }
 
+  const banya = search.get("banya");
+  if (state.step === "bani" && banya === "all") {
+    state.mode = "all";
+    state.roomId = undefined;
+  } else if (state.step === "bani" && banya) {
+    state.mode = "single";
+    state.roomId = banya;
+  }
+
   return state;
 }
 
@@ -88,6 +97,14 @@ export function updateUrl(state: UrlState): void {
 
   if (state.categoryId) {
     search.set("category", state.categoryId);
+  }
+
+  if (state.step === "bani") {
+    if (state.mode === "all") {
+      search.set("banya", "all");
+    } else if (state.roomId) {
+      search.set("banya", state.roomId);
+    }
   }
 
   const newUrl = `${path}${search.toString() ? `?${search.toString()}` : ""}`;

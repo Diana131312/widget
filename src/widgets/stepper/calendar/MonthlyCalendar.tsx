@@ -82,9 +82,21 @@ export const MonthlyCalendar: React.FC<Props> = ({
     onMonthChange?.(newMonth);
   };
 
+  const occupancyByDate = useMemo(() => {
+    const map = new Map<string, MonthlyOccupancyData[number]>();
+
+  
+    data.forEach((entry) => {
+      map.set(format(entry.date, "yyyy-MM-dd"), entry);
+    });
+    return map;
+  }, [data]);
+
   const getDayOccupancy = (date: Date) => {
-    const day = data.find((d) => isSameDay(d.date, date));
-    return day || { bookedRanges: [] };
+   
+
+    const day = occupancyByDate.get(format(date, "yyyy-MM-dd"));
+    return day || { bookedRanges: [], bookedPercent: 0, workHours: [] };
   };
 
   // Группируем дни по неделям
@@ -134,7 +146,7 @@ export const MonthlyCalendar: React.FC<Props> = ({
               const isPastDay = isPast(startOfDay(day)) && !isSameDay(day, new Date());
               const occupancy = getDayOccupancy(day);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
-              
+
               return (
                 <div
                   key={day.toISOString()}
@@ -165,7 +177,11 @@ export const MonthlyCalendar: React.FC<Props> = ({
                           </svg>
                         </div>
                       ) : (
-                        <OccupancyBar bookedRanges={occupancy.bookedRanges} />
+                        <OccupancyBar
+                          bookedRanges={occupancy.bookedRanges}
+                          bookedPercent={occupancy.bookedPercent}
+                          workHours={occupancy.workHours}
+                        />
                       )}
                     </>
                   )}

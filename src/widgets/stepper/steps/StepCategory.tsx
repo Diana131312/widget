@@ -35,7 +35,7 @@ export const StepCategory: React.FC<StepProps> = ({ state, setState, goTo }) => 
     if (categoryId === "banya") {
       return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"; // Оранжевый градиент
     }
-    return "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"; // Синий градиент
+    return "linear-gradient(135deg, #5a6b5a 0%, #485548 100%)";
   };
 
   return (

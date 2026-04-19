@@ -4,7 +4,7 @@ import type { DayOccupancy, WeeklyOccupancyData, MonthlyOccupancyData } from "./
 import type { WidgetRoom } from "../../../api";
 
 const WORK_DAY_START_HOUR = 9;
-const WORK_DAY_END_HOUR = 22; // включительно (9-22 = 14 часов)
+const WORK_DAY_END_HOUR = 23; // включительно (9-23 = 15 часов)
 
 /**
  * Кеш для результатов запросов занятости
@@ -23,17 +23,24 @@ function getCacheKey(roomId: string, from: LocalDate, to: LocalDate): string {
  * Конвертирует данные API в формат DayOccupancy
  * 
  * Правила:
- * - Учитываем только рабочие часы (9-22, индексы 9-22 включительно = 14 часов)
- * - hours[hour] === true означает свободный час
- * - hours[hour] === false означает занятый час
+ * - Учитываем рабочие часы (9-23, индексы 9-23 включительно = 15 часов)
+ * - hours[hour] === true означает занятый час
+ * - hours[hour] === false означает свободный час
  * - hours[hour] === undefined/null трактуется как занятый (безопасно)
  */
 export function convertAvailabilityToDayOccupancy(
   date: Date,
   dayData: { hasAvailable: boolean; hours: boolean[] } | undefined
 ): DayOccupancy {
+  const totalWorkHours = WORK_DAY_END_HOUR - WORK_DAY_START_HOUR + 1;
+
   if (!dayData || !dayData.hours || !Array.isArray(dayData.hours)) {
-    return { date, bookedRanges: [] };
+    return {
+      date,
+      bookedRanges: [],
+      bookedPercent: 0,
+      workHours: Array(totalWorkHours).fill(true),
+    };
   }
 
   const bookedRanges: Array<{ start: string; end: string }> = [];
@@ -46,11 +53,22 @@ export function convertAvailabilityToDayOccupancy(
       start: `${String(WORK_DAY_START_HOUR).padStart(2, "0")}:00`,
       end: `${String(WORK_DAY_END_HOUR + 1).padStart(2, "0")}:00`,
     });
-    return { date, bookedRanges };
+    return {
+      date,
+      bookedRanges,
+      bookedPercent: 100,
+      workHours: Array(totalWorkHours).fill(false),
+    };
   }
 
-  // Обрабатываем только рабочие часы (9-22 включительно = 14 часов)
-  // Индексы массива: 9, 10, 11, ..., 22 (всего 14 часов)
+  const workHours = Array.from({ length: totalWorkHours }, (_, index) => {
+    const hour = WORK_DAY_START_HOUR + index;
+    // По корректной семантике API: true = свободно, false = занято.
+    return hours[hour] === true;
+  });
+
+  // Обрабатываем рабочее окно (9-23 включительно = 15 часов)
+  // Индексы массива: 9, 10, 11, ..., 23 (всего 15 часов)
   let currentRangeStart: number | null = null;
 
   for (let hour = WORK_DAY_START_HOUR; hour <= WORK_DAY_END_HOUR; hour++) {
@@ -60,9 +78,9 @@ export function convertAvailabilityToDayOccupancy(
     
     // Строгая проверка: только true означает свободный час
     // Все остальное (false, undefined, null) = занят
-    const isFree = hourValue === true;
+    const isBooked = hourValue !== true;
 
-    if (!isFree) {
+    if (isBooked) {
       // Час занят (false, undefined, null)
       if (currentRangeStart === null) {
         // Начинаем новый диапазон занятости
@@ -83,6 +101,17 @@ export function convertAvailabilityToDayOccupancy(
     }
   }
 
+  // Считаем процент занятых часов напрямую из hours в том же рабочем окне.
+  const bookedHours = Array.from(
+    { length: totalWorkHours },
+    (_, index) => WORK_DAY_START_HOUR + index
+  ).reduce((count, hour) => {
+    const hourValue = hours[hour];
+    return hourValue !== true ? count + 1 : count;
+  }, 0);
+
+  const bookedPercent = totalWorkHours > 0 ? (bookedHours / totalWorkHours) * 100 : 0;
+
   // Закрываем последний диапазон занятости, если он не закрыт
   // Это происходит, если последние рабочие часы (до WORK_DAY_END_HOUR включительно) заняты
   if (currentRangeStart !== null) {
@@ -95,6 +124,8 @@ export function convertAvailabilityToDayOccupancy(
   return {
     date,
     bookedRanges,
+    bookedPercent,
+    workHours,
   };
 }
 
@@ -219,7 +250,7 @@ export function convertToMonthlyOccupancyData(
   for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
     const dateStr = format(d, "yyyy-MM-dd");
     const dayData = availability.days?.[dateStr];
-    days.push(convertAvailabilityToDayOccupancy(d, dayData));
+    days.push(convertAvailabilityToDayOccupancy(new Date(d), dayData));
   }
 
   return days;

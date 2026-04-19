@@ -1,5 +1,8 @@
 import React from "react";
 import type { RoomTimeSlot } from "../../../api";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Separator } from "../../../components/ui/separator";
 
 type Props = {
   selectedSlot: RoomTimeSlot;
@@ -46,55 +49,57 @@ export const SlotSelectionPanel: React.FC<Props> = ({
   };
 
   return (
-    <div className="stepper-slots-panel">
-      <div className="stepper-slots-panel__content">
-        {/* Информация о выбранном слоте */}
-        <div className="stepper-slots-panel__slot-info">
-          <div className="stepper-slots-panel__slot-time">
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Выбранный слот</div>
+          <div className="text-base font-semibold text-slate-800">
             {formatTimeRange(selectedSlot.timeFrom, selectedSlot.timeTo)}
           </div>
-          <div className="stepper-slots-panel__slot-price">
+          <div className="text-xl font-bold text-slate-800">
             {selectedSlot.price.toLocaleString("ru-RU")} ₽
           </div>
         </div>
 
-        {/* Выбор количества гостей */}
-        <div className="stepper-slots-panel__guests">
-          <span className="stepper-slots-panel__guests-label">Гостей:</span>
-          <div className="stepper-slots-panel__guests-controls">
-            <button
+        <Separator orientation="vertical" className="hidden h-10 lg:block" />
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Количество гостей</div>
+          <div className="flex items-center gap-2">
+            <Button
               type="button"
-              className="stepper-slots-panel__guests-btn"
+              variant="outline"
+              size="sm"
               onClick={handleDecrease}
               disabled={!canDecrease}
               aria-label="Уменьшить количество гостей"
             >
               −
-            </button>
-            <span className="stepper-slots-panel__guests-count">{guestCount}</span>
-            <button
+            </Button>
+            <Badge variant="secondary" className="min-w-10 justify-center">
+              {guestCount}
+            </Badge>
+            <Button
               type="button"
-              className="stepper-slots-panel__guests-btn"
+              variant="outline"
+              size="sm"
               onClick={handleIncrease}
               disabled={!canIncrease}
               aria-label="Увеличить количество гостей"
             >
               +
-            </button>
+            </Button>
+            <span className="text-xs text-slate-500">(макс. {maxGuests})</span>
           </div>
-          <span className="stepper-slots-panel__guests-max">
-            (макс. {maxGuests})
-          </span>
         </div>
 
-        {/* Кнопка "Продолжить" */}
-        <button
+        <Button
           type="button"
-          className="stepper-slots-panel__continue-btn"
+          className="h-11 rounded-xl bg-slate-800 px-6 text-sm font-semibold text-white hover:bg-slate-700 lg:min-w-40"
           onClick={onContinue}
         >
-          Продолжить
-        </button>
+          Забронировать
+        </Button>
       </div>
     </div>
   );

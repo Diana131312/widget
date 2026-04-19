@@ -30,6 +30,8 @@ export type WidgetCompany = {
   email?: string | null;
   telegram?: string | null;
   whatsApp?: string | null;
+  /** Иногда приходит строкой (например лимит MAX), не только числом */
+  max?: string | number | null;
   timeZone?: string | null;
   onboarding?: boolean;
   logo?: string | null;
@@ -37,18 +39,151 @@ export type WidgetCompany = {
   requireLastName?: boolean;
 } & UnknownRecord;
 
+/** Блок тарифов по типу дня (будни / предвыходные / выходные) без слотов */
+export type WidgetTariffDayPrices = {
+  morningPrice: number | null;
+  dayPrice: number | null;
+  eveningPrice: number | null;
+  startTime: LocalTime;
+  duration: number;
+  minDuration: number;
+  minDurationPrice: number | null;
+  minDurationPriceEvening: number | null;
+  timeChange: LocalTime;
+  timeBefore: LocalTime;
+} & UnknownRecord;
+
+/** Фиксированный слот из прайса комнаты (weekDaySlots / preWeekEndSlots / weekEndSlots) */
+export type WidgetWeekDaySlot = {
+  timeFrom: LocalTime;
+  timeTo: LocalTime;
+  price: number;
+  comment: string;
+} & UnknownRecord;
+
+export type WidgetRoomPricesInner = {
+  weekDays: WidgetTariffDayPrices;
+  preWeekEnds: WidgetTariffDayPrices;
+  weekEnds: WidgetTariffDayPrices;
+  weekDaySlots: WidgetWeekDaySlot[];
+  preWeekEndSlots: WidgetWeekDaySlot[];
+  weekEndSlots: WidgetWeekDaySlot[];
+} & UnknownRecord;
+
+export type WidgetPauseDaySettings = {
+  startTime: LocalTime;
+  duration: number;
+  isActive: boolean;
+} & UnknownRecord;
+
+export type WidgetPricePeriodProduct = {
+  productId: Guid;
+  name: string;
+  price: number;
+  stockId: Guid;
+  stockName: string;
+} & UnknownRecord;
+
+/** Период ценообразования комнаты (как в ответе GET /widget/get/{alias}) */
+export type WidgetRoomPricePeriod = {
+  id: Guid;
+  roomId: Guid;
+  weekDays: number[];
+  workType: number;
+  startTime: LocalTime;
+  duration: number;
+  dateFrom: LocalDate | null;
+  dateTo: LocalDate | null;
+  prices: WidgetRoomPricesInner;
+  includedCapacity: number;
+  extraValue: number;
+  extraType: number;
+  pauseSettings: {
+    weekDays: WidgetPauseDaySettings;
+    preWeekEnds: WidgetPauseDaySettings;
+    weekEnds: WidgetPauseDaySettings;
+  };
+  isNeedPauseSettings: boolean;
+  discounts: number[];
+  allowContactDiscount: boolean;
+  priceMode: number;
+  products: WidgetPricePeriodProduct[];
+} & UnknownRecord;
+
 export type WidgetRoom = {
   id: Guid;
   name: string;
+  isHalfHour?: boolean;
+  dayPrice?: number | null;
+  nightPrice?: number | null;
+  holidayPrice?: number | null;
   images: string[];
+  discountsText?: string[];
+  discounts?: number[];
   description?: string | null;
   capacity?: number | null;
   maxCapacity?: number | null;
   durationType?: number;
   minDuration?: number;
-  isHalfHour?: boolean;
   groupName?: string | null;
-  pricePeriod?: UnknownRecord | null;
+  pricePeriod?: WidgetRoomPricePeriod | null;
+} & UnknownRecord;
+
+/** Комната в блоке programsRooms: та же форма, что rooms, но pricePeriod часто null */
+export type WidgetProgramRoom = Omit<WidgetRoom, "pricePeriod"> & {
+  pricePeriod: WidgetRoomPricePeriod | null;
+};
+
+export type WidgetCancellationPenalty = {
+  selfCancellationPeriodHours: number;
+  autoDeductPenalty: boolean;
+  freeCancellationPeriodHours: number;
+  penaltyType: number;
+  penaltyAmount: number | null;
+  cancellationInfoMessage: string | null;
+} & UnknownRecord;
+
+export type WidgetPrepaymentTimeout = {
+  roomsTimeoutMinutes: number;
+  dailyRoomsTimeoutMinutes: number;
+  programsTimeoutMinutes: number;
+  commonRoomsTimeoutMinutes: number;
+} & UnknownRecord;
+
+/** Настройки виджета из GET /widget/get/{alias} → settings */
+export type WidgetSettings = {
+  alias: string;
+  tenantId: Guid;
+  companyName: string;
+  needSmsConfirm: boolean;
+  needCalculation: boolean;
+  sendToEmail: string | null;
+  lastStepMessage: string | null;
+  confirmMessage: string | null;
+  chooseRoomType: number;
+  bookingSectionName: string;
+  chooseRoomPlaceholder: string;
+  hoursBeforeBooking: number;
+  commonSectionName: string;
+  chooseCommonPlaceholder: string;
+  programSectionName: string;
+  chooseProgramPlaceholder: string;
+  programFieldPlaceholder: string;
+  shopSectionName: string;
+  shopFieldPlaceholder: string;
+  shopAdditionalInformation: string | null;
+  hoursBeforePrograms: number;
+  personCountMessage: string | null;
+  dailySectionName: string;
+  chooseDailyPlaceholder: string;
+  defaultTheme: number;
+  requireLastName: boolean;
+  cancellationPenalty: WidgetCancellationPenalty;
+  prepaymentTimeout: WidgetPrepaymentTimeout;
+  yandexMetrikaId: string | null;
+  widgetViewMode: number;
+  waitlistEnabled: boolean;
+  showAvailabilityColors: boolean;
 } & UnknownRecord;
 
 export type WidgetDailyRoomPricePeriod = {
@@ -74,17 +209,117 @@ export type WidgetDailyRoom = {
   pricePeriod: WidgetDailyRoomPricePeriod;
 } & UnknownRecord;
 
+/** Цена билета внутри слота клубного дня (config) */
+export type WidgetCommonEmbeddedSlotPrice = {
+  name: string;
+  price: number;
+  isVip: boolean;
+} & UnknownRecord;
+
+/** Слот клубного дня в конфиге (отличается от ответа getCommonSlots) */
+export type WidgetCommonEmbeddedSlot = {
+  id: Guid;
+  name: string;
+  timeStart: LocalTime;
+  timeEnd: LocalTime;
+  capacity: number;
+  availableStart: LocalDate;
+  availableEnd: LocalDate;
+  isPublic: boolean;
+  allowContactDiscount: boolean;
+  weekDays: number[];
+  prices: WidgetCommonEmbeddedSlotPrice[];
+  isDisabled: boolean;
+} & UnknownRecord;
+
+export type WidgetCommon = {
+  id: Guid;
+  groupName: string;
+  name: string;
+  description: string;
+  roomOrder: string;
+  images: string[];
+  slots: WidgetCommonEmbeddedSlot[];
+  isPublic: boolean;
+} & UnknownRecord;
+
+export type WidgetProgramSimplePrice = {
+  price: number;
+} & UnknownRecord;
+
+export type WidgetProgramPricesBlock = {
+  weekDays: WidgetProgramSimplePrice;
+  preWeekEnds: WidgetProgramSimplePrice;
+  weekEnds: WidgetProgramSimplePrice;
+} & UnknownRecord;
+
+export type WidgetProgramPricePeriod = {
+  id: Guid;
+  programId: Guid;
+  startTime: LocalTime;
+  duration: number;
+  dateFrom: LocalDate | null;
+  dateTo: LocalDate | null;
+  prices: WidgetProgramPricesBlock;
+  discounts: number[];
+  allowContactDiscount: boolean;
+  products: WidgetPricePeriodProduct[];
+  roomPrices: unknown[];
+} & UnknownRecord;
+
+export type WidgetProgram = {
+  id: Guid;
+  roomIds: Guid[];
+  name: string;
+  description: string;
+  priority: number;
+  duration: number;
+  maxCapacity: number;
+  images: string[];
+  programPricePeriod: WidgetProgramPricePeriod;
+} & UnknownRecord;
+
+export type WidgetProduct = {
+  id: Guid;
+  name: string;
+  description: string;
+  barcode: string | null;
+  image: string | null;
+  price: number;
+  productGroupId: Guid | null;
+  isPublic: boolean;
+  roomIds: Guid[];
+  dailyRoomIds: Guid[];
+} & UnknownRecord;
+
+export type WidgetProductGroup = {
+  id: Guid;
+  name: string;
+  image: string | null;
+} & UnknownRecord;
+
+export type WidgetChatPushSession = {
+  whatsappSessionActive: boolean;
+  telegramSessionActive: boolean;
+  maxSessionActive: boolean;
+  telegramClientActive: boolean;
+  tdLibActive: boolean;
+} & UnknownRecord;
+
+/** Полный конфиг виджета: GET https://app.gettime.online/api/widget/get/{alias} */
 export type WidgetGetResponse = {
-  settings: UnknownRecord;
+  settings: WidgetSettings;
   company: WidgetCompany;
   rooms: WidgetRoom[];
-  commons: UnknownRecord[];
-  programs: UnknownRecord[];
-  programsRooms: UnknownRecord[];
-  products: UnknownRecord[];
+  commons: WidgetCommon[];
+  programs: WidgetProgram[];
+  programsRooms: WidgetProgramRoom[];
+  products: WidgetProduct[];
+  productGroups: WidgetProductGroup[];
+  productKits: UnknownRecord[];
   certificates: UnknownRecord[];
   isOnlineEnabled: boolean;
-  chatPushSession: UnknownRecord;
+  chatPushSession: WidgetChatPushSession;
   dailyRooms: WidgetDailyRoom[];
 } & UnknownRecord;
 

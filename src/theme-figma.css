@@ -1,0 +1,39 @@
+/**
+ * Токены из прототипа figma/ (Modern Booking + shadcn theme.css).
+ * Используются в Tailwind (tailwind.config.cjs) и в stepper.css / виджете.
+ */
+:root {
+  --font-size: 16px;
+
+  /* Бренд и фон из макета бронирования */
+  --booking-ink: #485548;
+  --booking-ink-dark: #3d4a3d;
+  --booking-ink-rgb: 72, 85, 72;
+  --booking-canvas: #fafaf8;
+  --booking-mint: #d4e4d7;
+  --booking-promo-sand: #e8d5c4;
+  --booking-promo-sand-ink: #8b6f47;
+
+  /* Shadcn-подобные (figma/src/styles/theme.css), адаптировано под холст бронирования */
+  --background: var(--booking-canvas);
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: var(--booking-ink);
+  --primary-foreground: #ffffff;
+  --secondary: #ececf0;
+  --secondary-foreground: #1a1a1a;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #1a1a1a;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --ring: rgba(72, 85, 72, 0.35);
+  --radius: 0.625rem;
+}

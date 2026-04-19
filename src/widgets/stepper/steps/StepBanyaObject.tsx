@@ -1,14 +1,9 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { startOfWeek as startWeek, startOfMonth as startMonth } from "date-fns";
 import type { WidgetRoom } from "../../../api";
 import { createWidgetApi } from "../../../api";
 import type { StepProps } from "./stepTypes";
-import {
-  WeeklyCalendar,
-  MonthlyCalendar,
-  TimeSlots,
-  SlotSelectionPanel,
-} from "../calendar";
+import { WeeklyCalendar, MonthlyCalendar, TimeSlots } from "../calendar";
 import {
   updateUrl,
   weekToUrlDate,
@@ -27,16 +22,18 @@ import { loadRoomTimeSlots } from "../calendar/slotsService";
 import type { WeeklyOccupancyData, MonthlyOccupancyData } from "../calendar/types";
 import type { RoomTimeSlot } from "../../../api";
 import { parse, format } from "date-fns";
-
-function getImageUrl(imagePath: string | undefined, baseUrl?: string): string {
-  if (!imagePath) return "";
-  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-    return imagePath;
-  }
-  // Если путь относительный, можно добавить base URL
-  // Пока возвращаем как есть (API должен возвращать полные URL)
-  return imagePath;
-}
+import { ru } from "date-fns/locale";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Card, CardContent } from "../../../components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../../../components/ui/accordion";
+import { BanyaRoomPicker } from "./BanyaRoomPicker";
+import { urlInitialAccordionOpenForBanyaPicker } from "../utils/banyaUrl";
 
 function getWeekDaySlotsCount(room: WidgetRoom): number {
   const pricePeriod = room.pricePeriod as
@@ -58,6 +55,13 @@ function truncateDescription(desc: string | null | undefined, maxLen = 100): str
   return desc.length > maxLen ? desc.substring(0, maxLen) + "..." : desc;
 }
 
+function formatTimeRange(timeFrom: string, timeTo: string): string {
+  if (timeTo === "23:59") {
+    return `${timeFrom} — до 24:00`;
+  }
+  return `${timeFrom} — ${timeTo}`;
+}
+
 export const StepBanyaObject: React.FC<StepProps> = ({
   state,
   setState,
@@ -65,8 +69,6 @@ export const StepBanyaObject: React.FC<StepProps> = ({
   onShowToast,
   alias = "les",
 }) => {
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
-  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
   const [calendarWeekStart, setCalendarWeekStart] = useState<Date>(
     startWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -88,8 +90,13 @@ export const StepBanyaObject: React.FC<StepProps> = ({
   const [hasSlotsError, setHasSlotsError] = useState(false);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [guestCount, setGuestCount] = useState(1);
-  const [isAccordionOpen, setIsAccordionOpen] = useState(true); // По умолчанию открыт
-  
+  const [accordionOpen, setAccordionOpen] = useState(urlInitialAccordionOpenForBanyaPicker);
+  const [calendarAccordionOpen, setCalendarAccordionOpen] = useState(true);
+  const [slotsAccordionOpen, setSlotsAccordionOpen] = useState(false);
+  const prevSelectedDateRef = useRef<Date | null>(null);
+  const prevSlotsEnabledRef = useRef(false);
+  const prevSlotIndexRef = useRef<number | null>(null);
+
   const api = useMemo(() => createWidgetApi({ alias }), [alias]);
 
   const rooms = useMemo<WidgetRoom[]>(() => {
@@ -98,10 +105,49 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     return config.rooms;
   }, [state.data.config]);
 
+  const tenantId = state.data.config?.settings?.tenantId ?? null;
+
   const selectedRoom = useMemo<WidgetRoom | null>(() => {
     if (!state.data.selectedRoomId) return null;
     return rooms.find((r) => r.id === state.data.selectedRoomId) || null;
   }, [rooms, state.data.selectedRoomId]);
+
+  const slotsEnabled = Boolean(
+    state.data.selectedRoomId && selectedDate && selectedRoom
+  );
+
+  useEffect(() => {
+    const prev = prevSelectedDateRef.current;
+    if (selectedDate && !prev) {
+      setCalendarAccordionOpen(false);
+    }
+    if (!selectedDate && prev) {
+      setCalendarAccordionOpen(true);
+    }
+    prevSelectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const was = prevSlotsEnabledRef.current;
+    if (slotsEnabled && !was) {
+      setSlotsAccordionOpen(true);
+    }
+    if (!slotsEnabled) {
+      setSlotsAccordionOpen(false);
+    }
+    prevSlotsEnabledRef.current = slotsEnabled;
+  }, [slotsEnabled]);
+
+  useEffect(() => {
+    const prev = prevSlotIndexRef.current;
+    if (selectedSlotIndex !== null && prev === null) {
+      setSlotsAccordionOpen(false);
+    }
+    if (selectedSlotIndex === null && prev !== null && slotsEnabled) {
+      setSlotsAccordionOpen(true);
+    }
+    prevSlotIndexRef.current = selectedSlotIndex;
+  }, [selectedSlotIndex, slotsEnabled]);
 
   const isLoading = !state.data.config;
 
@@ -127,15 +173,6 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, rooms.length]);
 
-  // Закрываем аккордеон при выборе бани
-  useEffect(() => {
-    if (state.data.selectedRoomId || state.data.allRoomsSelected) {
-      setIsAccordionOpen(false);
-    } else {
-      setIsAccordionOpen(true);
-    }
-  }, [state.data.selectedRoomId, state.data.allRoomsSelected]);
-
   // Восстановление состояния из URL при загрузке
   useEffect(() => {
     const urlState = parseUrlState();
@@ -157,23 +194,23 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     
     // Восстанавливаем выбор бани
     if (urlState.roomId && !state.data.selectedRoomId) {
-      setState((prev) => ({
-        ...prev,
+      setState({
+        ...state,
         data: {
-          ...prev.data,
+          ...state.data,
           selectedRoomId: urlState.roomId,
           allRoomsSelected: false,
         },
-      }));
+      });
     } else if (urlState.mode === "all" && !state.data.allRoomsSelected) {
-      setState((prev) => ({
-        ...prev,
+      setState({
+        ...state,
         data: {
-          ...prev.data,
+          ...state.data,
           allRoomsSelected: true,
           selectedRoomId: undefined,
         },
-      }));
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -266,6 +303,7 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     if (onShowToast) {
       onShowToast(`Выбрана баня: ${room.name}`);
     }
+    setAccordionOpen(false);
   };
 
   const handleAllRoomsClick = () => {
@@ -305,32 +343,7 @@ export const StepBanyaObject: React.FC<StepProps> = ({
       date: weekToUrlDate(calendarWeekStart),
       categoryId: state.data.categoryId,
     });
-  };
-
-  const handleImageLoad = (imagePath: string) => {
-    setLoadingImages((prev) => {
-      const next = new Set(prev);
-      next.delete(imagePath);
-      return next;
-    });
-    setImageErrors((prev) => {
-      const next = new Set(prev);
-      next.delete(imagePath);
-      return next;
-    });
-  };
-
-  const handleImageError = (imagePath: string) => {
-    setLoadingImages((prev) => {
-      const next = new Set(prev);
-      next.delete(imagePath);
-      return next;
-    });
-    setImageErrors((prev) => new Set(prev).add(imagePath));
-  };
-
-  const handleImageLoadStart = (imagePath: string) => {
-    setLoadingImages((prev) => new Set(prev).add(imagePath));
+    setAccordionOpen(true);
   };
 
   // Загружаем данные для недельного календаря (все бани)
@@ -455,14 +468,14 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     setCalendarMonthStart(monthStart);
 
     // Выбираем баню и дату
-    setState((prev) => ({
-      ...prev,
+    setState({
+      ...state,
       data: {
-        ...prev.data,
+        ...state.data,
         selectedRoomId: roomId,
         allRoomsSelected: false,
       },
-    }));
+    });
 
     setSelectedDate(date);
     const dateStr = format(date, "yyyy-MM-dd");
@@ -476,6 +489,7 @@ export const StepBanyaObject: React.FC<StepProps> = ({
       month: monthToUrlDate(monthStart),
       categoryId: state.data.categoryId,
     });
+    setAccordionOpen(false);
   };
 
   const handleSlotClick = (slot: RoomTimeSlot, index: number) => {
@@ -495,21 +509,27 @@ export const StepBanyaObject: React.FC<StepProps> = ({
   };
 
   const handleContinue = () => {
-    if (selectedSlotIndex === null || !selectedRoom) return;
-    
+    if (selectedSlotIndex === null || !selectedRoom || !selectedDate) return;
+
     const selectedSlot = timeSlots[selectedSlotIndex];
-    // eslint-disable-next-line no-console
-    console.log("Продолжить бронирование:", {
-      slot: selectedSlot,
-      guestCount,
-      roomId: selectedRoom.id,
-      date: selectedDate,
+
+    setState({
+      ...state,
+      data: {
+        ...state.data,
+        bookingDraft: {
+          roomId: selectedRoom.id,
+          roomName: selectedRoom.name,
+          date: format(selectedDate, "yyyy-MM-dd"),
+          timeFrom: selectedSlot.timeFrom,
+          timeTo: selectedSlot.timeTo,
+          basePrice: selectedSlot.price,
+          guestCount,
+          productQuantities: {},
+        },
+      },
     });
-    
-    // TODO: Переход на следующий шаг бронирования
-    if (onShowToast) {
-      onShowToast(`Переход к бронированию: ${selectedSlot.timeFrom} - ${selectedSlot.timeTo}, ${guestCount} ${guestCount === 1 ? "гость" : guestCount < 5 ? "гостя" : "гостей"}`);
-    }
+    goTo("bookingStepThree");
   };
 
   // Сбрасываем выбор слота при смене даты или бани
@@ -518,232 +538,236 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     setGuestCount(1);
   }, [selectedDate, state.data.selectedRoomId]);
 
-  return (
-    <div>
-      <h3 className="stepper-widget__title">Выбор бани</h3>
-      <p className="stepper-widget__sub">
-        Выберите баню из списка или выберите все бани.
-      </p>
+  const maxGuests = selectedRoom
+    ? selectedRoom.maxCapacity || selectedRoom.capacity || 10
+    : 10;
+  const selectedSlot =
+    selectedSlotIndex !== null && timeSlots[selectedSlotIndex]
+      ? timeSlots[selectedSlotIndex]
+      : null;
+  const canSubmit = Boolean(selectedRoom && selectedDate && selectedSlot);
+  const banyaSummary =
+    state.data.allRoomsSelected && !state.data.selectedRoomId
+      ? "Все бани"
+      : selectedRoom?.name ?? "—";
+  const dateSummary = selectedDate
+    ? format(selectedDate, "d MMMM yyyy", { locale: ru })
+    : "—";
+  const slotSummary = selectedSlot
+    ? formatTimeRange(selectedSlot.timeFrom, selectedSlot.timeTo)
+    : "—";
 
+  return (
+    <div className="space-y-5">
       {isLoading ? (
-        <div className="stepper-widget__rooms-grid">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="stepper-widget__room-card-skeleton">
-              <div className="stepper-widget__room-card-skeleton-shimmer" />
-            </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-36 animate-pulse rounded-lg border bg-slate-100" />
           ))}
         </div>
       ) : rooms.length === 0 ? (
-        <div className="stepper-widget__note">Нет доступных бань</div>
+        <Card>
+          <CardContent className="p-4 text-sm text-slate-600">Нет доступных бань</CardContent>
+        </Card>
       ) : (
-        <>
-          {/* Аккордеон для выбора бани */}
-          <div className="stepper-widget__accordion">
-            <button
-              type="button"
-              className="stepper-widget__accordion-header"
-              onClick={() => setIsAccordionOpen(!isAccordionOpen)}
-            >
-              <span className="stepper-widget__accordion-title">
-                {selectedRoom
-                  ? `Выбрана баня: ${selectedRoom.name}`
-                  : state.data.allRoomsSelected
-                  ? "Выбраны все бани"
-                  : "Выберите баню"}
-              </span>
-              <svg
-                className={`stepper-widget__accordion-icon ${
-                  isAccordionOpen ? "stepper-widget__accordion-icon--open" : ""
-                }`}
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-            
-            {isAccordionOpen && (
-              <div className="stepper-widget__accordion-content">
-                <div className="stepper-widget__rooms-scroll">
-                  {/* Плашка "Все бани" в начале списка */}
-                  <button
-                    type="button"
-                    className={`stepper-widget__room-card stepper-widget__room-card--all ${
-                      state.data.allRoomsSelected
-                        ? "stepper-widget__room-card--selected"
-                        : ""
-                    }`}
-                    onClick={handleAllRoomsClick}
+        <div className="booking-step-three relative flex min-h-0 w-full flex-1 flex-col">
+          <div className="booking-step-three__scroll-main space-y-5">
+            <BanyaRoomPicker
+              rooms={rooms}
+              tenantId={tenantId}
+              allRoomsSelected={!!state.data.allRoomsSelected}
+              selectedRoomId={state.data.selectedRoomId}
+              showAllOption
+              accordionOpen={accordionOpen}
+              onAccordionOpenChange={setAccordionOpen}
+              onSelectAll={handleAllRoomsClick}
+              onSelectRoom={handleRoomClick}
+            />
+
+            {hasSelection ? (
+              <>
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <Accordion
+                    type="single"
+                    collapsible
+                    value={calendarAccordionOpen ? "cal" : ""}
+                    onValueChange={(v) => setCalendarAccordionOpen(v === "cal")}
                   >
-                    <div className="stepper-widget__room-card-bg" />
-                    <div className="stepper-widget__room-card-placeholder stepper-widget__room-card-placeholder--all">
-                      <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <rect x="3" y="3" width="7" height="7" />
-                        <rect x="14" y="3" width="7" height="7" />
-                        <rect x="3" y="14" width="7" height="7" />
-                        <rect x="14" y="14" width="7" height="7" />
-                      </svg>
-                    </div>
-                    <div className="stepper-widget__room-card-content">
-                      <span className="stepper-widget__room-card-title">Все бани</span>
-                    </div>
-                  </button>
-
-                  {/* Карточки бань */}
-                  {rooms.map((room) => {
-                    const firstImage = room.images?.[0];
-                    const imageUrl = getImageUrl(firstImage);
-                    const hasImageError = imageUrl && imageErrors.has(imageUrl);
-                    const isImageLoading = imageUrl && loadingImages.has(imageUrl);
-                    const isSelected = state.data.selectedRoomId === room.id;
-
-                    return (
-                      <button
-                        key={room.id}
-                        type="button"
-                        className={`stepper-widget__room-card ${
-                          isSelected ? "stepper-widget__room-card--selected" : ""
-                        }`}
-                        onClick={() => handleRoomClick(room)}
-                      >
-                        {imageUrl && !hasImageError && (
-                          <>
-                            {isImageLoading && (
-                              <div className="stepper-widget__room-card-skeleton-shimmer" />
-                            )}
-                            <img
-                              src={imageUrl}
-                              alt={room.name}
-                              className="stepper-widget__room-card-image"
-                              onLoadStart={() => handleImageLoadStart(imageUrl)}
-                              onLoad={() => handleImageLoad(imageUrl)}
-                              onError={() => handleImageError(imageUrl)}
-                              style={{ display: isImageLoading ? "none" : "block" }}
-                            />
-                          </>
-                        )}
-                        {(!imageUrl || hasImageError) && (
-                          <div className="stepper-widget__room-card-placeholder">
-                            <svg
-                              width="48"
-                              height="48"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <rect x="3" y="3" width="18" height="18" rx="2" />
-                              <circle cx="8.5" cy="8.5" r="1.5" />
-                              <path d="M21 15l-5-5L5 21" />
-                            </svg>
-                          </div>
-                        )}
-                        <div className="stepper-widget__room-card-bg" />
-                        <div className="stepper-widget__room-card-content">
-                          <span className="stepper-widget__room-card-title">
-                            {room.name}
-                          </span>
+                    <AccordionItem value="cal" className="border-b-0">
+                      <AccordionTrigger className="px-3 py-2.5 text-sm hover:no-underline sm:px-4">
+                        <div className="flex w-full flex-col items-start gap-0.5 text-left">
+                          {/* <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            Дата
+                          </span> */}
+                          <h3 className="text-base font-semibold tracking-tight text-[#485548] sm:text-lg">
+                         {"Дата: "}
+                            {selectedDate
+                              ? format(selectedDate, "d MMMM yyyy", { locale: ru })
+                              : "Выбор даты"}
+                          </h3>
                         </div>
-                      </button>
-                    );
-                  })}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-2 pb-3 pt-0 sm:px-3">
+                        {state.data.allRoomsSelected ? (
+                          <WeeklyCalendar
+                            data={weeklyData}
+                            initialDate={calendarWeekStart}
+                            onWeekChange={handleWeekChange}
+                            isLoading={isLoadingWeekly}
+                            loadingRooms={loadingRooms}
+                            errorRooms={errorRooms}
+                            onDateClick={handleDateClickFromWeekly}
+                            selectedDate={selectedDate}
+                            selectedRoomId={state.data.selectedRoomId || null}
+                          />
+                        ) : null}
+                        {state.data.selectedRoomId && selectedRoom ? (
+                          <MonthlyCalendar
+                            data={monthlyData}
+                            roomName={selectedRoom.name}
+                            initialDate={calendarMonthStart}
+                            onMonthChange={handleMonthChange}
+                            isLoading={isLoadingMonthly}
+                            hasError={hasMonthlyError}
+                            onDateClick={handleDateClick}
+                            selectedDate={selectedDate}
+                          />
+                        ) : null}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
-              </div>
-            )}
+
+                {slotsEnabled ? (
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <Accordion
+                      type="single"
+                      collapsible
+                      value={slotsAccordionOpen ? "slots" : ""}
+                      onValueChange={(v) => setSlotsAccordionOpen(v === "slots")}
+                    >
+                      <AccordionItem value="slots" className="border-b-0">
+                        <AccordionTrigger className="px-3 py-2.5 text-sm hover:no-underline sm:px-4">
+                          <div className="flex w-full flex-col items-start gap-0.5 text-left">
+                            <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            
+                            </span>
+                            <h3 className="text-base font-semibold tracking-tight text-[#485548] sm:text-lg">
+
+<span  style={{ color: "red" }}>{"Время: "}</span>
+                           
+                            
+                              {selectedSlot
+                                ? formatTimeRange(selectedSlot.timeFrom, selectedSlot.timeTo)
+                                : "Выбор слота"}
+                            </h3>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-2 pb-3 pt-0 sm:px-3">
+                          {selectedRoom && selectedDate ? (
+                            <TimeSlots
+                              slots={timeSlots}
+                              date={selectedDate}
+                              roomName={selectedRoom.name}
+                              roomId={selectedRoom.id}
+                              isLoading={isLoadingSlots}
+                              hasError={hasSlotsError}
+                              selectedSlotIndex={selectedSlotIndex}
+                              onSlotClick={handleSlotClick}
+                            />
+                          ) : null}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm opacity-60">
+                    <div className="pointer-events-none flex flex-col gap-0.5 px-3 py-2.5 sm:px-4">
+                     
+                      <h3 className="text-base font-semibold tracking-tight text-slate-500 sm:text-lg">
+                      <span>
+                       {"Время: "}
+                      </span>
+
+                        Сначала выберите баню и дату
+                      </h3>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
 
-          {/* Календарь или слоты в зависимости от выбора */}
-          {hasSelection && (
-            <div className="stepper-widget__calendar-container">
-              {/* Показываем слоты, если выбрана дата */}
-              {selectedDate && state.data.selectedRoomId && selectedRoom ? (
-                <>
-                  <div className="stepper-widget__slots-header">
-                    <button
-                      type="button"
-                      className="stepper-widget__btn stepper-widget__btn--ghost"
-                      onClick={() => {
-                        setSelectedDate(null);
-                        // Возвращаемся к месячному календарю для выбранной бани
-                        updateUrl({
-                          step: "bani",
-                          mode: "single",
-                          roomId: state.data.selectedRoomId!,
-                          calendarType: "month",
-                          month: monthToUrlDate(calendarMonthStart),
-                          categoryId: state.data.categoryId,
-                        });
-                      }}
-                    >
-                      ← Назад к календарю
-                    </button>
-                  </div>
-                  <TimeSlots
-                    slots={timeSlots}
-                    date={selectedDate}
-                    roomName={selectedRoom.name}
-                    roomId={selectedRoom.id}
-                    isLoading={isLoadingSlots}
-                    hasError={hasSlotsError}
-                    selectedSlotIndex={selectedSlotIndex}
-                    onSlotClick={handleSlotClick}
-                  />
-                  
-                  {/* Нижняя панель выбора гостей */}
-                  {selectedSlotIndex !== null && timeSlots[selectedSlotIndex] && (
-                    <SlotSelectionPanel
-                      selectedSlot={timeSlots[selectedSlotIndex]}
-                      guestCount={guestCount}
-                      maxGuests={selectedRoom.maxCapacity || selectedRoom.capacity || 10}
-                      onGuestCountChange={handleGuestCountChange}
-                      onContinue={handleContinue}
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Показываем календарь, если не выбрана дата */}
-                  {state.data.allRoomsSelected && (
-                    <WeeklyCalendar
-                      data={weeklyData}
-                      initialDate={calendarWeekStart}
-                      onWeekChange={handleWeekChange}
-                      isLoading={isLoadingWeekly}
-                      loadingRooms={loadingRooms}
-                      errorRooms={errorRooms}
-                      onDateClick={handleDateClickFromWeekly}
-                      selectedDate={selectedDate}
-                      selectedRoomId={state.data.selectedRoomId || null}
-                    />
-                  )}
-                  {state.data.selectedRoomId && selectedRoom && (
-                    <MonthlyCalendar
-                      data={monthlyData}
-                      roomName={selectedRoom.name}
-                      initialDate={calendarMonthStart}
-                      onMonthChange={handleMonthChange}
-                      isLoading={isLoadingMonthly}
-                      hasError={hasMonthlyError}
-                      onDateClick={handleDateClick}
-                      selectedDate={selectedDate}
-                    />
-                  )}
-                </>
-              )}
+          <footer className="booking-step-three__footer space-y-3">
+            {/* <div className="grid gap-2 text-sm text-slate-700">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Баня
+                </span>
+                <span className="text-right font-semibold text-slate-800">{banyaSummary}</span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Дата
+                </span>
+                <span className="text-right font-semibold text-slate-800">{dateSummary}</span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Слот
+                </span>
+                <span className="text-right font-semibold text-slate-800">{slotSummary}</span>
+              </div>
+              {selectedSlot ? (
+                <div className="text-right text-base font-bold text-slate-800">
+                  {selectedSlot.price.toLocaleString("ru-RU")} ₽
+                </div>
+              ) : null}
+            </div> */}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Гости
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGuestCountChange(guestCount - 1)}
+                    disabled={!selectedSlot || guestCount <= 1}
+                    aria-label="Уменьшить количество гостей"
+                  >
+                    −
+                  </Button>
+                  <Badge variant="secondary" className="min-w-10 justify-center">
+                    {guestCount}
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGuestCountChange(guestCount + 1)}
+                    disabled={!selectedSlot || guestCount >= maxGuests}
+                    aria-label="Увеличить количество гостей"
+                  >
+                    +
+                  </Button>
+                  <span className="text-xs text-slate-500">(макс. {maxGuests})</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                className="h-11 shrink-0 rounded-xl bg-slate-800 px-6 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-40 sm:min-w-40"
+                onClick={handleContinue}
+                disabled={!canSubmit}
+              >
+                Оформить
+              </Button>
             </div>
-          )}
-        </>
+          </footer>
+        </div>
       )}
     </div>
   );

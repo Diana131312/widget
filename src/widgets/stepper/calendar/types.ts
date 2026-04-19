@@ -10,6 +10,8 @@ export type TimeRange = {
 export type DayOccupancy = {
   date: Date;
   bookedRanges: TimeRange[]; // Занятые слоты
+  bookedPercent: number; // Процент занятых часов в рабочем окне (0-100)
+  workHours: boolean[]; // 15 элементов (09:00-23:00), true = свободно, false = занято
 };
 
 /** Данные занятости для одной бани на период */
@@ -25,7 +27,7 @@ export type WeeklyOccupancyData = RoomOccupancy[];
 /** Данные занятости для одной бани (месячный режим) */
 export type MonthlyOccupancyData = DayOccupancy[];
 
-/** Рабочие часы (9:00 - 23:00 = 14 часов) */
+/** Рабочее окно (09:00 - 24:00 = 15 часов) для расчета загруженности */
 export const WORK_DAY_START = "09:00";
-export const WORK_DAY_END = "23:00";
-export const WORK_DAY_HOURS = 14;
+export const WORK_DAY_END = "24:00";
+export const WORK_DAY_HOURS = 15;

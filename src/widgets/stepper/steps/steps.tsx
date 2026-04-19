@@ -1,7 +1,13 @@
-import React from "react";
+import { BookingStepCheckout, BookingStepProducts } from "./booking-step-three";
+import type { StepperState } from "../types";
 import { StepCategory } from "./StepCategory";
 import { StepBanyaObject } from "./StepBanyaObject";
 import type { StepDefinition } from "./stepTypes";
+
+const canEnterBookingFlow = (state: StepperState) =>
+  !!state.data.bookingDraft?.roomId &&
+  !!state.data.bookingDraft?.date &&
+  !!state.data.bookingDraft?.timeFrom;
 
 export function createStepperSteps(): StepDefinition[] {
   return [
@@ -15,6 +21,18 @@ export function createStepperSteps(): StepDefinition[] {
       title: "Баня",
       canEnter: (state) => state.data.categoryId === "banya",
       Component: StepBanyaObject,
+    },
+    {
+      id: "bookingStepThree",
+      title: "Доп. товары",
+      canEnter: canEnterBookingFlow,
+      Component: BookingStepProducts,
+    },
+    {
+      id: "bookingStepFour",
+      title: "Оформление",
+      canEnter: canEnterBookingFlow,
+      Component: BookingStepCheckout,
     },
   ];
 }
