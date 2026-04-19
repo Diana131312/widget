@@ -203,6 +203,13 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
     setState((prev) => ({ ...prev, stepId }));
   };
 
+  const back = () => {
+    const i = steps.findIndex((s) => s.id === state.stepId);
+    const prev = i > 0 ? steps[i - 1] : null;
+    if (!prev) return;
+    goTo(prev.id);
+  };
+
   const idx = Math.max(0, steps.findIndex((s) => s.id === state.stepId));
   const stepLabelText =
     view === "cabinet" ? "Профиль пользователя" : `Шаг ${idx + 1} из ${steps.length}`;
@@ -271,14 +278,14 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
                     goTo("category");
                     return;
                   }
-                  goTo("category");
+                  back();
                 }}
                 disabled={view === "widget" && idx === 0}
                 aria-disabled={view === "widget" && idx === 0}
-                aria-label="На главный экран виджета"
-                title="На главный экран виджета"
+                aria-label={view === "cabinet" ? "На главный экран виджета" : "Назад"}
+                title={view === "cabinet" ? "На главный экран виджета" : "Назад"}
               >
-                <Home size={16} />
+                {view === "cabinet" ? <Home size={16} /> : "←"}
               </button>
               <div className="widget-header__center ">
                 <p className="stepper-widget__sub">{stepLabelText}</p>
