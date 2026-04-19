@@ -2,6 +2,7 @@ import React from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "../../../../components/ui/button";
+import { Badge } from "../../../../components/ui/badge";
 import type { StepProps } from "../stepTypes";
 import { ProductGroupAccordion } from "./ProductGroupAccordion";
 import { useBookingCatalog } from "./useBookingCatalog";
@@ -14,16 +15,17 @@ function formatBookingDate(dateStr: string): string {
   }
 }
 
-export const BookingStepProducts: React.FC<StepProps> = ({ state, setState, goTo }) => {
+export const BookingStepProducts: React.FC<StepProps> = ({ state, goTo }) => {
   const {
     draft,
     config,
+    patchDraft,
     setProductQty,
     groupedForRoom,
     quantities,
     productsSubtotal,
     total,
-  } = useBookingCatalog(state, setState);
+  } = useBookingCatalog(state);
 
   if (!draft) {
     return (
@@ -46,23 +48,54 @@ export const BookingStepProducts: React.FC<StepProps> = ({ state, setState, goTo
   }
 
   const base = draft.basePrice;
+  const selectedRoom = config.rooms.find((r) => r.id === draft.roomId);
+  const maxGuests = selectedRoom?.maxCapacity ?? selectedRoom?.capacity ?? 10;
+  const guestCount = Math.max(1, Math.min(draft.guestCount || 1, maxGuests));
+
+  const setGuestCount = (next: number) => {
+    const clamped = Math.max(1, Math.min(next, maxGuests));
+    patchDraft({ guestCount: clamped });
+  };
 
   return (
     <div className="booking-step-three relative flex min-h-0 w-full flex-1 flex-col">
-      <div className="booking-step-three__scroll-main">
-        <div className="pr-1">
-          <h3 className="text-lg font-semibold tracking-tight text-[#485548] sm:text-xl">
-            Дополнительные товары
-          </h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Выберите опции к бронированию на {formatBookingDate(draft.date)}. Группы по умолчанию свернуты.
-          </p>
+      <div className="booking-step-three__scroll-main space-y-8 px-1 pb-3 pt-1 sm:space-y-10 sm:px-0 sm:pb-5 sm:pt-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Количество гостей</div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setGuestCount(guestCount - 1)}
+              disabled={guestCount <= 1}
+              aria-label="Уменьшить количество гостей"
+            >
+              −
+            </Button>
+            <Badge variant="secondary" className="min-w-10 justify-center">
+              {guestCount}
+            </Badge>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setGuestCount(guestCount + 1)}
+              disabled={guestCount >= maxGuests}
+              aria-label="Увеличить количество гостей"
+            >
+              +
+            </Button>
+            <span className="text-xs text-slate-500">макс. {maxGuests}</span>
+          </div>
         </div>
 
-        <div className="mt-5">
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Каталог</h4>
+        <div className="mt-8 sm:mt-10">
+          <h4 className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:mb-5">
+            Каталог
+          </h4>
           {groupedForRoom.groups.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 bg-[#FAFAF8] p-8 text-center text-sm text-gray-600">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-[#FAFAF8] px-6 py-10 text-center text-sm text-gray-600 sm:py-12">
               Для этой бани нет доступных дополнительных товаров в каталоге.
             </div>
           ) : (
@@ -76,7 +109,7 @@ export const BookingStepProducts: React.FC<StepProps> = ({ state, setState, goTo
         </div>
       </div>
 
-      <div className="booking-step-three__footer space-y-3">
+      <div className="booking-step-three__footer space-y-4 pt-5">
         <div className="space-y-1.5 text-sm text-[#485548]">
           <div className="flex justify-between gap-3">
             <span>Стоимость бани</span>

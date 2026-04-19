@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import type { CategoryDefinition } from "../types";
 import type { StepProps } from "./stepTypes";
-import { updateUrl } from "../utils/urlSync";
+import { useBookingFlow } from "../booking/BookingFlowContext";
 
-export const StepCategory: React.FC<StepProps> = ({ state, setState, goTo }) => {
+export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
+  const { categoryId, setCategoryId } = useBookingFlow();
   // Строим категории из данных API (state.data.config)
   const availableCategories = useMemo<CategoryDefinition[]>(() => {
     const config = state.data.config;
@@ -59,18 +60,7 @@ export const StepCategory: React.FC<StepProps> = ({ state, setState, goTo }) => 
               className="stepper-widget__category-card"
               type="button"
               onClick={() => {
-                const next = {
-                  ...state,
-                  data: { ...state.data, categoryId: c.id },
-                };
-                setState(next);
-
-                // Обновляем URL
-                updateUrl({
-                  step: "bani",
-                  categoryId: c.id,
-                  mode: "all",
-                });
+                setCategoryId(c.id);
 
                 if (c.id === "banya") {
                   goTo("banyaObject");
@@ -96,7 +86,7 @@ export const StepCategory: React.FC<StepProps> = ({ state, setState, goTo }) => 
         </div>
       )}
 
-      {state.data.categoryId === "homes" && (
+      {categoryId === "homes" && (
         <div className="stepper-widget__note">
           Категория «Дома» будет добавлена в следующих шагах.
         </div>

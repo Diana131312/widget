@@ -1,26 +1,20 @@
 import { useMemo } from "react";
 import type { WidgetProduct, WidgetProductGroup } from "../../../../api/widgetApi.types";
 import type { BookingDraft, StepperState } from "../../types";
+import { completeBookingDraft } from "../../types";
 import type { GroupWithProducts } from "./ProductGroupAccordion";
+import { useBookingFlow } from "../../booking/BookingFlowContext";
 
 const UNGROUPED_GROUP_ID = "__ungrouped_products__";
 
-export function useBookingCatalog(
-  state: StepperState,
-  setState: (next: StepperState) => void
-) {
-  const draft = state.data.bookingDraft;
+export function useBookingCatalog(state: StepperState) {
+  const { draft: flowDraft, patchDraft } = useBookingFlow();
+  const draft = completeBookingDraft(flowDraft);
   const config = state.data.config;
 
-  const patchDraft = (partial: Partial<BookingDraft>) => {
+  const patchCompleteDraft = (partial: Partial<BookingDraft>) => {
     if (!draft) return;
-    setState({
-      ...state,
-      data: {
-        ...state.data,
-        bookingDraft: { ...draft, ...partial },
-      },
-    });
+    patchDraft({ ...draft, ...partial });
   };
 
   const setProductQty = (productId: string, next: number) => {
@@ -29,7 +23,7 @@ export function useBookingCatalog(
     const nextMap = { ...prev };
     if (next <= 0) delete nextMap[productId];
     else nextMap[productId] = next;
-    patchDraft({ productQuantities: nextMap });
+    patchCompleteDraft({ productQuantities: nextMap });
   };
 
   const groupedForRoom = useMemo(() => {
@@ -98,7 +92,7 @@ export function useBookingCatalog(
   return {
     draft,
     config,
-    patchDraft,
+    patchDraft: patchCompleteDraft,
     setProductQty,
     groupedForRoom,
     quantities,

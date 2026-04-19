@@ -131,12 +131,12 @@ function groupSlots(slots: RoomTimeSlot[]): SlotGroup[] {
 /** Сетка слотов в группе: 3 — всегда 3 колонки; 4 — 2 на мобиле, 4 на lg+; иначе адаптивно. */
 function slotGroupGridClass(slotCount: number): string {
   if (slotCount === 3) {
-    return "grid grid-cols-3 items-stretch gap-3";
+    return "grid grid-cols-2 items-stretch gap-3 lg:grid-cols-3";
   }
   if (slotCount === 4) {
     return "grid grid-cols-2 items-stretch gap-3 lg:grid-cols-4";
   }
-  return "grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4";
+  return "grid grid-cols-2 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4";
 }
 
 /**
@@ -251,7 +251,7 @@ export const TimeSlots: React.FC<Props> = ({
                     onSlotClick?.(slot, indexToPass);
                   }}
                   className={cn(
-                    "relative flex h-full  flex-col rounded-xl border p-4 text-left transition-all",
+                    "relative flex h-full  flex-col rounded-xl border p-3 text-left transition-all",
                     !isAvailable &&
                       "cursor-not-allowed border-gray-200 bg-gray-50 opacity-40",
                     isAvailable &&
@@ -272,7 +272,7 @@ export const TimeSlots: React.FC<Props> = ({
                     </div>
                   ) : null} */}
 
-                  <div className="mb-4 min-w-0 flex-1">
+                  <div className="mb-3 min-w-0 flex-1">
                     <div className="mb-1 text-base sm:text-lg font-semibold text-[#485548] text-gray-800">
                       {formatTimeRange(slot.timeFrom, slot.timeTo)}
                     </div>
@@ -282,7 +282,7 @@ export const TimeSlots: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <div className="mt-auto border-t border-gray-100 pt-3">
+                  <div className="mt-auto border-t border-gray-100 pt-2">
                     <div className="flex w-full min-w-0 flex-wrap items-end justify-end gap-x-2 gap-y-0.5">
                       {oldPrice != null ? (
                         <span className="text-right text-sm tabular-nums text-gray-400 line-through">

@@ -200,6 +200,7 @@ export function createWidgetApi(config: WidgetApiClientConfig): WidgetApiClient 
     const res = await fetcher(url.toString(), {
       method: args.method,
       headers,
+      credentials: "include",
       body: args.method === "POST" ? JSON.stringify(args.body ?? {}) : undefined,
     });
 
@@ -318,7 +319,7 @@ export function createWidgetApi(config: WidgetApiClientConfig): WidgetApiClient 
         method: "POST",
         path: `/user/history`,
         body: args,
-        auth: "none",
+        auth: "jwt",
       });
     },
 
@@ -356,7 +357,7 @@ export function createWidgetApi(config: WidgetApiClientConfig): WidgetApiClient 
         method: "POST",
         path: `/save`,
         body: { ...args, alias } satisfies SaveRoomBookingRequest,
-        auth: "none",
+        auth: "jwt",
       });
     },
 

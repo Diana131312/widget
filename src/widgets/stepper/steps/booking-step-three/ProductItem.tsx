@@ -26,7 +26,7 @@ export const ProductItem: React.FC<Props> = ({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow",
+        "flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow sm:gap-5 sm:p-5",
         quantity > 0 && "border-[#485548]/25 ring-1 ring-[#D4E4D7]/90"
       )}
     >

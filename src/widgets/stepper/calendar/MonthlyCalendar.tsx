@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -44,6 +44,12 @@ export const MonthlyCalendar: React.FC<Props> = ({
   const [currentMonth, setCurrentMonth] = useState(() =>
     startOfMonth(initialDate)
   );
+
+  useEffect(() => {
+    const anchor = selectedDate ?? initialDate;
+    const m = startOfMonth(anchor);
+    setCurrentMonth((prev) => (prev.getTime() === m.getTime() ? prev : m));
+  }, [selectedDate, initialDate]);
 
   const monthEnd = useMemo(
     () => endOfMonth(currentMonth),

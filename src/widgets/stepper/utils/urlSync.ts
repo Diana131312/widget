@@ -9,6 +9,11 @@ export type UrlState = {
   week?: string; // yyyy-MM-dd для недели
   month?: string; // yyyy-MM для месяца
   categoryId?: "banya" | "homes";
+  /** HH:mm — только чтение при загрузке, в процессе работы виджета URL не обновляем */
+  timeFrom?: string;
+  timeTo?: string;
+  /** query step=2 — подсказка для виджета (шаг выбора бани) */
+  widgetStep?: string;
 };
 
 /**
@@ -39,9 +44,24 @@ export function parseUrlState(): UrlState {
   const month = search.get("month");
   const date = search.get("date");
   const category = search.get("category");
+  const roomIdQuery = search.get("roomId");
+  const timeFrom = search.get("timeFrom");
+  const timeTo = search.get("timeTo");
+  const stepParam = search.get("step")?.trim();
 
   if (date) {
     state.date = date;
+  }
+
+  if (timeFrom) state.timeFrom = timeFrom;
+  if (timeTo) state.timeTo = timeTo;
+  if (stepParam) state.widgetStep = stepParam;
+  if (stepParam === "2") state.step = state.step ?? "bani";
+
+  if (roomIdQuery) {
+    state.roomId = roomIdQuery;
+    state.mode = "single";
+    state.step = state.step ?? "bani";
   }
   
   if (week) {
@@ -68,8 +88,28 @@ export function parseUrlState(): UrlState {
   return state;
 }
 
+/** Ссылка для тестов: текущий origin + pathname + query (виджет не пишет URL сам) */
+export function buildWidgetBookingShareUrl(params: {
+  roomId?: string;
+  date?: string;
+  timeFrom?: string;
+  timeTo?: string;
+}): string {
+  if (typeof window === "undefined") return "";
+  const origin = window.location.origin;
+  const pathname = window.location.pathname || "/";
+  const sp = new URLSearchParams();
+  sp.set("step", "2");
+  if (params.roomId) sp.set("roomId", params.roomId);
+  if (params.date) sp.set("date", params.date);
+  if (params.timeFrom) sp.set("timeFrom", params.timeFrom);
+  if (params.timeTo) sp.set("timeTo", params.timeTo);
+  return `${origin}${pathname}?${sp.toString()}`;
+}
+
 /**
  * Обновляет URL на основе состояния
+ * @deprecated Виджет больше не синхронизирует состояние в URL при навигации; оставлено для совместимости при необходимости.
  */
 export function updateUrl(state: UrlState): void {
   let path = "/main";

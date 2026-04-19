@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   startOfWeek,
   endOfWeek,
@@ -43,6 +43,12 @@ export const WeeklyCalendar: React.FC<Props> = ({
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(initialDate, { weekStartsOn: 1 })
   );
+
+  useEffect(() => {
+    const anchor = selectedDate ?? initialDate;
+    const w = startOfWeek(anchor, { weekStartsOn: 1 });
+    setCurrentWeekStart((prev) => (prev.getTime() === w.getTime() ? prev : w));
+  }, [selectedDate, initialDate]);
 
   const weekEnd = useMemo(
     () => endOfWeek(currentWeekStart, { weekStartsOn: 1 }),

@@ -1,39 +1,37 @@
 import { BookingStepCheckout, BookingStepProducts } from "./booking-step-three";
-import type { StepperState } from "../types";
+import type { StepperBookingGate, StepperState } from "../types";
+import { completeBookingDraft } from "../types";
 import { StepCategory } from "./StepCategory";
 import { StepBanyaObject } from "./StepBanyaObject";
 import type { StepDefinition } from "./stepTypes";
 
-const canEnterBookingFlow = (state: StepperState) =>
-  !!state.data.bookingDraft?.roomId &&
-  !!state.data.bookingDraft?.date &&
-  !!state.data.bookingDraft?.timeFrom;
+const canEnterBookingFlow = (_state: StepperState, gate: StepperBookingGate) =>
+  completeBookingDraft(gate.draft) != null;
 
 export function createStepperSteps(): StepDefinition[] {
   return [
     {
       id: "category",
-      title: "Категория",
+      title: "Формат отдыха",
       Component: StepCategory,
     },
     {
       id: "banyaObject",
-      title: "Баня",
-      canEnter: (state) => state.data.categoryId === "banya",
+      title: "Выбор даты и времени",
+      canEnter: (state, gate) => gate.categoryId === "banya",
       Component: StepBanyaObject,
     },
     {
       id: "bookingStepThree",
-      title: "Доп. товары",
+      title: "Дополнительные товары",
       canEnter: canEnterBookingFlow,
       Component: BookingStepProducts,
     },
     {
       id: "bookingStepFour",
-      title: "Оформление",
+      title: "Оформление заказа",
       canEnter: canEnterBookingFlow,
       Component: BookingStepCheckout,
     },
   ];
 }
-

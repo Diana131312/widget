@@ -10,7 +10,7 @@ export type LocalDate = string; // yyyy-MM-dd
 export type LocalTime = string; // HH:mm
 export type IsoDateTime = string; // e.g. 2026-03-07T12:00:00Z
 
-export type WidgetMessenger = "whatsapp" | "telegram" | "max" | null;
+export type WidgetMessenger = "whatsapp" | "telegram" | "max" | "sms" | null;
 
 /** Универсальный JSON-объект для полей, не описанных в документации. */
 export type UnknownRecord = Record<string, unknown>;
@@ -417,14 +417,33 @@ export type AuthResponse = {
   contact: ContactWidgetModel;
 } & UnknownRecord;
 
-export type UserInfoResponse = ContactWidgetModel;
+export type UserInfoResponse = ContactWidgetModel & {
+  lastVisit?: string | null;
+  visitCount?: number;
+  discountType?: number;
+  isVip?: boolean;
+};
 
 export type UserHistoryRequest = {
-  phone: string;
+  phone?: string;
   isShowPast: boolean;
 };
 
-export type UserHistoryResponse = UnknownRecord[];
+export type UserHistoryItem = {
+  id: Guid;
+  date: LocalDate;
+  time: LocalTime;
+  duration: number;
+  roomName: string;
+  status: number;
+  price: number;
+  timeStartForDuration?: string;
+  timeEndForDuration?: string;
+} & UnknownRecord;
+
+export type UserHistoryResponse = {
+  allBookings: UserHistoryItem[];
+} & UnknownRecord;
 
 // -----------------------------
 // Promo / Calculate
