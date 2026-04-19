@@ -203,13 +203,6 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
     setState((prev) => ({ ...prev, stepId }));
   };
 
-  const back = () => {
-    const idx = steps.findIndex((s) => s.id === state.stepId);
-    const prev = idx > 0 ? steps[idx - 1] : null;
-    if (!prev) return;
-    goTo(prev.id);
-  };
-
   const idx = Math.max(0, steps.findIndex((s) => s.id === state.stepId));
   const stepLabelText =
     view === "cabinet" ? "Профиль пользователя" : `Шаг ${idx + 1} из ${steps.length}`;
@@ -275,16 +268,17 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
                 onClick={() => {
                   if (view === "cabinet") {
                     setView("widget");
+                    goTo("category");
                     return;
                   }
-                  back();
+                  goTo("category");
                 }}
                 disabled={view === "widget" && idx === 0}
                 aria-disabled={view === "widget" && idx === 0}
-                aria-label={view === "cabinet" ? "На главный экран виджета" : "Назад"}
-                title={view === "cabinet" ? "На главный экран виджета" : "Назад"}
+                aria-label="На главный экран виджета"
+                title="На главный экран виджета"
               >
-                {view === "cabinet" ? <Home size={16} /> : "←"}
+                <Home size={16} />
               </button>
               <div className="widget-header__center ">
                 <p className="stepper-widget__sub">{stepLabelText}</p>
@@ -334,7 +328,10 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
               <CabinetModal
                 user={authUser}
                 api={api}
-                onBack={() => setView("widget")}
+                onBack={() => {
+                  setView("widget");
+                  goTo("category");
+                }}
                 onLogout={handleLogout}
                 onShowToast={setToast}
               />
