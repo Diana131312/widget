@@ -76,12 +76,13 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
     if (!rangeStart || !rangeEnd) return null;
     const nights = countNights(rangeStart, rangeEnd);
     if (nights < 1) return null;
+    if (rangeHasOccupiedNights(rangeStart, rangeEnd, occupiedNights)) return null;
     return {
       checkIn: rangeStart,
       checkOut: rangeEnd,
       nights,
     };
-  }, [rangeStart, rangeEnd]);
+  }, [rangeStart, rangeEnd, occupiedNights]);
 
   useEffect(() => {
     onRangeChange?.(selectedRange);
@@ -109,9 +110,9 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
     [occupiedNights]
   );
 
-  const isSelectable = useCallback(
-    (dateStr: string) => !isPastDate(dateStr) && !isOccupied(dateStr),
-    [isPastDate, isOccupied]
+  const isDayEnabled = useCallback(
+    (dateStr: string) => !isPastDate(dateStr),
+    [isPastDate]
   );
 
   const isInSelectedRange = useCallback(
@@ -123,7 +124,7 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
   );
 
   const handleDayClick = (dateStr: string) => {
-    if (!isSelectable(dateStr)) return;
+    if (!isDayEnabled(dateStr)) return;
 
     setRangeError(null);
 
@@ -142,13 +143,12 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
       return;
     }
 
-    if (rangeHasOccupiedNights(checkIn, checkOut, occupiedNights)) {
-      setRangeError("В выбранном периоде есть занятые даты. Выберите другой диапазон.");
-      return;
-    }
-
     setRangeStart(checkIn);
     setRangeEnd(checkOut);
+
+    if (rangeHasOccupiedNights(checkIn, checkOut, occupiedNights)) {
+      setRangeError("В выбранном периоде есть занятые даты. Выберите другой диапазон.");
+    }
   };
 
   return (
@@ -201,7 +201,7 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
               const inCurrentMonth = isSameMonth(day, currentMonth);
               const past = isPastDate(dateStr);
               const occupied = isOccupied(dateStr);
-              const selectable = isSelectable(dateStr);
+              const enabled = isDayEnabled(dateStr);
               const isStart = rangeStart === dateStr;
               const isEnd = rangeEnd === dateStr;
               const inRange = isInSelectedRange(dateStr);
@@ -210,14 +210,14 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
                 <button
                   key={dateStr}
                   type="button"
-                  disabled={!inCurrentMonth || past || occupied || isLoading}
+                  disabled={!inCurrentMonth || isLoading || past}
                   className={[
                     "stepper-calendar__day-cell",
                     "stepper-calendar__day-cell--daily",
                     !inCurrentMonth && "stepper-calendar__day-cell--other-month",
                     past && "stepper-calendar__day-cell--past",
                     occupied && "stepper-calendar__day-cell--occupied",
-                    selectable && inCurrentMonth && "stepper-calendar__day-cell--free",
+                    enabled && inCurrentMonth && "stepper-calendar__day-cell--free",
                     isStart && "stepper-calendar__day-cell--range-start",
                     isEnd && "stepper-calendar__day-cell--range-end",
                     inRange && "stepper-calendar__day-cell--in-range",

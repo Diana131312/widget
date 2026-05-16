@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import type { CategoryId } from "../types";
+import type { BookingFlowDraft, CategoryId } from "../types";
 import { useBookingFlow } from "../booking/BookingFlowContext";
 import {
   buildCartItemFromDraft,
@@ -28,6 +28,11 @@ export type BookingCartContextValue = {
   ) => boolean;
   removeItem: (id: string) => void;
   startNewBooking: (categoryId: CategoryId) => StepId;
+  /** Предзаполненный черновик → сразу шаг 3 */
+  startPrefilledBooking: (
+    categoryId: CategoryId,
+    draft: Partial<BookingFlowDraft>
+  ) => StepId;
   startEditItem: (id: string) => StepId | null;
   clearCart: () => void;
 };
@@ -100,6 +105,20 @@ export function BookingCartProvider({ children }: { children: React.ReactNode })
     [resetFlowForNewBooking]
   );
 
+  const startPrefilledBooking = useCallback(
+    (categoryId: CategoryId, partial: Partial<BookingFlowDraft>): StepId => {
+      setEditingItemId(null);
+      flow.setCategoryId(categoryId);
+      flow.patchDraft({
+        guestCount: 0,
+        productQuantities: {},
+        ...partial,
+      });
+      return "bookingStepThree";
+    },
+    [flow]
+  );
+
   const startEditItem = useCallback(
     (id: string): StepId | null => {
       const item = items.find((x) => x.id === id);
@@ -126,6 +145,7 @@ export function BookingCartProvider({ children }: { children: React.ReactNode })
       addCurrentDraftToCart,
       removeItem,
       startNewBooking,
+      startPrefilledBooking,
       startEditItem,
       clearCart,
     }),
@@ -135,6 +155,7 @@ export function BookingCartProvider({ children }: { children: React.ReactNode })
       addCurrentDraftToCart,
       removeItem,
       startNewBooking,
+      startPrefilledBooking,
       startEditItem,
       clearCart,
     ]

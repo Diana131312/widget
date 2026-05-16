@@ -6,6 +6,8 @@ import type { RoomTimeSlot } from "../../../api";
  * Ключ: "${roomId}_${date}"
  */
 const slotsCache = new Map<string, RoomTimesResponse>();
+/** Один HTTP-запрос на ключ, даже при параллельных вызовах (Strict Mode, несколько эффектов). */
+const slotsInFlight = new Map<string, Promise<RoomTimeSlot[]>>();
 
 /**
  * Генерирует ключ кеша
@@ -27,21 +29,34 @@ export async function loadRoomTimeSlots(
 ): Promise<RoomTimeSlot[]> {
   const cacheKey = getCacheKey(roomId, date);
 
-  // Проверяем кеш
   if (useCache && slotsCache.has(cacheKey)) {
-    const cached = slotsCache.get(cacheKey)!;
-    return extractSlots(cached);
+    return extractSlots(slotsCache.get(cacheKey)!);
   }
 
-  // Делаем запрос
-  const response = await api.getRoomTimes(roomId, date);
-
-  // Сохраняем в кеш
   if (useCache) {
-    slotsCache.set(cacheKey, response);
+    const pending = slotsInFlight.get(cacheKey);
+    if (pending) return pending;
   }
 
-  return extractSlots(response);
+  const request = (async () => {
+    const response = await api.getRoomTimes(roomId, date);
+    if (useCache) {
+      slotsCache.set(cacheKey, response);
+    }
+    return extractSlots(response);
+  })();
+
+  if (useCache) {
+    slotsInFlight.set(cacheKey, request);
+  }
+
+  try {
+    return await request;
+  } finally {
+    if (useCache) {
+      slotsInFlight.delete(cacheKey);
+    }
+  }
 }
 
 /**
@@ -81,4 +96,5 @@ function extractSlots(response: RoomTimesResponse): RoomTimeSlot[] {
  */
 export function clearSlotsCache(): void {
   slotsCache.clear();
+  slotsInFlight.clear();
 }

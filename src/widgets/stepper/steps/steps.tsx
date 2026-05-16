@@ -41,7 +41,7 @@ export function createStepperSteps(): StepDefinition[] {
     },
     {
       id: "addServices",
-      title: "Выбор услуг",
+      title: "Мультикорзина",
       canEnter: () => true,
       Component: StepAddServices,
     },

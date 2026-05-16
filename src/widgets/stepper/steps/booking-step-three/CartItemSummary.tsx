@@ -8,6 +8,7 @@ import { formatDailyRangeLabel } from "../../daily/DailyRangeCalendar";
 type Props = {
   item: CartBookingItem;
   productNames?: Map<string, string>;
+  variant?: "full" | "compact";
 };
 
 function formatDate(dateStr: string): string {
@@ -18,11 +19,45 @@ function formatDate(dateStr: string): string {
   }
 }
 
-export const CartItemSummary: React.FC<Props> = ({ item, productNames }) => {
+function getCompactMeta(item: CartBookingItem): string {
+  const isHomes = item.categoryId === "homes";
+  if (isHomes && item.checkInDate && item.checkOutDate) {
+    return formatDailyRangeLabel(item.checkInDate, item.checkOutDate);
+  }
+  if (item.date) {
+    const datePart = formatDate(item.date);
+    if (item.timeFrom && item.timeTo) {
+      return `${datePart} · ${item.timeFrom}—${item.timeTo}`;
+    }
+    return datePart;
+  }
+  return "";
+}
+
+export const CartItemSummary: React.FC<Props> = ({
+  item,
+  productNames,
+  variant = "full",
+}) => {
   const isHomes = item.categoryId === "homes";
   const productLines = Object.entries(item.productQuantities ?? {}).filter(
     ([, qty]) => qty > 0
   );
+
+  if (variant === "compact") {
+    const meta = getCompactMeta(item);
+    return (
+      <div className="cart-item-summary cart-item-summary--compact">
+        <p className="cart-item-summary__heading">
+          {getCategoryLabel(item.categoryId)} · {item.roomName}
+        </p>
+        {meta ? <p className="cart-item-summary__compact-meta">{meta}</p> : null}
+        <p className="cart-item-summary__compact-total">
+          {item.total.toLocaleString("ru-RU")} ₽
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="cart-item-summary text-sm leading-relaxed text-[#485548]">

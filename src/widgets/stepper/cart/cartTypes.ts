@@ -80,3 +80,15 @@ export function getCategoryLabel(categoryId: CategoryId): string {
   if (categoryId === "banyaTest") return "Баня";
   return "Баня";
 }
+
+export function isBanyaCategory(categoryId: CategoryId): boolean {
+  return categoryId === "banya" || categoryId === "banyaTest";
+}
+
+export function isBanyaCartItem(item: CartBookingItem): boolean {
+  return isBanyaCategory(item.categoryId);
+}
+
+export function isHomeCartItem(item: CartBookingItem): boolean {
+  return item.categoryId === "homes";
+}

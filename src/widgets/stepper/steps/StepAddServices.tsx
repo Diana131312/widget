@@ -3,24 +3,26 @@ import { BedDouble, Home } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type { StepProps } from "./stepTypes";
 import { useBookingCart } from "../cart";
-import { getCategoryLabel } from "../cart/cartTypes";
-import { formatDailyRangeLabel } from "../daily/DailyRangeCalendar";
-import { format, parseISO } from "date-fns";
-import { ru } from "date-fns/locale";
+import { MultiCartItemAccordion } from "../cart/MultiCartItemAccordion";
+import { CrossSellHomeBlock } from "./add-services/CrossSellHomeBlock";
+import { CrossSellBanyaBlock } from "./add-services/CrossSellBanyaBlock";
 
-function formatDate(dateStr: string): string {
-  try {
-    return format(parseISO(dateStr), "d MMMM yyyy", { locale: ru });
-  } catch {
-    return dateStr;
-  }
-}
-
-export const StepAddServices: React.FC<StepProps> = ({ goTo, state }) => {
+export const StepAddServices: React.FC<StepProps> = ({ goTo, state, alias = "les" }) => {
   const cart = useBookingCart();
   const config = state.data.config;
-  const hasBanya = Boolean(config?.rooms?.length);
-  const hasHomes = Boolean(config?.dailyRooms?.length);
+  const tenantId = config?.settings?.tenantId ?? null;
+  const dailyRooms = config?.dailyRooms ?? [];
+  const rooms = config?.rooms ?? [];
+  const hasBanya = rooms.length > 0;
+  const hasHomes = dailyRooms.length > 0;
+
+  const productNames = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of config?.products ?? []) {
+      map.set(p.id, p.name);
+    }
+    return map;
+  }, [config?.products]);
 
   const handleAddBanya = () => {
     const stepId = cart.startNewBooking("banyaTest");
@@ -35,54 +37,64 @@ export const StepAddServices: React.FC<StepProps> = ({ goTo, state }) => {
   return (
     <div className="step-add-services">
       <p className="stepper-widget__sub">
-        Бронирования сохранены в корзине. Можно добавить ещё баню или дом.
+        Бронирования сохранены в корзине. Добавьте услуги или перейдите к оформлению.
       </p>
 
       {cart.items.length > 0 && (
-        <ul className="multi-cart-preview">
-          {cart.items.map((item) => (
-            <li key={item.id} className="multi-cart-preview__item">
-              <span className="multi-cart-preview__type">{getCategoryLabel(item.categoryId)}</span>
-              <span className="multi-cart-preview__name">{item.roomName}</span>
-              <span className="multi-cart-preview__meta">
-                {item.categoryId === "homes" && item.checkInDate && item.checkOutDate
-                  ? formatDailyRangeLabel(item.checkInDate, item.checkOutDate)
-                  : item.date
-                    ? formatDate(item.date)
-                    : null}
-                {item.timeFrom && item.timeTo ? ` · ${item.timeFrom}—${item.timeTo}` : null}
-                {` · ${item.guestCount} гост.`}
-              </span>
-              <span className="multi-cart-preview__price">
-                {item.total.toLocaleString("ru-RU")} ₽
-              </span>
-            </li>
-          ))}
-        </ul>
+        <MultiCartItemAccordion
+          items={cart.items}
+          productNames={productNames}
+          onEdit={(id) => {
+            const step = cart.startEditItem(id);
+            if (step) goTo(step);
+          }}
+          onRemove={(id) => cart.removeItem(id)}
+        />
       )}
 
-      <div className="step-add-services__actions">
-        {hasBanya && (
-          <button
-            type="button"
-            className="step-add-services__card"
-            onClick={handleAddBanya}
-          >
-            <BedDouble size={22} aria-hidden />
-            <span>Добавить баню</span>
-          </button>
-        )}
-        {hasHomes && (
-          <button
-            type="button"
-            className="step-add-services__card"
-            onClick={handleAddHome}
-          >
-            <Home size={22} aria-hidden />
-            <span>Добавить дом</span>
-          </button>
-        )}
-      </div>
+      {hasHomes && (
+        <CrossSellHomeBlock
+          alias={alias}
+          dailyRooms={dailyRooms}
+          tenantId={tenantId}
+          goTo={goTo}
+        />
+      )}
+
+      {hasBanya && (
+        <CrossSellBanyaBlock
+          alias={alias}
+          rooms={rooms}
+          tenantId={tenantId}
+          goTo={goTo}
+        />
+      )}
+
+      <section className="cross-sell-manual">
+        <h4 className="cross-sell-manual__title">Добавить вручную</h4>
+        <div className="step-add-services__actions">
+          {hasBanya && (
+            <button
+              type="button"
+              className="step-add-services__card"
+              onClick={handleAddBanya}
+            >
+              <BedDouble size={22} aria-hidden />
+              <span>Добавить любую баню</span>
+            </button>
+          )}
+          {hasHomes && (
+            <button
+              type="button"
+              className="step-add-services__card"
+              onClick={handleAddHome}
+            >
+              <Home size={22} aria-hidden />
+              <span>Добавить любой дом</span>
+            </button>
+          )}
+        </div>
+      </section>
 
       {cart.items.length > 0 && (
         <div className="step-add-services__footer">

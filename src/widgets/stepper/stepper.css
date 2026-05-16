@@ -2463,6 +2463,137 @@
   text-align: center;
 }
 
+.multi-cart-accordion {
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.multi-cart-accordion__item {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.multi-cart-accordion__trigger {
+  padding: 12px 14px !important;
+  gap: 10px;
+}
+
+.multi-cart-accordion__trigger-main {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  text-align: left;
+}
+
+.multi-cart-accordion__type {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.multi-cart-accordion__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.multi-cart-accordion__meta {
+  flex: 1 1 100%;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.multi-cart-accordion__price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #485548;
+  white-space: nowrap;
+}
+
+.multi-cart-accordion__content {
+  padding: 0 14px 14px !important;
+}
+
+.multi-cart-accordion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.multi-cart-accordion__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #485548;
+  cursor: pointer;
+}
+
+.multi-cart-accordion__action-btn:hover {
+  background: #f1f5f9;
+}
+
+.multi-cart-accordion__action-btn--danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.multi-cart-accordion__action-btn--danger:hover {
+  background: #fef2f2;
+}
+
+.cart-item-summary--compact {
+  display: grid;
+  gap: 2px;
+}
+
+.cart-item-summary--compact .cart-item-summary__heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cart-item-summary__compact-meta {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.cart-item-summary__compact-total {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #485548;
+}
+
+.multi-cart-checkout__list--compact {
+  gap: 10px;
+}
+
+.multi-cart-checkout__card--compact {
+  padding: 12px 14px;
+}
+
+.multi-cart-checkout__card--compact .multi-cart-checkout__card-num {
+  display: block;
+  margin-bottom: 6px;
+}
+
 .multi-cart-preview {
   margin: 16px 0 0;
   padding: 0;
@@ -2578,5 +2709,210 @@
 
 .cart-item-summary__total {
   margin-top: 6px;
+}
+
+/* Шаг 4 — кросс-продажи */
+.cross-sell-block {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cross-sell-block__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #485548;
+}
+
+.cross-sell-block__sub {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.cross-sell-block__loading,
+.cross-sell-block__empty {
+  padding: 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
+}
+
+.cross-sell-block__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cross-sell-house-card .daily-house-card__layout,
+.cross-sell-banya-card .daily-house-card__layout {
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.cross-sell-house-card .daily-house-card__column--gallery,
+.cross-sell-banya-card .daily-house-card__column--gallery {
+  flex: 0 0 28%;
+  max-width: 28%;
+}
+
+.cross-sell-house-card .daily-house-card__column--info,
+.cross-sell-banya-card .daily-house-card__column--info {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.cross-sell-house-card__dates {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cross-sell-house-card__hint,
+.cross-sell-banya-card__hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.cross-sell-house-card__action,
+.cross-sell-banya-card__action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 168px;
+  max-width: 220px;
+  align-self: stretch;
+}
+
+.cross-sell-house-card__action-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  width: 100%;
+}
+
+.cross-sell-house-card__action-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  width: 100%;
+}
+
+.cross-sell-house-card__action-bottom .daily-house-card__continue-btn {
+  width: auto;
+  min-width: 0;
+  align-self: flex-end;
+}
+
+.cross-sell-house-card__price {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #485548;
+  text-align: right;
+}
+
+.cross-sell-house-card__nights {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: right;
+}
+
+.cross-sell-banya-card__pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-self: stretch;
+}
+
+.cross-sell-banya-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.cross-sell-banya-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cross-sell-banya-card__select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.cross-sell-manual {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cross-sell-manual__title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+@media (max-width: 900px) {
+  .cross-sell-house-card .daily-house-card__layout,
+  .cross-sell-banya-card .daily-house-card__layout {
+    flex-wrap: wrap;
+  }
+
+  .cross-sell-house-card .daily-house-card__column--gallery,
+  .cross-sell-banya-card .daily-house-card__column--gallery,
+  .cross-sell-house-card .daily-house-card__column--info,
+  .cross-sell-banya-card .daily-house-card__column--info {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .cross-sell-house-card__action,
+  .cross-sell-banya-card__action {
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin-left: 0;
+    align-items: stretch;
+  }
+
+  .cross-sell-house-card__action-top,
+  .cross-sell-house-card__action-bottom {
+    align-items: stretch;
+  }
+
+  .cross-sell-house-card__price,
+  .cross-sell-house-card__nights {
+    text-align: left;
+  }
+
+  .cross-sell-house-card__action-bottom .daily-house-card__continue-btn {
+    align-self: stretch;
+    width: 100%;
+  }
 }
 

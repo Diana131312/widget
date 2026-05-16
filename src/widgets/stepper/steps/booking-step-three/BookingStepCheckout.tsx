@@ -1,5 +1,4 @@
 import React from "react";
-import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { createWidgetApi } from "../../../../api";
 import { toApiPhone } from "../../auth/auth.utils";
@@ -147,7 +146,7 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
         <p className="text-sm text-amber-900">Корзина пуста. Добавьте бронирование.</p>
         <Button type="button" variant="outline" className="mt-4" onClick={() => goTo("addServices")}>
-          Выбор услуг
+          Мультикорзина
         </Button>
       </div>
     );
@@ -188,37 +187,14 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   return (
     <div className="booking-step-three booking-step-three--natural-scroll booking-step-three--checkout relative flex w-full flex-col">
       <div className="booking-step-three__scroll-main booking-step-three__scroll-main--checkout-pad">
-        <div className="multi-cart-checkout__list">
+        <ul className="multi-cart-checkout__list multi-cart-checkout__list--compact">
           {cart.items.map((item, index) => (
-            <article key={item.id} className="multi-cart-checkout__card">
-              <div className="multi-cart-checkout__card-head">
-                <span className="multi-cart-checkout__card-num">Бронирование {index + 1}</span>
-                <div className="multi-cart-checkout__card-actions">
-                  <button
-                    type="button"
-                    className="multi-cart-checkout__icon-btn"
-                    aria-label="Изменить"
-                    onClick={() => {
-                      const step = cart.startEditItem(item.id);
-                      if (step) goTo(step);
-                    }}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="multi-cart-checkout__icon-btn multi-cart-checkout__icon-btn--danger"
-                    aria-label="Удалить"
-                    onClick={() => cart.removeItem(item.id)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-              <CartItemSummary item={item} productNames={productsById} />
-            </article>
+            <li key={item.id} className="multi-cart-checkout__card multi-cart-checkout__card--compact">
+              <span className="multi-cart-checkout__card-num">Бронирование {index + 1}</span>
+              <CartItemSummary item={item} productNames={productsById} variant="compact" />
+            </li>
           ))}
-        </div>
+        </ul>
 
         <div className="mt-8 flex flex-col gap-0">
           <BookingContactFields
