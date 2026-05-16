@@ -1,12 +1,14 @@
 import type { CategoryId, StepId } from "../types";
 
-/** Шаги, видимые в текущем сценарии (баня или дома). */
+/** Шаги, видимые в текущем сценарии. */
 export function getFlowStepIds(categoryId: CategoryId | undefined): StepId[] {
   const steps: StepId[] = ["category"];
   if (categoryId === "banya") {
     steps.push("banyaObject");
   } else if (categoryId === "homes") {
     steps.push("homesObject");
+  } else if (categoryId === "banyaTest") {
+    steps.push("banyaTestObject");
   }
   if (categoryId) {
     steps.push("bookingStepThree", "bookingStepFour");
@@ -36,5 +38,6 @@ export function getPrevFlowStepId(
 export function getObjectStepId(categoryId: CategoryId | undefined): StepId | null {
   if (categoryId === "banya") return "banyaObject";
   if (categoryId === "homes") return "homesObject";
+  if (categoryId === "banyaTest") return "banyaTestObject";
   return null;
 }

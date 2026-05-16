@@ -312,7 +312,7 @@ function StepperWidgetShell({
     >
       <div
         className={cn(
-          "stepper-widget__card mx-auto flex min-h-0 w-full max-w-[800px] flex-col overflow-x-clip overflow-y-visible rounded-2xl border border-gray-200 bg-white shadow-sm"
+          "stepper-widget__card mx-auto flex min-h-0 w-full max-w-[1200px] flex-col overflow-x-clip overflow-y-visible rounded-2xl border border-gray-200 bg-white shadow-sm"
         )}
       >
         <header

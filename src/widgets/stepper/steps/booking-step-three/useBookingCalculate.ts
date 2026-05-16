@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { WidgetApiClient } from "../../../../api";
 import type { BookingFlowDraft, CategoryId } from "../../types";
 import {
+  buildBanyaTestCalculateView,
   computeDurationHours,
   parseBanyaCalculateResponse,
   parseHomesCalculateResponse,
@@ -30,7 +31,41 @@ export function useBookingCalculate({
   const guestCount = draft?.guestCount ?? 0;
 
   useEffect(() => {
-    if (!draft || !categoryId || guestCount < 1) {
+    if (!draft || !categoryId) {
+      setBanyaCalc(null);
+      setHomesCalc(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (categoryId === "banyaTest") {
+      if (
+        guestCount < 1 ||
+        !draft.timeFrom ||
+        !draft.timeTo ||
+        draft.slotPrice == null
+      ) {
+        setBanyaCalc(null);
+        setHomesCalc(null);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const label =
+        draft.slotLabel?.trim() ||
+        `Бронирование ${draft.timeFrom} — ${draft.timeTo}`;
+      const view = buildBanyaTestCalculateView(label, draft.slotPrice);
+      setBanyaCalc(view);
+      setHomesCalc(null);
+      setError(null);
+      setIsLoading(false);
+      onPriceResolved(draft.slotPrice);
+      return;
+    }
+
+    if (guestCount < 1) {
       setBanyaCalc(null);
       setHomesCalc(null);
       setError(null);
@@ -106,6 +141,8 @@ export function useBookingCalculate({
     draft?.checkInDate,
     draft?.checkOutDate,
     draft?.slotDuration,
+    draft?.slotPrice,
+    draft?.slotLabel,
     guestCount,
     onPriceResolved,
   ]);

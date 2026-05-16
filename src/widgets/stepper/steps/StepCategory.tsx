@@ -5,19 +5,17 @@ import { useBookingFlow } from "../booking/BookingFlowContext";
 
 export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
   const { setCategoryId } = useBookingFlow();
-  // Строим категории из данных API (state.data.config)
   const availableCategories = useMemo<CategoryDefinition[]>(() => {
     const config = state.data.config;
     if (!config) return [];
 
     const cats: CategoryDefinition[] = [];
 
-    // Если rooms.length > 0 → показывать категорию "Баня"
     if (config.rooms && Array.isArray(config.rooms) && config.rooms.length > 0) {
       cats.push({ id: "banya", label: "Баня" });
+      cats.push({ id: "banyaTest", label: "Бани тест" });
     }
 
-    // Если dailyRooms.length > 0 → показывать категорию "Дома"
     if (
       config.dailyRooms &&
       Array.isArray(config.dailyRooms) &&
@@ -32,9 +30,11 @@ export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
   const isLoading = !state.data.config;
 
   const getCategoryImage = (categoryId: string): string => {
-    // Заглушки для изображений (пока нет API)
     if (categoryId === "banya") {
-      return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"; // Оранжевый градиент
+      return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+    }
+    if (categoryId === "banyaTest") {
+      return "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)";
     }
     return "linear-gradient(135deg, #5a6b5a 0%, #485548 100%)";
   };
@@ -69,6 +69,11 @@ export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
 
                 if (c.id === "homes") {
                   goTo("homesObject");
+                  return;
+                }
+
+                if (c.id === "banyaTest") {
+                  goTo("banyaTestObject");
                 }
               }}
             >
@@ -89,4 +94,3 @@ export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
     </div>
   );
 };
-

@@ -4,6 +4,7 @@ import { canEnterBookingSetup, completeBookingDraft } from "../types";
 import { StepCategory } from "./StepCategory";
 import { StepBanyaObject } from "./StepBanyaObject";
 import { StepHomesObject } from "./StepHomesObject";
+import { StepBanyaTestObject } from "./StepBanyaTestObject";
 import type { StepDefinition } from "./stepTypes";
 
 export function createStepperSteps(): StepDefinition[] {
@@ -24,6 +25,12 @@ export function createStepperSteps(): StepDefinition[] {
       title: "Выбор дома",
       canEnter: (_state, gate) => gate.categoryId === "homes",
       Component: StepHomesObject,
+    },
+    {
+      id: "banyaTestObject",
+      title: "Выбор бани",
+      canEnter: (_state, gate) => gate.categoryId === "banyaTest",
+      Component: StepBanyaTestObject,
     },
     {
       id: "bookingStepThree",

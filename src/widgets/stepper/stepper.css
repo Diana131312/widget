@@ -1701,9 +1701,172 @@
   color: #64748b;
 }
 
+.booking-mini-card__slots {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.booking-mini-card__slots-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #485548;
+}
+
+.booking-mini-card__slots-groups {
+  /* без max-height — скролл страницы шага */
+}
+
+.booking-mini-card__slot-group {
+  margin-bottom: 14px;
+}
+
+.booking-mini-card__slot-group:last-child {
+  margin-bottom: 0;
+}
+
+.booking-mini-card__slot-group-header {
+  margin-bottom: 8px;
+}
+
+.booking-mini-card__slot-group-title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #485548;
+  line-height: 1.3;
+}
+
+.booking-mini-card__slot-group-subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+/* Сетка слотов — колонки через Tailwind (как на шаге 2), см. TimeSlots.slotGroupGridClass */
+
+.booking-mini-card__slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 88px;
+  padding: 8px 10px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.booking-mini-card__slot:hover:not(:disabled) {
+  border-color: #9ca89c;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.booking-mini-card__slot--selected {
+  border: 2px solid #485548;
+  box-shadow: 0 1px 3px rgba(72, 85, 72, 0.12);
+}
+
+.booking-mini-card__slot--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.booking-mini-card__slot-body {
+  flex: 1;
+  min-width: 0;
+  padding-right: 18px;
+}
+
+.booking-mini-card__slot-time {
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.booking-mini-card__slot-duration {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.booking-mini-card__slot-prices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.booking-mini-card__slot-old-price {
+  font-size: 11px;
+  color: #94a3b8;
+  text-decoration: line-through;
+  tabular-nums: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.booking-mini-card__slot-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.booking-mini-card__slot-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #485548;
+  color: #fff;
+}
+
+.booking-mini-card__slot-unavailable {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  background: rgb(55 55 55 / 0.2);
+  pointer-events: none;
+}
+
+.booking-mini-card__slots-skeleton {
+  height: 72px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: stepper-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.booking-mini-card__slots-error,
+.booking-mini-card__slots-empty {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
 .booking-mini-card__guests {
   padding-top: 12px;
   border-top: 1px solid #e2e8f0;
+}
+
+.booking-mini-card__slots + .booking-mini-card__guests {
+  border-top: none;
+  padding-top: 0;
 }
 
 /* Daily houses (step 2 — «Дома») */
@@ -2148,5 +2311,67 @@
     padding-top: 12px;
     padding-bottom: 12px;
   }
+}
+
+/* Бани тест — карточка с почасовым календарём */
+.banya-test-list {
+  gap: 20px;
+}
+
+.banya-test-card__calendar {
+  min-width: 0;
+}
+
+.banya-hourly-calendar {
+  width: 100%;
+}
+
+.banya-hourly-calendar .stepper-calendar {
+  margin-top: 0;
+}
+
+.banya-hourly-calendar .stepper-calendar__navigation {
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.banya-hourly-calendar .stepper-calendar__nav-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.banya-hourly-calendar .stepper-calendar__month-title {
+  font-size: 13px;
+}
+
+.banya-hourly-calendar .stepper-calendar__weekdays-header {
+  margin-bottom: 4px;
+  padding: 4px 0;
+}
+
+.banya-hourly-calendar .stepper-calendar__weekday {
+  font-size: 10px;
+}
+
+.banya-hourly-calendar .stepper-calendar__day-cell {
+  min-height: 48px;
+  padding: 4px 2px;
+  gap: 2px;
+}
+
+.banya-hourly-calendar .stepper-calendar__day-number {
+  font-size: 12px;
+}
+
+.banya-hourly-calendar__selected {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+.banya-test-time-slots {
+  margin-top: 0;
 }
 

@@ -2,10 +2,11 @@ export type StepId =
   | "category"
   | "banyaObject"
   | "homesObject"
+  | "banyaTestObject"
   | "bookingStepThree"
   | "bookingStepFour";
 
-export type CategoryId = "banya" | "homes";
+export type CategoryId = "banya" | "homes" | "banyaTest";
 
 /**
  * Единое хранилище черновика бронирования (шаги 2–4).
@@ -17,8 +18,11 @@ export type BookingFlowDraft = {
   date?: string;
   timeFrom?: string;
   timeTo?: string;
-  /** Длительность слота в часах (для calculate) */
+  /** Длительность слота в часах */
   slotDuration?: number;
+  /** Цена и название из выбранного слота (бани тест — без API calculate) */
+  slotPrice?: number;
+  slotLabel?: string;
   /** Посуточное бронирование */
   checkInDate?: string;
   checkOutDate?: string;
@@ -56,6 +60,11 @@ export function hasHomesDateSelection(d: BookingFlowDraft | null | undefined): b
   return Boolean(d?.roomId && d.roomName && d.checkInDate && d.checkOutDate);
 }
 
+/** Бани тест: выбрана баня и день (время — на шаге 3) */
+export function hasBanyaTestDaySelection(d: BookingFlowDraft | null | undefined): boolean {
+  return Boolean(d?.roomId && d.roomName && d.date);
+}
+
 /** Можно войти на шаг 3 «Настройка бронирования» */
 export function canEnterBookingSetup(
   categoryId: CategoryId | undefined,
@@ -64,6 +73,7 @@ export function canEnterBookingSetup(
   if (!categoryId || !d) return false;
   if (categoryId === "banya") return hasBanyaSlotSelection(d);
   if (categoryId === "homes") return hasHomesDateSelection(d);
+  if (categoryId === "banyaTest") return hasBanyaTestDaySelection(d);
   return false;
 }
 
@@ -86,7 +96,12 @@ export function completeBookingDraft(
     comment: d.comment,
   };
 
-  if (categoryId === "banya" && d.date && d.timeFrom && d.timeTo) {
+  if (
+    (categoryId === "banya" || categoryId === "banyaTest") &&
+    d.date &&
+    d.timeFrom &&
+    d.timeTo
+  ) {
     return { ...base, date: d.date, timeFrom: d.timeFrom, timeTo: d.timeTo };
   }
 

@@ -40,6 +40,10 @@ export function useBookingCatalog(state: StepperState) {
       const room = config.dailyRooms?.find((r) => r.id === setupDraft.roomId);
       return room?.maxCapacity ?? room?.capacity ?? 10;
     }
+    if (categoryId === "banya" || categoryId === "banyaTest") {
+      const room = config.rooms?.find((r) => r.id === setupDraft.roomId);
+      return room?.maxCapacity ?? room?.capacity ?? 10;
+    }
     const room = config.rooms?.find((r) => r.id === setupDraft.roomId);
     return room?.maxCapacity ?? room?.capacity ?? 10;
   }, [config, setupDraft?.roomId, categoryId]);

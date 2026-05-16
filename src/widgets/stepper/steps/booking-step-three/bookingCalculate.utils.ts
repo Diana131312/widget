@@ -74,6 +74,19 @@ export function parseHomesCalculateResponse(
   };
 }
 
+export function buildBanyaTestCalculateView(
+  label: string,
+  price: number
+): BanyaCalculateView {
+  return {
+    total: price,
+    basePrice: price,
+    discountAmount: null,
+    lines: [{ label, amount: price }],
+    raw: {} as CalculateRoomResponse,
+  };
+}
+
 export function computeDurationHours(timeFrom: string, timeTo: string): number {
   const [fromH, fromM] = timeFrom.split(":").map(Number);
   const [toH, toM] = timeTo.split(":").map(Number);

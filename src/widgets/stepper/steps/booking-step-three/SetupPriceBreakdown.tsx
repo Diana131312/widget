@@ -36,6 +36,14 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
   isLoading,
   error,
 }) => {
+  if (categoryId === "banyaTest" && (!draft.timeFrom || !draft.timeTo)) {
+    return (
+      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+        Выберите время для расчёта стоимости
+      </div>
+    );
+  }
+
   if (draft.guestCount < 1) {
     return (
       <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
@@ -44,7 +52,7 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && categoryId !== "banyaTest") {
     return (
       <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-6">
         <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
@@ -62,7 +70,8 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
     );
   }
 
-  const baseLabel = categoryId === "banya" ? "Стоимость бани" : "Проживание";
+  const isBanyaLike = categoryId === "banya" || categoryId === "banyaTest";
+  const baseLabel = isBanyaLike ? "Стоимость бани" : "Проживание";
 
   return (
     <div className="setup-price-breakdown space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm">
@@ -86,7 +95,7 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
         </ul>
       )}
 
-      {categoryId === "banya" && banyaCalc && banyaCalc.lines.length > 0 && (
+      {isBanyaLike && banyaCalc && banyaCalc.lines.length > 0 && (
         <ul className="space-y-1 text-slate-600">
           {banyaCalc.lines.map((line, i) => (
             <li key={i} className="flex justify-between gap-3">

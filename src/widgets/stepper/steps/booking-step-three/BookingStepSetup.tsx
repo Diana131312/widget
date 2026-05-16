@@ -8,6 +8,7 @@ import { BookingMiniCard } from "./BookingMiniCard";
 import { SetupPriceBreakdown } from "./SetupPriceBreakdown";
 import { useBookingCatalog } from "./useBookingCatalog";
 import { useBookingCalculate } from "./useBookingCalculate";
+import type { MiniCardSlotPick } from "./MiniCardTimeSlots";
 
 export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "les" }) => {
   const api = React.useMemo(() => createWidgetApi({ alias }), [alias]);
@@ -45,7 +46,13 @@ export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "le
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
         <p className="text-sm text-amber-900">
-          Сначала выберите {categoryId === "homes" ? "дом и даты" : "баню, дату и время"}.
+          Сначала выберите{" "}
+          {categoryId === "homes"
+            ? "дом и даты"
+            : categoryId === "banyaTest"
+              ? "баню и дату"
+              : "баню, дату и время"}
+          .
         </p>
         {objectStepId && (
           <Button
@@ -71,14 +78,43 @@ export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "le
   }
 
   const guestCount = draft.guestCount ?? 0;
+  const hasTimeSlot = Boolean(draft.timeFrom && draft.timeTo);
+  const needsTimeOnSetup = categoryId === "banyaTest";
   const canProceed =
-    guestCount >= 1 && hasCalculation && !isLoading && !error && draft.basePrice != null;
+    guestCount >= 1 &&
+    hasCalculation &&
+    !isLoading &&
+    !error &&
+    draft.basePrice != null &&
+    (!needsTimeOnSetup || hasTimeSlot);
 
   const setGuestCount = (next: number) => {
     const clamped = Math.max(0, Math.min(next, maxGuests));
     patchDraft({
       guestCount: clamped,
       ...(clamped === 0 ? { basePrice: undefined } : {}),
+    });
+  };
+
+  const handleBanyaTestSlotPick = (slot: MiniCardSlotPick | null) => {
+    if (!slot) {
+      patchDraft({
+        timeFrom: undefined,
+        timeTo: undefined,
+        slotDuration: undefined,
+        slotPrice: undefined,
+        slotLabel: undefined,
+        basePrice: undefined,
+      });
+      return;
+    }
+    patchDraft({
+      timeFrom: slot.timeFrom,
+      timeTo: slot.timeTo,
+      slotDuration: slot.duration,
+      slotPrice: slot.price,
+      slotLabel: slot.label,
+      basePrice: undefined,
     });
   };
 
@@ -91,6 +127,8 @@ export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "le
           maxGuests={maxGuests}
           guestCount={guestCount}
           onGuestCountChange={setGuestCount}
+          api={categoryId === "banyaTest" ? api : undefined}
+          onSlotPick={categoryId === "banyaTest" ? handleBanyaTestSlotPick : undefined}
         />
 
         <div>
