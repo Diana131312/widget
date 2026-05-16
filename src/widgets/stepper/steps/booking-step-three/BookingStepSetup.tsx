@@ -9,9 +9,11 @@ import { SetupPriceBreakdown } from "./SetupPriceBreakdown";
 import { useBookingCatalog } from "./useBookingCatalog";
 import { useBookingCalculate } from "./useBookingCalculate";
 import type { MiniCardSlotPick } from "./MiniCardTimeSlots";
+import { useBookingCart } from "../../cart";
 
 export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "les" }) => {
   const api = React.useMemo(() => createWidgetApi({ alias }), [alias]);
+  const cart = useBookingCart();
 
   const {
     categoryId,
@@ -167,9 +169,13 @@ export const BookingStepSetup: React.FC<StepProps> = ({ state, goTo, alias = "le
           type="button"
           className="h-11 w-full rounded-xl bg-[#485548] text-sm font-medium text-white hover:bg-[#485548]/90 disabled:opacity-50"
           disabled={!canProceed}
-          onClick={() => goTo("bookingStepFour")}
+          onClick={() => {
+            if (!categoryId) return;
+            const ok = cart.addCurrentDraftToCart(categoryId, productsSubtotal, total);
+            if (ok) goTo("addServices");
+          }}
         >
-          Далее
+          {cart.editingItemId ? "Сохранить в корзине" : "Добавить в корзину"}
         </Button>
       </div>
     </div>

@@ -1,15 +1,15 @@
 import React from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { createWidgetApi } from "../../../../api";
 import { toApiPhone } from "../../auth/auth.utils";
 import type { StepProps } from "../stepTypes";
 import { BookingContactFields } from "./BookingContactFields";
-import { CheckoutPlainSummary } from "./CheckoutPlainSummary";
+import { CartItemSummary } from "./CartItemSummary";
 import { formatRuPhoneMask, isRuPhoneComplete, normalizeRuPhoneDigits } from "./utils";
-import { useBookingCatalog } from "./useBookingCatalog";
 import { useWidgetAuth } from "../../auth/AuthContext";
-import { useBookingFlow } from "../../booking/BookingFlowContext";
-import { getObjectStepId } from "../../utils/stepNavigation";
+import { useBookingCart } from "../../cart";
+import type { CartBookingItem } from "../../cart";
 
 export const BookingStepCheckout: React.FC<StepProps> = ({
   state,
@@ -19,11 +19,13 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   onAuthResolved,
   onOpenCabinet,
 }) => {
-  const { draft, patchCompleteDraft, productsSubtotal, total } = useBookingCatalog(state);
-  const { categoryId } = useBookingFlow();
+  const cart = useBookingCart();
   const { user, token } = useWidgetAuth();
-  const objectStepId = getObjectStepId(categoryId);
   const api = React.useMemo(() => createWidgetApi({ alias: alias ?? "" }), [alias]);
+
+  const [contactFullName, setContactFullName] = React.useState("");
+  const [contactPhone, setContactPhone] = React.useState("");
+  const [comment, setComment] = React.useState("");
   const [messenger, setMessenger] = React.useState<"telegram" | "max">("telegram");
   const [isPrivacyAccepted, setPrivacyAccepted] = React.useState(false);
   const [isSubmitting, setSubmitting] = React.useState(false);
@@ -33,176 +35,126 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [botVerificationLink, setBotVerificationLink] = React.useState<string | null>(null);
 
+  const productsById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of state.data.config?.products ?? []) {
+      map.set(p.id, p.name);
+    }
+    return map;
+  }, [state.data.config?.products]);
+
   React.useEffect(() => {
     api.setToken(token);
   }, [api, token]);
 
   React.useEffect(() => {
-    if (!draft || !user) return;
-    const nextName = draft.contactFullName?.trim() ? draft.contactFullName : user.displayName ?? "";
-    const nextPhone = draft.contactPhone?.trim()
-      ? draft.contactPhone
-      : formatRuPhoneMask(user.phone ?? "");
-
-    if (nextName !== draft.contactFullName || nextPhone !== draft.contactPhone) {
-      patchCompleteDraft({
-        contactFullName: nextName,
-        contactPhone: nextPhone,
-      });
-    }
-  }, [draft, patchCompleteDraft, user]);
-
-  const handlePhoneChange = (raw: string) => {
-    patchCompleteDraft({ contactPhone: formatRuPhoneMask(raw) });
-  };
+    if (!user) return;
+    if (!contactFullName.trim()) setContactFullName(user.displayName ?? "");
+    if (!contactPhone.trim()) setContactPhone(formatRuPhoneMask(user.phone ?? ""));
+  }, [user, contactFullName, contactPhone]);
 
   const normalizeDigits = (value: string) => normalizeRuPhoneDigits(value);
 
   const isPhoneChangedForAuthorized = (): boolean => {
-    if (!user?.phone || !draft?.contactPhone) return false;
-    return normalizeDigits(user.phone) !== normalizeDigits(draft.contactPhone);
+    if (!user?.phone || !contactPhone) return false;
+    return normalizeDigits(user.phone) !== normalizeDigits(contactPhone);
   };
 
-  const buildBookingPayload = () => {
-    if (!draft) return null;
-    const fullNameParts = (draft.contactFullName ?? "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    const firstName = fullNameParts[0] ?? "";
-    const lastName = fullNameParts.slice(1).join(" ");
-
-    const products = Object.entries(draft.productQuantities ?? {})
+  const buildProducts = (item: CartBookingItem) => {
+    return Object.entries(item.productQuantities ?? {})
       .map(([id, count]) => {
         const product = state.data.config?.products.find((p) => p.id === id);
         if (!product || count <= 0) return null;
-        return {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          count,
-        };
+        return { id: product.id, name: product.name, price: product.price, count };
       })
       .filter(Boolean) as Array<{ id: string; name: string; price: number; count: number }>;
-
-    const durationHours = (() => {
-      const [fromH, fromM] = draft.timeFrom.split(":").map(Number);
-      const [toH, toM] = draft.timeTo.split(":").map(Number);
-      const from = fromH * 60 + fromM;
-      const to = toH * 60 + toM;
-      const diff = to - from;
-      return diff > 0 ? diff / 60 : 1;
-    })();
-
-    return {
-      roomId: draft.roomId,
-      date: draft.date,
-      time: draft.timeFrom,
-      duration: durationHours,
-      personCount: Math.max(1, draft.guestCount || 1),
-      name: firstName,
-      lastName: lastName || undefined,
-      phone: formatRuPhoneMask(draft.contactPhone ?? ""),
-      messenger,
-      comment: (draft.comment ?? "").trim(),
-      discounts: [],
-      promoCode: null,
-      price: total,
-      products,
-    } as const;
   };
 
-  const submitBooking = async () => {
-    const payload = buildBookingPayload();
-    if (!payload) return;
-    await api.saveRoomBooking(payload);
-    const raw = state.data.config?.settings?.confirmMessage ?? "Спасибо! Ваша заявка принята.";
-    setSuccessMessage(raw.replace(/\\n/g, "\n"));
-  };
+  const submitCartItem = async (item: CartBookingItem) => {
+    const fullNameParts = contactFullName.trim().split(/\s+/).filter(Boolean);
+    const firstName = fullNameParts[0] ?? "";
+    const lastName = fullNameParts.slice(1).join(" ");
+    const products = buildProducts(item);
 
-  const handleSubmit = async () => {
-    if (!draft) return;
-    if (!alias) {
-      onShowToast?.("Alias не передан в виджет");
+    if (item.categoryId === "homes") {
+      if (!item.checkInDate || !item.checkOutDate) return;
+      await api.dailySave({
+        dailyRoomId: item.roomId,
+        checkInDate: item.checkInDate,
+        checkOutDate: item.checkOutDate,
+        personCount: item.guestCount,
+        name: firstName,
+        lastName: lastName || undefined,
+        phone: formatRuPhoneMask(contactPhone),
+        messenger,
+        comment: comment.trim() || undefined,
+        products,
+      });
       return;
     }
-    const fullNameOk = (draft.contactFullName ?? "").trim().length >= 2;
-    const phoneOk = isRuPhoneComplete(draft.contactPhone ?? "");
+
+    if (!item.date || !item.timeFrom || !item.timeTo) return;
+    const [fromH, fromM] = item.timeFrom.split(":").map(Number);
+    const [toH, toM] = item.timeTo.split(":").map(Number);
+    const from = fromH * 60 + (fromM || 0);
+    const to = toH * 60 + (toM || 0);
+    const durationHours =
+      item.slotDuration ?? (to - from > 0 ? (to - from) / 60 : 1);
+
+    await api.saveRoomBooking({
+      roomId: item.roomId,
+      date: item.date,
+      time: item.timeFrom,
+      duration: durationHours,
+      personCount: Math.max(1, item.guestCount),
+      name: firstName,
+      lastName: lastName || undefined,
+      phone: formatRuPhoneMask(contactPhone),
+      messenger,
+      comment: comment.trim(),
+      discounts: [],
+      promoCode: null,
+      price: item.total,
+      products,
+    });
+  };
+
+  const submitAll = async () => {
+    for (const item of cart.items) {
+      await submitCartItem(item);
+    }
+    const raw = state.data.config?.settings?.confirmMessage ?? "Спасибо! Ваша заявка принята.";
+    setSuccessMessage(raw.replace(/\\n/g, "\n"));
+    cart.clearCart();
+  };
+
+  const handleSubmit = () => {
+    if (cart.items.length === 0) return;
+    const fullNameOk = contactFullName.trim().length >= 2;
+    const phoneOk = isRuPhoneComplete(contactPhone);
     if (!fullNameOk || !phoneOk || !isPrivacyAccepted) return;
 
-    const mustVerifyBySms = !user || isPhoneChangedForAuthorized();
-    setSubmitting(true);
-    setBotVerificationLink(null);
-    try {
-      if (mustVerifyBySms) {
-        const phone = toApiPhone(draft.contactPhone ?? "");
-        const smsResponse = await api.sendSms({
-          number: phone,
-          messenger,
-        });
-        if (!smsResponse.success && smsResponse.needBotVerification) {
-          onShowToast?.("⚠️ Не удалось отправить код");
-          setBotVerificationLink(smsResponse.botLink);
-          return;
-        }
-        setPendingPhone(phone);
-        setOtpCode("");
-        setOtpOpen(true);
-        return;
-      }
-      await submitBooking();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось выполнить бронирование";
-      onShowToast?.(message);
-    } finally {
-      setSubmitting(false);
-    }
+    alert("Пока не реализовано, ожидание API бека");
   };
 
-  const handleOtpConfirm = async () => {
-    if (otpCode.length !== 4 || !pendingPhone) return;
-    setSubmitting(true);
-    try {
-      const authResult = await api.auth({
-        phone: pendingPhone,
-        code: otpCode,
-      });
-      api.setToken(authResult.token);
-      const userInfo = await api.getUserInfo();
-      onAuthResolved?.({
-        token: authResult.token,
-        userInfo,
-      });
-      setOtpOpen(false);
-      await submitBooking();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось подтвердить код";
-      onShowToast?.(message);
-    } finally {
-      setSubmitting(false);
-    }
+  const handleOtpConfirm = () => {
+    alert("Пока не реализовано, ожидание API бека");
+    setOtpOpen(false);
   };
 
-  if (!draft) {
+  if (cart.items.length === 0 && !successMessage) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-        <p className="text-sm text-amber-900">
-          Сначала завершите настройку бронирования на предыдущем шаге.
-        </p>
-        {objectStepId && (
-          <Button type="button" variant="outline" className="mt-4" onClick={() => goTo(objectStepId)}>
-            Вернуться к выбору
-          </Button>
-        )}
+        <p className="text-sm text-amber-900">Корзина пуста. Добавьте бронирование.</p>
+        <Button type="button" variant="outline" className="mt-4" onClick={() => goTo("addServices")}>
+          Выбор услуг
+        </Button>
       </div>
     );
   }
 
-  const fullName = draft.contactFullName ?? "";
-  const phoneDisplay = draft.contactPhone ?? "";
-  const comment = draft.comment ?? "";
-  const phoneOk = isRuPhoneComplete(phoneDisplay);
-  const nameOk = fullName.trim().length >= 2;
+  const phoneOk = isRuPhoneComplete(contactPhone);
+  const nameOk = contactFullName.trim().length >= 2;
   const formValid = nameOk && phoneOk && isPrivacyAccepted;
 
   if (successMessage) {
@@ -210,8 +162,10 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
       <div className="booking-step-three booking-step-three--natural-scroll relative flex w-full flex-col">
         <div className="booking-step-three__scroll-main">
           <div className="mt-4 space-y-3 text-[#485548]">
-            <p className="text-base font-semibold leading-snug">Заявка на бронирование принята.</p>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{successMessage}</p>
+            <p className="text-base font-semibold leading-snug">Заявки на бронирование приняты.</p>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
+              {successMessage}
+            </p>
           </div>
           <div className="mt-8">
             <Button
@@ -223,9 +177,7 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
                 else goTo("category");
               }}
             >
-              {user && onOpenCabinet
-                ? "В личный кабинет — все бронирования"
-                : "К началу"}
+              {user && onOpenCabinet ? "В личный кабинет" : "К началу"}
             </Button>
           </div>
         </div>
@@ -236,15 +188,47 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   return (
     <div className="booking-step-three booking-step-three--natural-scroll booking-step-three--checkout relative flex w-full flex-col">
       <div className="booking-step-three__scroll-main booking-step-three__scroll-main--checkout-pad">
-        <div className="mt-4 flex flex-col gap-0">
+        <div className="multi-cart-checkout__list">
+          {cart.items.map((item, index) => (
+            <article key={item.id} className="multi-cart-checkout__card">
+              <div className="multi-cart-checkout__card-head">
+                <span className="multi-cart-checkout__card-num">Бронирование {index + 1}</span>
+                <div className="multi-cart-checkout__card-actions">
+                  <button
+                    type="button"
+                    className="multi-cart-checkout__icon-btn"
+                    aria-label="Изменить"
+                    onClick={() => {
+                      const step = cart.startEditItem(item.id);
+                      if (step) goTo(step);
+                    }}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="multi-cart-checkout__icon-btn multi-cart-checkout__icon-btn--danger"
+                    aria-label="Удалить"
+                    onClick={() => cart.removeItem(item.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              <CartItemSummary item={item} productNames={productsById} />
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-8 flex flex-col gap-0">
           <BookingContactFields
             variant="plain"
-            fullName={fullName}
-            phoneDisplay={phoneDisplay}
+            fullName={contactFullName}
+            phoneDisplay={contactPhone}
             comment={comment}
-            onFullNameChange={(v) => patchCompleteDraft({ contactFullName: v })}
-            onPhoneChange={handlePhoneChange}
-            onCommentChange={(v) => patchCompleteDraft({ comment: v })}
+            onFullNameChange={setContactFullName}
+            onPhoneChange={setContactPhone}
+            onCommentChange={setComment}
           />
           <div className="mt-5">
             <p className="mb-2 text-sm font-medium text-[#485548]">Куда отправить код подтверждения</p>
@@ -278,12 +262,8 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
           {botVerificationLink && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               <p>⚠️ Не удалось отправить код</p>
-              <p className="mt-1">
-                Для получения доступа необходимо подтверждение через Telegram-бота.
-              </p>
-              <p className="mt-1">Нажмите на кнопку ниже, чтобы перейти в бота, и следуйте инструкциям.</p>
               <a
-                className="mt-3 inline-flex rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900"
+                className="mt-3 inline-flex rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium"
                 href={botVerificationLink}
                 target="_blank"
                 rel="noreferrer"
@@ -293,20 +273,11 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
             </div>
           )}
         </div>
-
-        <div className="mt-10">
-          <CheckoutPlainSummary
-            draft={draft}
-            productsSubtotal={productsSubtotal}
-            total={total}
-            omitTotal
-          />
-        </div>
       </div>
 
       <footer className="booking-step-three__footer booking-step-three__footer--sticky-checkout">
         <p className="text-base font-semibold tabular-nums text-[#485548]">
-          Итого к оплате {total.toLocaleString("ru-RU")} ₽
+          Итого к оплате {cart.cartTotal.toLocaleString("ru-RU")} ₽
         </p>
         <Button
           type="button"
@@ -314,7 +285,7 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
           disabled={!formValid || isSubmitting}
           onClick={() => void handleSubmit()}
         >
-          {isSubmitting ? "Отправка..." : "Забронировать"}
+          {isSubmitting ? "Отправка..." : "Забронировать всё"}
         </Button>
       </footer>
 
@@ -333,13 +304,12 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
               </button>
             </div>
             <div className="widget-modal-body">
-              <p className="widget-note">Введите 4-значный код, отправленный на {pendingPhone}</p>
+              <p className="widget-note">Код отправлен на {pendingPhone}</p>
               <input
                 className="widget-otp-input"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 inputMode="numeric"
-                placeholder="0000"
                 maxLength={4}
               />
               <button

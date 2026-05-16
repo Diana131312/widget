@@ -5,6 +5,7 @@ import { StepCategory } from "./StepCategory";
 import { StepBanyaObject } from "./StepBanyaObject";
 import { StepHomesObject } from "./StepHomesObject";
 import { StepBanyaTestObject } from "./StepBanyaTestObject";
+import { StepAddServices } from "./StepAddServices";
 import type { StepDefinition } from "./stepTypes";
 
 export function createStepperSteps(): StepDefinition[] {
@@ -39,10 +40,15 @@ export function createStepperSteps(): StepDefinition[] {
       Component: BookingStepSetup,
     },
     {
-      id: "bookingStepFour",
+      id: "addServices",
+      title: "Выбор услуг",
+      canEnter: () => true,
+      Component: StepAddServices,
+    },
+    {
+      id: "bookingStepFive",
       title: "Оформление заказа",
-      canEnter: (state, gate) =>
-        completeBookingDraft(gate.draft, gate.categoryId) != null,
+      canEnter: (_state, gate) => gate.cartCount > 0,
       Component: BookingStepCheckout,
     },
   ];

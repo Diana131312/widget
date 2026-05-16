@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { Home, LogOut } from "lucide-react";
+import { Home, LogOut, ShoppingCart } from "lucide-react";
 import "./stepper.css";
 import type { StepId, StepperBookingGate, StepperState } from "./types";
 import { createStepperSteps } from "./steps/steps";
@@ -11,10 +11,13 @@ import { AuthModal } from "./auth/AuthModal";
 import { CabinetModal } from "./auth/CabinetModal";
 import { WidgetAuthProvider } from "./auth/AuthContext";
 import { BookingFlowProvider, useBookingFlow } from "./booking/BookingFlowContext";
+import { BookingCartProvider, useBookingCart } from "./cart";
 import {
-  getFlowStepIds,
   getFlowStepIndex,
+  getGlobalStepNumber,
   getPrevFlowStepId,
+  GLOBAL_STEP_TOTAL,
+  isGlobalCartStep,
 } from "./utils/stepNavigation";
 import {
   clearAuthSession,
@@ -205,6 +208,7 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
       }}
     >
       <BookingFlowProvider config={state.data.config}>
+        <BookingCartProvider>
         <StepperWidgetShell
           steps={steps}
           state={state}
@@ -219,6 +223,7 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
           onShowToast={setToast}
           onAuthResolved={handleAuthSuccess}
         />
+        </BookingCartProvider>
       <AuthModal
         open={isAuthOpen}
         api={api}
@@ -261,6 +266,7 @@ function StepperWidgetShell({
   onAuthResolved: (args: { token: string | null; userInfo: UserInfo }) => void;
 }) {
   const booking = useBookingFlow();
+  const cart = useBookingCart();
   const api = useMemo(() => createWidgetApi({ alias }), [alias]);
 
   const gate = useMemo<StepperBookingGate>(
@@ -269,12 +275,14 @@ function StepperWidgetShell({
       selectedRoomId: booking.selectedRoomId,
       allRoomsSelected: booking.allRoomsSelected,
       draft: booking.draft,
+      cartCount: cart.cartCount,
     }),
     [
       booking.categoryId,
       booking.selectedRoomId,
       booking.allRoomsSelected,
       booking.draft,
+      cart.cartCount,
     ]
   );
 
@@ -285,20 +293,22 @@ function StepperWidgetShell({
   }, [steps, state.stepId, state.data, gate]);
 
   const current = steps.find((s) => s.id === state.stepId) ?? steps[0];
+  const globalStepNum = getGlobalStepNumber(state.stepId);
   const flowIndex = getFlowStepIndex(state.stepId, booking.categoryId);
-  const flowTotal = getFlowStepIds(booking.categoryId).length;
 
   const back = () => {
-    const prevId = getPrevFlowStepId(state.stepId, booking.categoryId);
+    const prevId = getPrevFlowStepId(
+      state.stepId,
+      booking.categoryId,
+      cart.cartCount
+    );
     if (prevId) goTo(prevId);
   };
 
   const stepLabelText =
     view === "cabinet"
       ? "Профиль пользователя"
-      : flowTotal > 0
-        ? `Шаг ${flowIndex + 1} из ${flowTotal}`
-        : "Шаг 1";
+      : `Шаг ${globalStepNum} из ${GLOBAL_STEP_TOTAL}`;
   const StepBody = current.Component;
   const centerTitle = view === "cabinet" ? "Личный кабинет" : current.title;
 
@@ -333,8 +343,8 @@ function StepperWidgetShell({
                 }
                 back();
               }}
-              disabled={view === "widget" && flowIndex === 0}
-              aria-disabled={view === "widget" && flowIndex === 0}
+              disabled={view === "widget" && globalStepNum === 1 && !isGlobalCartStep(state.stepId)}
+              aria-disabled={view === "widget" && globalStepNum === 1 && !isGlobalCartStep(state.stepId)}
               aria-label={view === "cabinet" ? "На главный экран виджета" : "Назад"}
               title={view === "cabinet" ? "На главный экран виджета" : "Назад"}
             >
@@ -344,7 +354,27 @@ function StepperWidgetShell({
               <p className="stepper-widget__sub">{stepLabelText}</p>
               <h3 className="stepper-widget__title">{centerTitle}</h3>
             </div>
-            <div className="widget-header__auth">
+            <div className="widget-header__actions">
+              <button
+                type="button"
+                className="widget-header__cart"
+                onClick={() => {
+                  if (cart.cartCount > 0) goTo("bookingStepFive");
+                  else goTo("addServices");
+                }}
+                aria-label={
+                  cart.cartCount > 0
+                    ? `Корзина: ${cart.cartCount} бронирований`
+                    : "Корзина"
+                }
+                title="Корзина"
+              >
+                <ShoppingCart size={20} aria-hidden />
+                {cart.cartCount > 0 && (
+                  <span className="widget-header__cart-badge">{cart.cartCount}</span>
+                )}
+              </button>
+              <div className="widget-header__auth">
               {authUser ? (
                 <>
                   <button
@@ -378,6 +408,7 @@ function StepperWidgetShell({
                   Войти
                 </button>
               )}
+            </div>
             </div>
           </div>
         </header>

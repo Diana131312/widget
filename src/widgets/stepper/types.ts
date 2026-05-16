@@ -4,7 +4,8 @@ export type StepId =
   | "homesObject"
   | "banyaTestObject"
   | "bookingStepThree"
-  | "bookingStepFour";
+  | "addServices"
+  | "bookingStepFive";
 
 export type CategoryId = "banya" | "homes" | "banyaTest";
 
@@ -131,6 +132,7 @@ export type StepperBookingGate = {
   selectedRoomId?: string;
   allRoomsSelected: boolean;
   draft: BookingFlowDraft | null;
+  cartCount: number;
 };
 
 export type CategoryDefinition = {

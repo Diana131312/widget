@@ -130,7 +130,7 @@ export const BookingStepProducts: React.FC<StepProps> = ({ state, goTo }) => {
         <Button
           type="button"
           className="h-11 w-full rounded-xl bg-[#485548] text-sm font-medium text-white hover:bg-[#485548]/90"
-          onClick={() => goTo("bookingStepFour")}
+          onClick={() => goTo("bookingStepFive")}
         >
           Далее
         </Button>
