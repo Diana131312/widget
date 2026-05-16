@@ -8,6 +8,8 @@ import { CheckoutPlainSummary } from "./CheckoutPlainSummary";
 import { formatRuPhoneMask, isRuPhoneComplete, normalizeRuPhoneDigits } from "./utils";
 import { useBookingCatalog } from "./useBookingCatalog";
 import { useWidgetAuth } from "../../auth/AuthContext";
+import { useBookingFlow } from "../../booking/BookingFlowContext";
+import { getObjectStepId } from "../../utils/stepNavigation";
 
 export const BookingStepCheckout: React.FC<StepProps> = ({
   state,
@@ -17,8 +19,10 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   onAuthResolved,
   onOpenCabinet,
 }) => {
-  const { draft, patchDraft, productsSubtotal, total } = useBookingCatalog(state);
+  const { draft, patchCompleteDraft, productsSubtotal, total } = useBookingCatalog(state);
+  const { categoryId } = useBookingFlow();
   const { user, token } = useWidgetAuth();
+  const objectStepId = getObjectStepId(categoryId);
   const api = React.useMemo(() => createWidgetApi({ alias: alias ?? "" }), [alias]);
   const [messenger, setMessenger] = React.useState<"telegram" | "max">("telegram");
   const [isPrivacyAccepted, setPrivacyAccepted] = React.useState(false);
@@ -41,15 +45,15 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
       : formatRuPhoneMask(user.phone ?? "");
 
     if (nextName !== draft.contactFullName || nextPhone !== draft.contactPhone) {
-      patchDraft({
+      patchCompleteDraft({
         contactFullName: nextName,
         contactPhone: nextPhone,
       });
     }
-  }, [draft, patchDraft, user]);
+  }, [draft, patchCompleteDraft, user]);
 
   const handlePhoneChange = (raw: string) => {
-    patchDraft({ contactPhone: formatRuPhoneMask(raw) });
+    patchCompleteDraft({ contactPhone: formatRuPhoneMask(raw) });
   };
 
   const normalizeDigits = (value: string) => normalizeRuPhoneDigits(value);
@@ -182,10 +186,14 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
   if (!draft) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-        <p className="text-sm text-amber-900">Сначала выберите баню, дату и время слота.</p>
-        <Button type="button" variant="outline" className="mt-4" onClick={() => goTo("banyaObject")}>
-          Вернуться к выбору
-        </Button>
+        <p className="text-sm text-amber-900">
+          Сначала завершите настройку бронирования на предыдущем шаге.
+        </p>
+        {objectStepId && (
+          <Button type="button" variant="outline" className="mt-4" onClick={() => goTo(objectStepId)}>
+            Вернуться к выбору
+          </Button>
+        )}
       </div>
     );
   }
@@ -234,9 +242,9 @@ export const BookingStepCheckout: React.FC<StepProps> = ({
             fullName={fullName}
             phoneDisplay={phoneDisplay}
             comment={comment}
-            onFullNameChange={(v) => patchDraft({ contactFullName: v })}
+            onFullNameChange={(v) => patchCompleteDraft({ contactFullName: v })}
             onPhoneChange={handlePhoneChange}
-            onCommentChange={(v) => patchDraft({ comment: v })}
+            onCommentChange={(v) => patchCompleteDraft({ comment: v })}
           />
           <div className="mt-5">
             <p className="mb-2 text-sm font-medium text-[#485548]">Куда отправить код подтверждения</p>

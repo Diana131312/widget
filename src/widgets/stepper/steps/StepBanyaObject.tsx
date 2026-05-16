@@ -386,21 +386,14 @@ export const StepBanyaObject: React.FC<StepProps> = ({
     if (selectedSlotIndex === null || !selectedRoom || !selectedDate) return;
 
     const selectedSlot = timeSlots[selectedSlotIndex];
-    const maxGuests = selectedRoom.maxCapacity ?? selectedRoom.capacity ?? 99;
-    const prev = booking.draft;
-    let guestCount = 1;
-    if (prev?.roomId === selectedRoom.id && typeof prev.guestCount === "number" && prev.guestCount >= 1) {
-      guestCount = Math.min(prev.guestCount, maxGuests);
-    }
-
     booking.patchDraft({
       roomId: selectedRoom.id,
       roomName: selectedRoom.name,
       date: format(selectedDate, "yyyy-MM-dd"),
       timeFrom: selectedSlot.timeFrom,
       timeTo: selectedSlot.timeTo,
-      basePrice: selectedSlot.price,
-      guestCount,
+      slotDuration: selectedSlot.duration,
+      guestCount: 0,
     });
     booking.clearStep3Products();
     goTo("bookingStepThree");

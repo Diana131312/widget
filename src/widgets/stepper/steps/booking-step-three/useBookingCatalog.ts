@@ -1,46 +1,70 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { WidgetProduct, WidgetProductGroup } from "../../../../api/widgetApi.types";
-import type { BookingDraft, StepperState } from "../../types";
-import { completeBookingDraft } from "../../types";
+import type { BookingDraft, BookingFlowDraft, CategoryId, StepperState } from "../../types";
+import { canEnterBookingSetup, completeBookingDraft } from "../../types";
 import type { GroupWithProducts } from "./ProductGroupAccordion";
 import { useBookingFlow } from "../../booking/BookingFlowContext";
 
 const UNGROUPED_GROUP_ID = "__ungrouped_products__";
 
 export function useBookingCatalog(state: StepperState) {
-  const { draft: flowDraft, patchDraft } = useBookingFlow();
-  const draft = completeBookingDraft(flowDraft);
+  const { categoryId, draft: flowDraft, patchDraft } = useBookingFlow();
+  const setupDraft = canEnterBookingSetup(categoryId, flowDraft) ? flowDraft : null;
+  const draft = completeBookingDraft(flowDraft, categoryId);
   const config = state.data.config;
 
+  const patchFlowDraft = useCallback(
+    (partial: Partial<BookingFlowDraft>) => {
+      patchDraft(partial);
+    },
+    [patchDraft]
+  );
+
   const patchCompleteDraft = (partial: Partial<BookingDraft>) => {
-    if (!draft) return;
-    patchDraft({ ...draft, ...partial });
+    if (!flowDraft) return;
+    patchDraft({ ...flowDraft, ...partial });
   };
 
   const setProductQty = (productId: string, next: number) => {
-    if (!draft) return;
-    const prev = draft.productQuantities ?? {};
+    if (!setupDraft) return;
+    const prev = setupDraft.productQuantities ?? {};
     const nextMap = { ...prev };
     if (next <= 0) delete nextMap[productId];
     else nextMap[productId] = next;
-    patchCompleteDraft({ productQuantities: nextMap });
+    patchFlowDraft({ productQuantities: nextMap });
   };
 
+  const maxGuests = useMemo(() => {
+    if (!config || !setupDraft?.roomId) return 10;
+    if (categoryId === "homes") {
+      const room = config.dailyRooms?.find((r) => r.id === setupDraft.roomId);
+      return room?.maxCapacity ?? room?.capacity ?? 10;
+    }
+    const room = config.rooms?.find((r) => r.id === setupDraft.roomId);
+    return room?.maxCapacity ?? room?.capacity ?? 10;
+  }, [config, setupDraft?.roomId, categoryId]);
+
   const groupedForRoom = useMemo(() => {
-    if (!config || !draft?.roomId)
+    if (!config || !setupDraft?.roomId || !categoryId)
       return { groups: [] as GroupWithProducts[], productsById: new Map<string, WidgetProduct>() };
 
-    const roomId = draft.roomId;
+    const roomId = setupDraft.roomId;
     const groupMap = new Map<string, WidgetProductGroup>();
     for (const g of config.productGroups) {
       groupMap.set(g.id, g);
     }
 
-    const filtered = config.products.filter(
-      (p) =>
-        p.isPublic &&
-        (!Array.isArray(p.roomIds) || p.roomIds.length === 0 || p.roomIds.includes(roomId))
-    );
+    const filtered = config.products.filter((p) => {
+      if (!p.isPublic) return false;
+      if (categoryId === "homes") {
+        const ids = p.dailyRoomIds;
+        if (!Array.isArray(ids) ) return true;
+        return ids.includes(roomId);
+      }
+      const ids = p.roomIds;
+      if (!Array.isArray(ids) || ids.length === 0) return true;
+      return ids.includes(roomId);
+    });
 
     const byGroup = new Map<string, WidgetProduct[]>();
     const productsById = new Map<string, WidgetProduct>();
@@ -66,12 +90,12 @@ export function useBookingCatalog(state: StepperState) {
     }
 
     return { groups, productsById };
-  }, [config, draft?.roomId]);
+  }, [config, setupDraft?.roomId, categoryId]);
 
-  const quantities = draft?.productQuantities ?? {};
+  const quantities = setupDraft?.productQuantities ?? {};
 
   const productLines = useMemo(() => {
-    if (!draft) return [];
+    if (!setupDraft) return [];
     const lines: { product: WidgetProduct; qty: number; lineTotal: number }[] = [];
     for (const [id, qty] of Object.entries(quantities)) {
       if (qty <= 0) continue;
@@ -80,24 +104,28 @@ export function useBookingCatalog(state: StepperState) {
       lines.push({ product, qty, lineTotal: product.price * qty });
     }
     return lines.sort((a, b) => a.product.name.localeCompare(b.product.name, "ru"));
-  }, [draft, quantities, groupedForRoom.productsById]);
+  }, [setupDraft, quantities, groupedForRoom.productsById]);
 
   const productsSubtotal = useMemo(
     () => productLines.reduce((s, l) => s + l.lineTotal, 0),
     [productLines]
   );
 
-  const total = (draft?.basePrice ?? 0) + productsSubtotal;
+  const total = (setupDraft?.basePrice ?? draft?.basePrice ?? 0) + productsSubtotal;
 
   return {
+    categoryId: categoryId as CategoryId | undefined,
+    setupDraft,
     draft,
     config,
-    patchDraft: patchCompleteDraft,
+    patchDraft: patchFlowDraft,
+    patchCompleteDraft,
     setProductQty,
     groupedForRoom,
     quantities,
     productLines,
     productsSubtotal,
     total,
+    maxGuests,
   };
 }

@@ -43,7 +43,7 @@ function computeInitialFromUrl(): {
   let draft: BookingFlowDraft | null = null;
   if (selectedRoomId) {
     draft = {
-      guestCount: 1,
+      guestCount: 0,
       roomId: selectedRoomId,
       roomName: undefined,
       ...(u.date ? { date: u.date } : {}),
@@ -51,7 +51,7 @@ function computeInitialFromUrl(): {
       ...(u.timeTo ? { timeTo: u.timeTo } : {}),
     };
   } else if (allRoomsSelected && u.date) {
-    draft = { guestCount: 1, date: u.date };
+    draft = { guestCount: 0, date: u.date };
   }
 
   return { categoryId, selectedRoomId, allRoomsSelected, draft };
@@ -71,7 +71,12 @@ export type BookingFlowContextValue = {
   /** Выбор даты в месячном календаре — сбрасывает слот */
   setDraftDate: (dateStr: string) => void;
   /** Выбор слота — при смене интервала очищает доп. товары */
-  setSlotFromPick: (slot: { timeFrom: string; timeTo: string; basePrice: number }) => void;
+  setSlotFromPick: (slot: {
+    timeFrom: string;
+    timeTo: string;
+    basePrice: number;
+    duration?: number;
+  }) => void;
   clearSlotPick: () => void;
   patchDraft: (partial: Partial<BookingFlowDraft>) => void;
   /** Перед переходом на шаг 3 после смены слота */
@@ -101,7 +106,7 @@ export function BookingFlowProvider({
 
   const patchDraft = useCallback((partial: Partial<BookingFlowDraft>) => {
     setDraft((prev) => {
-      const base: BookingFlowDraft = prev ?? { guestCount: partial.guestCount ?? 1 };
+      const base: BookingFlowDraft = prev ?? { guestCount: partial.guestCount ?? 0 };
       return {
         ...base,
         ...partial,
@@ -132,7 +137,7 @@ export function BookingFlowProvider({
   const ensureDefaultAllRoomsWhenEmpty = useCallback(() => {
     setAllRoomsSelected(true);
     setSelectedRoomId(undefined);
-    setDraft((d) => d ?? { guestCount: 1 });
+    setDraft((d) => d ?? { guestCount: 0 });
   }, []);
 
   const selectSpecificRoom = useCallback((room: WidgetRoom) => {
@@ -189,11 +194,11 @@ export function BookingFlowProvider({
 
   const setDraftDate = useCallback((dateStr: string) => {
     setDraft((prev) => {
-      const base: BookingFlowDraft = prev ?? { guestCount: 1 };
+      const base: BookingFlowDraft = prev ?? { guestCount: 0 };
       const next: BookingFlowDraft = {
         ...base,
         date: dateStr,
-        guestCount: base.guestCount ?? 1,
+        guestCount: base.guestCount ?? 0,
       };
       delete next.timeFrom;
       delete next.timeTo;
@@ -202,20 +207,23 @@ export function BookingFlowProvider({
     });
   }, []);
 
-  const setSlotFromPick = useCallback((slot: { timeFrom: string; timeTo: string; basePrice: number }) => {
+  const setSlotFromPick = useCallback(
+    (slot: { timeFrom: string; timeTo: string; basePrice: number; duration?: number }) => {
     setDraft((prev) => {
-      const base = prev ?? { guestCount: 1 };
+      const base = prev ?? { guestCount: 0 };
       const changed =
         base.timeFrom !== slot.timeFrom || base.timeTo !== slot.timeTo || base.basePrice !== slot.basePrice;
       return {
         ...base,
         timeFrom: slot.timeFrom,
         timeTo: slot.timeTo,
+        slotDuration: slot.duration,
         basePrice: slot.basePrice,
         productQuantities: changed ? {} : (base.productQuantities ?? {}),
       };
     });
-  }, []);
+  },
+  []);
 
   const clearSlotPick = useCallback(() => {
     clearSlotInDraft();

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Home, LogOut } from "lucide-react";
 import "./stepper.css";
 import type { StepId, StepperBookingGate, StepperState } from "./types";
@@ -11,6 +11,11 @@ import { AuthModal } from "./auth/AuthModal";
 import { CabinetModal } from "./auth/CabinetModal";
 import { WidgetAuthProvider } from "./auth/AuthContext";
 import { BookingFlowProvider, useBookingFlow } from "./booking/BookingFlowContext";
+import {
+  getFlowStepIds,
+  getFlowStepIndex,
+  getPrevFlowStepId,
+} from "./utils/stepNavigation";
 import {
   clearAuthSession,
   readAuthSession,
@@ -40,39 +45,6 @@ function clampToFirstEnterable(
   return { ...state, stepId: steps[0].id };
 }
 
-function BookingStepGuard({
-  steps,
-  state,
-  setState,
-}: {
-  steps: ReturnType<typeof createStepperSteps>;
-  state: StepperState;
-  setState: React.Dispatch<React.SetStateAction<StepperState>>;
-}) {
-  const booking = useBookingFlow();
-  const gate = useMemo<StepperBookingGate>(
-    () => ({
-      categoryId: booking.categoryId,
-      selectedRoomId: booking.selectedRoomId,
-      allRoomsSelected: booking.allRoomsSelected,
-      draft: booking.draft,
-    }),
-    [
-      booking.categoryId,
-      booking.selectedRoomId,
-      booking.allRoomsSelected,
-      booking.draft,
-    ]
-  );
-
-  useEffect(() => {
-    const safeState = clampToFirstEnterable(steps, state, gate);
-    if (safeState.stepId !== state.stepId) setState(safeState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps, state.stepId, state.data, gate]);
-
-  return null;
-}
 
 export const StepperWidget: React.FC<StepperWidgetProps> = ({
   alias,
@@ -197,24 +169,9 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
     };
   }, [api]);
 
-  const current = steps.find((s) => s.id === state.stepId) ?? steps[0];
-
   const goTo = (stepId: StepId) => {
     setState((prev) => ({ ...prev, stepId }));
   };
-
-  const back = () => {
-    const i = steps.findIndex((s) => s.id === state.stepId);
-    const prev = i > 0 ? steps[i - 1] : null;
-    if (!prev) return;
-    goTo(prev.id);
-  };
-
-  const idx = Math.max(0, steps.findIndex((s) => s.id === state.stepId));
-  const stepLabelText =
-    view === "cabinet" ? "Профиль пользователя" : `Шаг ${idx + 1} из ${steps.length}`;
-  const StepBody = current.Component;
-  const centerTitle = view === "cabinet" ? "Личный кабинет" : current.title;
 
   const handleAuthSuccess = (args: {
     token: string | null;
@@ -248,114 +205,20 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
       }}
     >
       <BookingFlowProvider config={state.data.config}>
-        <BookingStepGuard steps={steps} state={state} setState={setState} />
-      <div
-        className={cn(
-          "stepper-widget stepper-widget--layout",
-          "w-full",
-          /* На телефоне не тянем оболочку на весь экран — иначе flex-1 у шага даёт пустоту под контентом (Safari). */
-          "min-h-0 md:min-h-[95dvh] md:min-h-[95vh]"
-        )}
-      >
-        <div
-          className={cn(
-            "stepper-widget__card mx-auto flex min-h-0 w-full max-w-[800px] flex-col overflow-x-clip overflow-y-visible rounded-2xl border border-gray-200 bg-white shadow-sm"
-          )}
-        >
-          <header
-            className={cn(
-              "stepper-widget__topbar shrink-0",
-              "border-b border-gray-200/90 bg-white/95 pb-3 mb-2 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-white/90"
-            )}
-          >
-            <div className="widget-header w-full">
-              <button
-                type="button"
-                className="widget-header__back"
-                onClick={() => {
-                  if (view === "cabinet") {
-                    setView("widget");
-                    goTo("category");
-                    return;
-                  }
-                  back();
-                }}
-                disabled={view === "widget" && idx === 0}
-                aria-disabled={view === "widget" && idx === 0}
-                aria-label={view === "cabinet" ? "На главный экран виджета" : "Назад"}
-                title={view === "cabinet" ? "На главный экран виджета" : "Назад"}
-              >
-                {view === "cabinet" ? <Home size={16} /> : "←"}
-              </button>
-              <div className="widget-header__center ">
-                <p className="stepper-widget__sub">{stepLabelText}</p>
-                <h3 className="stepper-widget__title">{centerTitle}</h3>
-       
-              </div>
-              <div className="widget-header__auth">
-                {authUser ? (
-                  <>
-                    <button
-                    type="button"
-                    className="stepper-widget__btn stepper-widget__btn--ghost shrink-0"
-                    onClick={() => setView("cabinet")}
-                    >
-                      <span className="widget-user-pill">
-                        <span className="widget-user-pill__avatar">
-                          {(authUser.displayName ?? "U")[0]?.toUpperCase()}
-                        </span>
-                        <span>{authUser.displayName ?? "Профиль"}</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="widget-header__logout"
-                      onClick={handleLogout}
-                      aria-label="Выйти из профиля"
-                      title="Выйти из профиля"
-                    >
-                      <LogOut size={16} />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="stepper-widget__btn stepper-widget__btn--ghost shrink-0"
-                    onClick={() => setAuthOpen(true)}
-                  >
-                    Войти
-                  </button>
-                )}
-              </div>
-            </div>
-          </header>
-
-          <div className="stepper-widget__step flex min-h-0 flex-col px-0 pb-3 pt-1 md:flex-1 md:px-1">
-            {view === "cabinet" && authUser ? (
-              <CabinetModal
-                user={authUser}
-                api={api}
-                onBack={() => {
-                  setView("widget");
-                  goTo("category");
-                }}
-                onLogout={handleLogout}
-                onShowToast={setToast}
-              />
-            ) : (
-              <StepBody
-                state={state}
-                setState={setState}
-                goTo={goTo}
-                onShowToast={setToast}
-                alias={alias}
-                onAuthResolved={handleAuthSuccess}
-                onOpenCabinet={() => setView("cabinet")}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+        <StepperWidgetShell
+          steps={steps}
+          state={state}
+          setState={setState}
+          goTo={goTo}
+          view={view}
+          setView={setView}
+          authUser={authUser}
+          setAuthOpen={setAuthOpen}
+          handleLogout={handleLogout}
+          alias={alias}
+          onShowToast={setToast}
+          onAuthResolved={handleAuthSuccess}
+        />
       <AuthModal
         open={isAuthOpen}
         api={api}
@@ -367,3 +230,183 @@ export const StepperWidget: React.FC<StepperWidgetProps> = ({
     </WidgetAuthProvider>
   );
 };
+
+type UserInfo = Awaited<ReturnType<ReturnType<typeof createWidgetApi>["getUserInfo"]>>;
+
+function StepperWidgetShell({
+  steps,
+  state,
+  setState,
+  goTo,
+  view,
+  setView,
+  authUser,
+  setAuthOpen,
+  handleLogout,
+  alias,
+  onShowToast,
+  onAuthResolved,
+}: {
+  steps: ReturnType<typeof createStepperSteps>;
+  state: StepperState;
+  setState: React.Dispatch<React.SetStateAction<StepperState>>;
+  goTo: (stepId: StepId) => void;
+  view: "widget" | "cabinet";
+  setView: (v: "widget" | "cabinet") => void;
+  authUser: UserInfo | null;
+  setAuthOpen: (v: boolean) => void;
+  handleLogout: () => void;
+  alias: string;
+  onShowToast: (msg: string) => void;
+  onAuthResolved: (args: { token: string | null; userInfo: UserInfo }) => void;
+}) {
+  const booking = useBookingFlow();
+  const api = useMemo(() => createWidgetApi({ alias }), [alias]);
+
+  const gate = useMemo<StepperBookingGate>(
+    () => ({
+      categoryId: booking.categoryId,
+      selectedRoomId: booking.selectedRoomId,
+      allRoomsSelected: booking.allRoomsSelected,
+      draft: booking.draft,
+    }),
+    [
+      booking.categoryId,
+      booking.selectedRoomId,
+      booking.allRoomsSelected,
+      booking.draft,
+    ]
+  );
+
+  useEffect(() => {
+    const safeState = clampToFirstEnterable(steps, state, gate);
+    if (safeState.stepId !== state.stepId) setState(safeState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steps, state.stepId, state.data, gate]);
+
+  const current = steps.find((s) => s.id === state.stepId) ?? steps[0];
+  const flowIndex = getFlowStepIndex(state.stepId, booking.categoryId);
+  const flowTotal = getFlowStepIds(booking.categoryId).length;
+
+  const back = () => {
+    const prevId = getPrevFlowStepId(state.stepId, booking.categoryId);
+    if (prevId) goTo(prevId);
+  };
+
+  const stepLabelText =
+    view === "cabinet"
+      ? "Профиль пользователя"
+      : flowTotal > 0
+        ? `Шаг ${flowIndex + 1} из ${flowTotal}`
+        : "Шаг 1";
+  const StepBody = current.Component;
+  const centerTitle = view === "cabinet" ? "Личный кабинет" : current.title;
+
+  return (
+    <div
+      className={cn(
+        "stepper-widget stepper-widget--layout",
+        "w-full",
+        "min-h-0 md:min-h-[95dvh] md:min-h-[95vh]"
+      )}
+    >
+      <div
+        className={cn(
+          "stepper-widget__card mx-auto flex min-h-0 w-full max-w-[800px] flex-col overflow-x-clip overflow-y-visible rounded-2xl border border-gray-200 bg-white shadow-sm"
+        )}
+      >
+        <header
+          className={cn(
+            "stepper-widget__topbar shrink-0",
+            "border-b border-gray-200/90 bg-white/95 pb-3 mb-2 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-white/90"
+          )}
+        >
+          <div className="widget-header w-full">
+            <button
+              type="button"
+              className="widget-header__back"
+              onClick={() => {
+                if (view === "cabinet") {
+                  setView("widget");
+                  goTo("category");
+                  return;
+                }
+                back();
+              }}
+              disabled={view === "widget" && flowIndex === 0}
+              aria-disabled={view === "widget" && flowIndex === 0}
+              aria-label={view === "cabinet" ? "На главный экран виджета" : "Назад"}
+              title={view === "cabinet" ? "На главный экран виджета" : "Назад"}
+            >
+              {view === "cabinet" ? <Home size={16} /> : "←"}
+            </button>
+            <div className="widget-header__center">
+              <p className="stepper-widget__sub">{stepLabelText}</p>
+              <h3 className="stepper-widget__title">{centerTitle}</h3>
+            </div>
+            <div className="widget-header__auth">
+              {authUser ? (
+                <>
+                  <button
+                    type="button"
+                    className="stepper-widget__btn stepper-widget__btn--ghost shrink-0"
+                    onClick={() => setView("cabinet")}
+                  >
+                    <span className="widget-user-pill">
+                      <span className="widget-user-pill__avatar">
+                        {(authUser.displayName ?? "U")[0]?.toUpperCase()}
+                      </span>
+                      <span>{authUser.displayName ?? "Профиль"}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="widget-header__logout"
+                    onClick={handleLogout}
+                    aria-label="Выйти из профиля"
+                    title="Выйти из профиля"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="stepper-widget__btn stepper-widget__btn--ghost shrink-0"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  Войти
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="stepper-widget__step flex min-h-0 flex-col px-0 pb-3 pt-1 md:flex-1 md:px-1">
+          {view === "cabinet" && authUser ? (
+            <CabinetModal
+              user={authUser}
+              api={api}
+              onBack={() => {
+                setView("widget");
+                goTo("category");
+              }}
+              onLogout={handleLogout}
+              onShowToast={onShowToast}
+            />
+          ) : (
+            <StepBody
+              state={state}
+              setState={setState}
+              goTo={goTo}
+              onShowToast={onShowToast}
+              alias={alias}
+              onAuthResolved={onAuthResolved}
+              onOpenCabinet={() => setView("cabinet")}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import type { StepProps } from "./stepTypes";
 import { useBookingFlow } from "../booking/BookingFlowContext";
 
 export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
-  const { categoryId, setCategoryId } = useBookingFlow();
+  const { setCategoryId } = useBookingFlow();
   // Строим категории из данных API (state.data.config)
   const availableCategories = useMemo<CategoryDefinition[]>(() => {
     const config = state.data.config;
@@ -67,8 +67,9 @@ export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
                   return;
                 }
 
-                // Категория "Дома" — шаги появятся позже
-                // Пока оставляем пользователя на текущем шаге.
+                if (c.id === "homes") {
+                  goTo("homesObject");
+                }
               }}
             >
               <div
@@ -83,12 +84,6 @@ export const StepCategory: React.FC<StepProps> = ({ state, goTo }) => {
               </div>
             </button>
           ))}
-        </div>
-      )}
-
-      {categoryId === "homes" && (
-        <div className="stepper-widget__note">
-          Категория «Дома» будет добавлена в следующих шагах.
         </div>
       )}
     </div>

@@ -139,7 +139,7 @@ export const CabinetModal: React.FC<Props> = ({ user, api, onBack, onLogout, onS
         
 
         <div className="widget-bookings">
-          <h4 className="widget-section-title">История бронирований</h4>
+          <h4 className="widget-section-title ">История бронирований</h4>
 
           <label className="widget-switch">
           <span className="widget-switch__label">Показывать прошедшие бронирования</span>
@@ -153,7 +153,7 @@ export const CabinetModal: React.FC<Props> = ({ user, api, onBack, onLogout, onS
             <span className="widget-switch__thumb" />
           </span>
         </label>
-        
+
           {isLoading ? (
             <p className="widget-note">Загрузка истории...</p>
           ) : error ? (

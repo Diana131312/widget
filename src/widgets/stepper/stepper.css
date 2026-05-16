@@ -1665,3 +1665,488 @@
   overflow-y: auto;
 }
 
+/* Шаг 3 — мини-карточка бронирования */
+.booking-mini-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.booking-mini-card__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #485548;
+}
+
+.booking-mini-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.booking-mini-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+}
+
+.booking-mini-card__row svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.booking-mini-card__guests {
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Daily houses (step 2 — «Дома») */
+.daily-houses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.step-homes__back {
+  margin-top: 20px;
+}
+
+.daily-house-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.daily-house-card__layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.daily-house-card__column {
+  box-sizing: border-box;
+  padding: 16px;
+}
+
+.daily-house-card__column--gallery {
+  flex: 0 0 33%;
+  max-width: 33%;
+  min-width: 0;
+}
+
+.daily-house-card__column--info {
+  flex: 0 0 33%;
+  max-width: 33%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.daily-house-card__column--calendar {
+  flex: 0 0 34%;
+  max-width: 34%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.daily-house-card__name-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.daily-house-card__name {
+  margin: 0;
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+  color: #485548;
+  line-height: 1.3;
+}
+
+.daily-house-card__info-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #485548;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.daily-house-card__info-btn:hover {
+  background: rgba(72, 85, 72, 0.12);
+  color: #3d4a3d;
+}
+
+.daily-house-card__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.daily-house-card__feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #334155;
+}
+
+.daily-house-card__feature svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.daily-house-card__prices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.daily-house-card__price-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.daily-house-card__price-line--holiday {
+  color: #485548;
+}
+
+.daily-house-card__continue-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.daily-house-card__continue-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #94a3b8;
+  border-color: #94a3b8;
+}
+
+.daily-house-card__continue-btn:disabled:hover {
+  background: #94a3b8;
+}
+
+.daily-house-card__carousel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.daily-house-card__carousel--modal {
+  aspect-ratio: unset;
+  height: 300px;
+  max-height: 300px;
+  border-radius: 8px;
+}
+
+.daily-house-card__carousel-track {
+  position: absolute;
+  inset: 0;
+}
+
+.daily-house-card__carousel-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.daily-house-card__carousel-image--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.daily-house-card__carousel-placeholder--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+}
+
+.daily-house-card__carousel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daily-house-card__carousel-placeholder {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+
+.daily-house-card__carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+  transition: background 0.15s ease;
+}
+
+.daily-house-card__carousel-nav:hover {
+  background: #ffffff;
+}
+
+.daily-house-card__carousel-nav--prev {
+  left: 8px;
+}
+
+.daily-house-card__carousel-nav--next {
+  right: 8px;
+}
+
+.daily-house-card__carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.daily-house-card__carousel-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.daily-house-card__carousel-dot--active {
+  background: #ffffff;
+  transform: scale(1.15);
+}
+
+.daily-house-card__carousel-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 50%,
+    #f1f5f9 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Daily range calendar */
+.stepper-calendar--daily-range {
+  margin-top: 0;
+}
+
+.stepper-calendar__month-grid--daily .stepper-calendar__week-row {
+  gap: 2px;
+}
+
+.stepper-calendar__day-cell--daily {
+  min-height: 36px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: #f0fdf4;
+}
+
+.stepper-calendar__day-cell--daily:disabled {
+  cursor: not-allowed;
+}
+
+.stepper-calendar__day-cell--daily.stepper-calendar__day-cell--free:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.stepper-calendar__day-cell--occupied {
+  background: #f1f5f9 !important;
+  color: #94a3b8;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.stepper-calendar__day-cell--range-start,
+.stepper-calendar__day-cell--range-end {
+  background: #485548 !important;
+  border-color: #485548;
+  color: #ffffff;
+}
+
+.stepper-calendar__day-cell--range-start .stepper-calendar__day-number,
+.stepper-calendar__day-cell--range-end .stepper-calendar__day-number {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.stepper-calendar__day-cell--in-range {
+  background: rgba(72, 85, 72, 0.15) !important;
+  border-color: rgba(72, 85, 72, 0.25);
+}
+
+.daily-range-calendar__status {
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.daily-range-calendar__status--loading {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.daily-range-calendar__status--error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.daily-range-calendar__range-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.daily-range-calendar__summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.daily-range-calendar__summary-dates {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Info modal */
+.daily-house-info-modal {
+  width: min(100%, 420px);
+  max-width: 420px;
+}
+
+.daily-house-info-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.daily-house-info-modal__description {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  white-space: pre-wrap;
+}
+
+.daily-house-info-modal__description--empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.daily-house-info-modal__details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.daily-house-info-modal__detail {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.daily-house-info-modal__detail dt {
+  margin: 0;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.daily-house-info-modal__detail dd {
+  margin: 0;
+  color: #0f172a;
+}
+
+@media (max-width: 480px) {
+  .daily-house-info-modal__detail {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 900px) {
+  .daily-house-card__column--gallery,
+  .daily-house-card__column--info,
+  .daily-house-card__column--calendar {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .daily-house-card__column--gallery {
+    padding-bottom: 0;
+  }
+
+  .daily-house-card__column--info {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+

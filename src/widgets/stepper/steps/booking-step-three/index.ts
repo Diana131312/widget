@@ -1,3 +1,4 @@
+export { BookingStepSetup } from "./BookingStepSetup";
 export { BookingStepProducts } from "./BookingStepProducts";
 export { BookingStepCheckout } from "./BookingStepCheckout";
 export { CheckoutPlainSummary } from "./CheckoutPlainSummary";
