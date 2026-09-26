@@ -18,6 +18,15 @@ export function resolveBookingImageUrls(
     .filter((url): url is string => Boolean(url));
 }
 
+export function resolveBookingImageUrl(
+  imageRef: string | null | undefined,
+  tenantId: string | null,
+  storageSize: number
+): string | null {
+  if (!imageRef) return null;
+  return resolveBookingImageUrls([imageRef], tenantId, storageSize)[0] ?? null;
+}
+
 export function isBookingImageCached(url: string): boolean {
   return loadedUrls.has(url);
 }

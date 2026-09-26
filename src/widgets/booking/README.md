@@ -42,6 +42,8 @@
 - `header/BookingHeader.tsx` — степпер без корзины/авторизации
 - `steps/StepCategory.tsx` — шаг 1
 - `steps/StepObject.tsx` — шаг 2 (список домов/бань)
+- `steps/StepSetup.tsx` — шаг 3 (каталог допов + расчёт + гости)
+- `setup/` — groupProducts, каталог A, calculate, isExtraGuestProduct
 - `cards/ObjectCard.tsx` — общая настраиваемая карточка
 - `media/` — карусель, модалка, кеш изображений
 - `calendar/` — календари домов/бань, слоты, rangeLogic
@@ -57,6 +59,7 @@
   - `?bk_step=setup&bk_cat=homes&bk_room=…&bk_in=YYYY-MM-DD&bk_out=YYYY-MM-DD`
   - `?bk_step=setup&bk_cat=banya&bk_room=…&bk_date=YYYY-MM-DD&bk_from=HH:mm&bk_to=HH:mm`
 - При загрузке setup-ссылки проверяются объект, даты/слот и занятость; при невалидности — откат на category/object + toast.
+- Гости / qty товаров в URL не пишутся (только локальный flow-state).
 
 ## Потенциальные проблемы (не блокер MVP)
 
@@ -69,12 +72,27 @@
 
 ## TODO — открыто
 
-Сделано: a11y точек прогресса (прошлые кликабельны + `aria-current`), `.bk-widget`, a11y карусели (клик по медиа, не nested button), lazy occupancy через IntersectionObserver ±200px, токены `--bk-cal-free` / `--bk-cal-busy`, `checkInTime`/`checkOutTime` у домов.
+Сделано: шаги 1–3 (категория, объект, setup: каталог A, расчёт, гости=0, доп.гость по имени).
 
-Ещё открыто:
+### P0 — чинить отдельно (см. обсуждение)
 
+- [x] Deep-link/hydrate: после validate слота прокидывать `slotDuration`/`slotPrice` в flow
+- [x] `canProceed`: не пускать Далее при `basePrice <= 0` (пустой API ≠ бесплатно)
+- [ ] Доп. гости: `min(EXTRA_GUEST_HARD_LIMIT, maxGuests − guestCount)` + админские max qty
+
+### Остальное (P1/P2)
+
+- [ ] **Прод-блокер админки:** выставить корректные лимиты (max qty) для товаров «доп. гость» по объектам; убрать хардкод `EXTRA_GUEST_HARD_LIMIT`
+- [ ] Стейл breakdown при debounce (350ms): сразу loading / clear calc при смене гостей
+- [ ] Явная ошибка / не монтировать setup без дат или слота (не silent early-return)
+- [ ] `slotPrice` fallback только при надёжных условиях; не открывать Next на угаданной цене
+- [ ] Доп. гость по флагу/типу из конфига, не только по имени
+- [ ] Итого доп. товаров — UI-only; на checkout серверный total
+- [ ] Выровнять семантику пустых `roomIds` / `dailyRoomIds` в `groupProducts`
+- [ ] Тесты: hydrate без slot meta; total=0 без fallback блокирует Next; clamp extras к вместимости
 - [ ] Локальные копии `calendar/services` вместо re-export из stepper — см. ниже
-- [ ] Шаг `setup` после выбора даты/диапазона/слота
+- [ ] Шаг `extras` (cross-sell) после setup
+- [ ] Шаг `checkout`
 - [ ] При новых данных экрана — дописать `STEP_DATA_NEEDS`
 
 ## Почему `calendar/services` ↔ stepper — риск

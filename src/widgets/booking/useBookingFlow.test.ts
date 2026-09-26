@@ -24,7 +24,7 @@ describe("useBookingFlow", () => {
     });
   });
 
-  it("selectHome goes to setup with dates", () => {
+  it("selectHome goes to setup with dates and guests at 0", () => {
     const { result } = renderHook(() =>
       useBookingFlow({ initial: DEFAULT_BOOKING_URL_STATE })
     );
@@ -42,9 +42,11 @@ describe("useBookingFlow", () => {
     expect(result.current.roomId).toBe("d1");
     expect(result.current.checkIn).toBe("2026-10-10");
     expect(result.current.checkOut).toBe("2026-10-12");
+    expect(result.current.guestCount).toBe(0);
+    expect(result.current.basePrice).toBeNull();
   });
 
-  it("selectBanya stores slot times", () => {
+  it("selectBanya stores slot times, duration and price", () => {
     const { result } = renderHook(() =>
       useBookingFlow({ initial: DEFAULT_BOOKING_URL_STATE })
     );
@@ -56,6 +58,8 @@ describe("useBookingFlow", () => {
         date: "2026-10-07",
         timeFrom: "12:00",
         timeTo: "15:00",
+        duration: 3,
+        price: 4500,
       });
     });
 
@@ -66,6 +70,9 @@ describe("useBookingFlow", () => {
       banyaDate: "2026-10-07",
       banyaTimeFrom: "12:00",
       banyaTimeTo: "15:00",
+      slotDuration: 3,
+      slotPrice: 4500,
+      guestCount: 0,
     });
   });
 
@@ -93,10 +100,49 @@ describe("useBookingFlow", () => {
     expect(result.current.checkIn).toBeNull();
   });
 
-  it("hydrate replaces state without losing category path", () => {
+  it("hydrate can restore slot duration and price from validate", () => {
     const { result } = renderHook(() =>
       useBookingFlow({ initial: DEFAULT_BOOKING_URL_STATE })
     );
+
+    act(() => {
+      result.current.hydrate(
+        {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "setup",
+          categoryId: "banya",
+          roomId: "b1",
+          banyaDate: "2026-10-07",
+          banyaTimeFrom: "12:00",
+          banyaTimeTo: "15:00",
+        },
+        { duration: 3, price: 4500 }
+      );
+    });
+
+    expect(result.current).toMatchObject({
+      stepId: "setup",
+      slotDuration: 3,
+      slotPrice: 4500,
+    });
+  });
+
+  it("hydrate without slotMeta clears duration and price", () => {
+    const { result } = renderHook(() =>
+      useBookingFlow({ initial: DEFAULT_BOOKING_URL_STATE })
+    );
+
+    act(() => {
+      result.current.selectCategory("banya");
+      result.current.selectBanya({
+        roomId: "b1",
+        date: "2026-10-07",
+        timeFrom: "12:00",
+        timeTo: "15:00",
+        duration: 3,
+        price: 4500,
+      });
+    });
 
     act(() => {
       result.current.hydrate({
@@ -108,6 +154,8 @@ describe("useBookingFlow", () => {
 
     expect(result.current.stepId).toBe("object");
     expect(result.current.categoryId).toBe("banya");
+    expect(result.current.slotDuration).toBeNull();
+    expect(result.current.slotPrice).toBeNull();
   });
 
   it("goToStep only allows past steps", () => {

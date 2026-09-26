@@ -34,8 +34,26 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   const [banyaTimeTo, setBanyaTimeTo] = useState<string | null>(
     initial.banyaTimeTo ?? null
   );
+  const [guestCount, setGuestCountState] = useState(0);
+  const [productQuantities, setProductQuantities] = useState<
+    Record<string, number>
+  >({});
+  const [basePrice, setBasePrice] = useState<number | null>(null);
+  const [slotDuration, setSlotDuration] = useState<number | null>(null);
+  const [slotPrice, setSlotPrice] = useState<number | null>(null);
 
   const skipPersistRef = useRef(false);
+
+  const clearSetupExtras = useCallback(() => {
+    setGuestCountState(0);
+    setProductQuantities({});
+    setBasePrice(null);
+  }, []);
+
+  const clearSlotMeta = useCallback(() => {
+    setSlotDuration(null);
+    setSlotPrice(null);
+  }, []);
 
   const snapshot = useCallback(
     (): BookingUrlState => ({
@@ -68,37 +86,57 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     onPersist?.(snapshot());
   }, [snapshot, onPersist]);
 
-  const hydrate = useCallback((next: BookingUrlState) => {
-    skipPersistRef.current = true;
-    setStepId(next.stepId);
-    setCategoryId(next.categoryId);
-    setRoomId(next.roomId);
-    setCheckIn(next.checkIn);
-    setCheckOut(next.checkOut);
-    setBanyaDate(next.banyaDate);
-    setBanyaTimeFrom(next.banyaTimeFrom);
-    setBanyaTimeTo(next.banyaTimeTo);
-  }, []);
+  const hydrate = useCallback(
+    (
+      next: BookingUrlState,
+      slotMeta?: { duration: number | null; price: number | null } | null
+    ) => {
+      skipPersistRef.current = true;
+      setStepId(next.stepId);
+      setCategoryId(next.categoryId);
+      setRoomId(next.roomId);
+      setCheckIn(next.checkIn);
+      setCheckOut(next.checkOut);
+      setBanyaDate(next.banyaDate);
+      setBanyaTimeFrom(next.banyaTimeFrom);
+      setBanyaTimeTo(next.banyaTimeTo);
+      clearSetupExtras();
+      if (slotMeta) {
+        setSlotDuration(slotMeta.duration);
+        setSlotPrice(slotMeta.price);
+      } else {
+        clearSlotMeta();
+      }
+    },
+    [clearSetupExtras, clearSlotMeta]
+  );
 
   const title =
     stepId === "category"
       ? ROOT_TITLE
       : stepId === "setup"
         ? "Параметры"
-        : (categoryId && getCategoryConfig(categoryId)?.title) || ROOT_TITLE;
+        : stepId === "extras"
+          ? "Дополнительно"
+          : (categoryId && getCategoryConfig(categoryId)?.title) || ROOT_TITLE;
 
   const canGoBack = stepId !== "category";
 
-  const selectCategory = useCallback((id: BookingCategoryId) => {
-    setCategoryId(id);
-    setRoomId(null);
-    setCheckIn(null);
-    setCheckOut(null);
-    setBanyaDate(null);
-    setBanyaTimeFrom(null);
-    setBanyaTimeTo(null);
-    setStepId("object");
-  }, []);
+  const selectCategory = useCallback(
+    (id: BookingCategoryId) => {
+      setCategoryId(id);
+      setRoomId(null);
+      setCheckIn(null);
+      setCheckOut(null);
+      setBanyaDate(null);
+      setBanyaTimeFrom(null);
+      setBanyaTimeTo(null);
+      clearSetupExtras();
+      clearSlotMeta();
+      setStepId("object");
+    },
+    [clearSetupExtras, clearSlotMeta]
+  );
 
   const selectHome = useCallback(
     (payload: { roomId: string; checkIn: string; checkOut: string }) => {
@@ -108,9 +146,11 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       setBanyaDate(null);
       setBanyaTimeFrom(null);
       setBanyaTimeTo(null);
+      clearSetupExtras();
+      clearSlotMeta();
       setStepId("setup");
     },
-    []
+    [clearSetupExtras, clearSlotMeta]
   );
 
   const selectBanya = useCallback(
@@ -119,6 +159,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       date: string;
       timeFrom: string;
       timeTo: string;
+      duration?: number;
+      price?: number;
     }) => {
       setRoomId(payload.roomId);
       setBanyaDate(payload.date);
@@ -126,9 +168,18 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       setBanyaTimeTo(payload.timeTo);
       setCheckIn(null);
       setCheckOut(null);
+      clearSetupExtras();
+      setSlotDuration(
+        payload.duration != null && payload.duration > 0
+          ? payload.duration
+          : null
+      );
+      setSlotPrice(
+        payload.price != null && payload.price > 0 ? payload.price : null
+      );
       setStepId("setup");
     },
-    []
+    [clearSetupExtras]
   );
 
   const clearObjectSelection = useCallback(() => {
@@ -138,9 +189,37 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     setBanyaDate(null);
     setBanyaTimeFrom(null);
     setBanyaTimeTo(null);
+    clearSetupExtras();
+    clearSlotMeta();
+  }, [clearSetupExtras, clearSlotMeta]);
+
+  const setGuestCount = useCallback((next: number) => {
+    setGuestCountState(Math.max(0, next));
+    setBasePrice(null);
+  }, []);
+
+  const setProductQty = useCallback((productId: string, next: number) => {
+    setProductQuantities((prev) => {
+      const nextMap = { ...prev };
+      if (next <= 0) delete nextMap[productId];
+      else nextMap[productId] = next;
+      return nextMap;
+    });
+  }, []);
+
+  const setBasePriceResolved = useCallback((price: number) => {
+    setBasePrice(price);
+  }, []);
+
+  const continueFromSetup = useCallback(() => {
+    setStepId("extras");
   }, []);
 
   const back = useCallback(() => {
+    if (stepId === "extras") {
+      setStepId("setup");
+      return;
+    }
     if (stepId === "setup") {
       setStepId("object");
       clearObjectSelection();
@@ -169,6 +248,10 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
         clearObjectSelection();
         return;
       }
+      if (target === "setup") {
+        setStepId("setup");
+        return;
+      }
       setStepId(target);
     },
     [stepId, clearObjectSelection]
@@ -183,11 +266,20 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     banyaDate,
     banyaTimeFrom,
     banyaTimeTo,
+    slotDuration,
+    slotPrice,
+    guestCount,
+    productQuantities,
+    basePrice,
     title,
     canGoBack,
     selectCategory,
     selectHome,
     selectBanya,
+    setGuestCount,
+    setProductQty,
+    setBasePriceResolved,
+    continueFromSetup,
     back,
     goToStep,
     hydrate,

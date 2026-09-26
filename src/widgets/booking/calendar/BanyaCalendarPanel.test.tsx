@@ -95,6 +95,8 @@ describe("BanyaCalendarPanel", () => {
         date: format(day, "yyyy-MM-dd"),
         timeFrom: "12:00",
         timeTo: "15:00",
+        duration: 3,
+        price: expect.any(Number),
       })
     );
   });
@@ -163,5 +165,57 @@ describe("BanyaCalendarPanel", () => {
         screen.queryByRole("button", { name: "Повторить" })
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("shows slots error with retry and reloads", async () => {
+    const user = userEvent.setup();
+    loadRoomTimeSlots.mockRejectedValueOnce(new Error("slots fail"));
+    render(
+      <BookingToastProvider>
+        <BanyaCalendarPanel
+          room={room}
+          api={api}
+          roomName="Кедровая"
+          infoSlot={<p>info</p>}
+        />
+      </BookingToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(loadMonthlyAvailabilityForRoom).toHaveBeenCalled();
+    });
+
+    const nextMonth = addMonths(startOfMonth(new Date()), 1);
+    const day = setDate(nextMonth, 14);
+    await user.click(screen.getByRole("button", { name: "Следующий месяц" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: format(day, "d MMMM yyyy", { locale: ru }),
+      })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Не удалось загрузить слоты/)
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Повторить" })).toBeInTheDocument();
+
+    loadRoomTimeSlots.mockResolvedValueOnce([
+      {
+        timeFrom: "12:00",
+        timeTo: "15:00",
+        duration: 3,
+        price: 4500,
+        comment: "Стандарт",
+        isAvailable: true,
+      },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Повторить" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("3 ч")).toBeInTheDocument();
+    });
+    expect(loadRoomTimeSlots).toHaveBeenCalledTimes(2);
   });
 });

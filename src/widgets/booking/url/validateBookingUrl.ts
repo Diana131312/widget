@@ -13,7 +13,12 @@ import {
 } from "./bookingUrl";
 
 export type BookingUrlValidation =
-  | { ok: true; state: BookingUrlState }
+  | {
+      ok: true;
+      state: BookingUrlState;
+      /** Из matched-слота при validate бани (не в URL). */
+      slotMeta?: { duration: number | null; price: number | null } | null;
+    }
   | { ok: false; state: BookingUrlState; reason: string };
 
 function homeState(state: BookingUrlState): BookingUrlState {
@@ -211,6 +216,29 @@ async function validateBanyaSetup(
         reason: "Выбранный слот недоступен",
       };
     }
+
+    return {
+      ok: true,
+      state: {
+        ...DEFAULT_BOOKING_URL_STATE,
+        stepId: "setup",
+        categoryId: "banya",
+        roomId,
+        banyaDate,
+        banyaTimeFrom,
+        banyaTimeTo,
+      },
+      slotMeta: {
+        duration:
+          typeof match.duration === "number" && match.duration > 0
+            ? match.duration
+            : null,
+        price:
+          typeof match.price === "number" && match.price > 0
+            ? match.price
+            : null,
+      },
+    };
   } catch {
     return {
       ok: false,
@@ -218,17 +246,4 @@ async function validateBanyaSetup(
       reason: "Не удалось проверить слоты",
     };
   }
-
-  return {
-    ok: true,
-    state: {
-      ...DEFAULT_BOOKING_URL_STATE,
-      stepId: "setup",
-      categoryId: "banya",
-      roomId,
-      banyaDate,
-      banyaTimeFrom,
-      banyaTimeTo,
-    },
-  };
 }

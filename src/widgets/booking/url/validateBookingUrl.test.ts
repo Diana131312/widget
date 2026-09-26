@@ -166,6 +166,9 @@ describe("validateBookingUrl", () => {
       roomId: "b1",
       banyaTimeFrom: "12:00",
     });
+    if (result.ok) {
+      expect(result.slotMeta).toEqual({ duration: 3, price: 4500 });
+    }
   });
 
   it("rejects unavailable banya slot", async () => {

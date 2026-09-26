@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BookingHeader } from "../header/BookingHeader";
 import type { BookingStepId } from "../types";
 
@@ -20,6 +20,10 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
   onStepClick,
   children,
 }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [stepId]);
+
   return (
     <div className="booking-layout">
       <BookingHeader

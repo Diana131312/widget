@@ -26,6 +26,8 @@ type StepObjectProps = {
     date: string;
     timeFrom: string;
     timeTo: string;
+    duration?: number;
+    price?: number;
   }) => void;
 };
 
@@ -200,12 +202,21 @@ export const StepObject: React.FC<StepObjectProps> = ({
                       enabled={enabled}
                       roomName={room.name}
                       infoSlot={<BanyaInfo room={room} />}
-                      onContinue={({ room: r, date, timeFrom, timeTo }) =>
+                      onContinue={({
+                        room: r,
+                        date,
+                        timeFrom,
+                        timeTo,
+                        duration,
+                        price,
+                      }) =>
                         onSelectBanya({
                           roomId: r.id,
                           date,
                           timeFrom,
                           timeTo,
+                          duration,
+                          price,
                         })
                       }
                     />

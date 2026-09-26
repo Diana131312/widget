@@ -6,12 +6,12 @@ import { BOOKING_ALIAS } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
 import { StepCategory } from "./steps/StepCategory";
 import { StepObject } from "./steps/StepObject";
+import { StepSetup } from "./steps/StepSetup";
 import { BootstrapError } from "./ui/BootstrapError";
 import { BookingLoader } from "./ui/BookingLoader";
 import { BookingToastProvider, useBookingToast } from "./ui/ToastContext";
 import { useBookingFlow } from "./useBookingFlow";
 import {
-  bookingUrlStateEquals,
   parseBookingUrl,
   writeBookingUrl,
   type BookingUrlState,
@@ -26,16 +26,26 @@ function BookingWidgetInner() {
   const {
     stepId,
     categoryId,
+    roomId,
     checkIn,
     checkOut,
     banyaDate,
     banyaTimeFrom,
     banyaTimeTo,
+    slotDuration,
+    slotPrice,
+    guestCount,
+    productQuantities,
+    basePrice,
     title,
     canGoBack,
     selectCategory,
     selectHome,
     selectBanya,
+    setGuestCount,
+    setProductQty,
+    setBasePriceResolved,
+    continueFromSetup,
     back,
     goToStep,
     hydrate,
@@ -71,10 +81,9 @@ function BookingWidgetInner() {
         hydrate(result.state);
         writeBookingUrl(result.state);
         showToast(result.reason);
-      } else if (!bookingUrlStateEquals(result.state, urlCandidate)) {
-        hydrate(result.state);
-        writeBookingUrl(result.state);
       } else {
+        // slotMeta с matched-слота — иначе F5/deep-link теряет duration/price
+        hydrate(result.state, result.slotMeta ?? null);
         writeBookingUrl(result.state);
       }
       setUrlReady(true);
@@ -105,19 +114,30 @@ function BookingWidgetInner() {
             onSelectBanya={selectBanya}
           />
         )}
-        {stepId === "setup" && (
+        {stepId === "setup" && categoryId && config && roomId && (
+          <StepSetup
+            categoryId={categoryId}
+            config={config}
+            roomId={roomId}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            banyaDate={banyaDate}
+            banyaTimeFrom={banyaTimeFrom}
+            banyaTimeTo={banyaTimeTo}
+            slotDuration={slotDuration}
+            slotPrice={slotPrice}
+            guestCount={guestCount}
+            productQuantities={productQuantities}
+            basePrice={basePrice}
+            onGuestCountChange={setGuestCount}
+            onSetProductQty={setProductQty}
+            onBasePriceResolved={setBasePriceResolved}
+            onContinue={continueFromSetup}
+          />
+        )}
+        {stepId === "extras" && (
           <p className="booking-header__step">
-            Параметры бронирования
-            {checkIn && checkOut
-              ? `: ${checkIn} → ${checkOut}`
-              : banyaDate
-                ? `: ${banyaDate}${
-                    banyaTimeFrom && banyaTimeTo
-                      ? ` · ${banyaTimeFrom}–${banyaTimeTo}`
-                      : ""
-                  }`
-                : ""}{" "}
-            — следующий шаг миграции.
+            Дополнительные услуги — следующий шаг миграции.
           </p>
         )}
       </>

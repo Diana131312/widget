@@ -41,6 +41,7 @@ type Props = {
   hasError?: boolean;
   selectedIndex: number | null;
   onSelect: (slot: RoomTimeSlot, index: number) => void;
+  onRetry?: () => void;
 };
 
 export const BanyaTimeSlots: React.FC<Props> = ({
@@ -49,24 +50,65 @@ export const BanyaTimeSlots: React.FC<Props> = ({
   hasError = false,
   selectedIndex,
   onSelect,
+  onRetry,
 }) => {
   const groups = useMemo(() => groupSlotsByComment(slots), [slots]);
 
   if (isLoading) {
-    return <p className="booking-slots__status">Загрузка слотов…</p>;
+    return (
+      <div
+        className="booking-slots__state booking-slots__state--loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div className="booking-slots__spinner" aria-hidden />
+        <p className="booking-slots__state-title">Загрузка слотов</p>
+        <p className="booking-slots__state-detail">
+          Подбираем свободное время на выбранную дату
+        </p>
+        <ul className="booking-slots__skeleton" aria-hidden>
+          <li className="booking-slots__skeleton-item" />
+          <li className="booking-slots__skeleton-item" />
+          <li className="booking-slots__skeleton-item" />
+        </ul>
+      </div>
+    );
   }
 
   if (hasError) {
     return (
-      <p className="booking-slots__status booking-slots__status--error">
-        Не удалось загрузить слоты
-      </p>
+      <div
+        className="booking-slots__state booking-slots__state--error"
+        role="alert"
+      >
+        <p className="booking-slots__state-title">
+          Не удалось загрузить слоты
+        </p>
+        <p className="booking-slots__state-detail">
+          Проверьте соединение и попробуйте ещё раз
+        </p>
+        {onRetry ? (
+          <button
+            type="button"
+            className="booking-slots__retry"
+            onClick={onRetry}
+          >
+            Повторить
+          </button>
+        ) : null}
+      </div>
     );
   }
 
   if (slots.length === 0) {
     return (
-      <p className="booking-slots__status">На эту дату нет свободных слотов</p>
+      <div className="booking-slots__state" role="status">
+        <p className="booking-slots__state-title">Нет свободных слотов</p>
+        <p className="booking-slots__state-detail">
+          Выберите другую дату в календаре
+        </p>
+      </div>
     );
   }
 

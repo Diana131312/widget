@@ -55,6 +55,7 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
   const [slots, setSlots] = useState<RoomTimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState(false);
+  const [slotsReloadToken, setSlotsReloadToken] = useState(0);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
     null
   );
@@ -108,7 +109,6 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
         if (cancelled) return;
         setSlotsError(true);
         setSlots([]);
-        showToast("Не удалось загрузить слоты. Попробуйте позже.");
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -117,7 +117,7 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [api, room.id, selectedDate, slotsOpen, showToast]);
+  }, [api, room.id, selectedDate, slotsOpen, slotsReloadToken]);
 
   const selectedLabel = useMemo(() => {
     if (!selectedDate) return null;
@@ -143,6 +143,10 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
 
   const handleRetryOccupancy = () => {
     setReloadToken((n) => n + 1);
+  };
+
+  const handleRetrySlots = () => {
+    setSlotsReloadToken((n) => n + 1);
   };
 
   const handleBackToCalendar = () => {
@@ -211,6 +215,7 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
               hasError={slotsError}
               selectedIndex={selectedSlotIndex}
               onSelect={(_slot, index) => setSelectedSlotIndex(index)}
+              onRetry={handleRetrySlots}
             />
 
             <button
