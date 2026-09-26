@@ -75,7 +75,7 @@ describe("BookingWidget", () => {
   it("starts on category step without back", () => {
     render(<BookingWidget />);
 
-    expect(screen.getByText("Шаг 1 из 5")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Бронирование" })
     ).toBeInTheDocument();
@@ -92,13 +92,13 @@ describe("BookingWidget", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Дома" })).toBeInTheDocument();
     });
-    expect(screen.getByText("Шаг 2 из 5")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2 из 4")).toBeInTheDocument();
     expect(screen.getByText("Мята")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Назад" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
 
-    expect(screen.getByText("Шаг 1 из 5")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Бронирование" })
     ).toBeInTheDocument();

@@ -16,7 +16,7 @@ describe("getStepIndex", () => {
 });
 
 describe("BOOKING_STEPS", () => {
-  it("has 5 steps", () => {
-    expect(BOOKING_STEPS).toHaveLength(5);
+  it("has 4 visible steps (extras hidden)", () => {
+    expect(BOOKING_STEPS).toHaveLength(4);
   });
 });

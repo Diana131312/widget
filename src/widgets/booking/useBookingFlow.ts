@@ -116,8 +116,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       ? ROOT_TITLE
       : stepId === "setup"
         ? "Параметры"
-        : stepId === "extras"
-          ? "Дополнительно"
+        : stepId === "checkout" || stepId === "extras"
+          ? "Оформление"
           : (categoryId && getCategoryConfig(categoryId)?.title) || ROOT_TITLE;
 
   const canGoBack = stepId !== "category";
@@ -212,11 +212,18 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   }, []);
 
   const continueFromSetup = useCallback(() => {
-    setStepId("extras");
+    // extras (мультикорзина) временно пропускаем
+    setStepId("checkout");
   }, []);
 
+  const startOver = useCallback(() => {
+    setStepId("category");
+    setCategoryId(null);
+    clearObjectSelection();
+  }, [clearObjectSelection]);
+
   const back = useCallback(() => {
-    if (stepId === "extras") {
+    if (stepId === "checkout" || stepId === "extras") {
       setStepId("setup");
       return;
     }
@@ -252,6 +259,10 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
         setStepId("setup");
         return;
       }
+      if (target === "extras") {
+        // временно недоступен
+        return;
+      }
       setStepId(target);
     },
     [stepId, clearObjectSelection]
@@ -280,6 +291,7 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     setProductQty,
     setBasePriceResolved,
     continueFromSetup,
+    startOver,
     back,
     goToStep,
     hydrate,

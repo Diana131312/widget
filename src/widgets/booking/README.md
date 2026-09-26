@@ -43,7 +43,9 @@
 - `steps/StepCategory.tsx` — шаг 1
 - `steps/StepObject.tsx` — шаг 2 (список домов/бань)
 - `steps/StepSetup.tsx` — шаг 3 (каталог допов + расчёт + гости)
+- `steps/StepCheckout.tsx` — шаг 4 (контакт + save; extras временно пропущен)
 - `setup/` — groupProducts, каталог A, calculate, isExtraGuestProduct
+- `checkout/` — phone utils, contact fields, save payload
 - `cards/ObjectCard.tsx` — общая настраиваемая карточка
 - `media/` — карусель, модалка, кеш изображений
 - `calendar/` — календари домов/бань, слоты, rangeLogic
@@ -72,7 +74,7 @@
 
 ## TODO — открыто
 
-Сделано: шаги 1–3 (категория, объект, setup: каталог A, расчёт, гости=0, доп.гость по имени).
+Сделано: шаги 1–3 + checkout (extras/мультикорзина временно пропущен: setup → checkout).
 
 ### P0 — чинить отдельно (см. обсуждение)
 
@@ -91,8 +93,8 @@
 - [ ] Выровнять семантику пустых `roomIds` / `dailyRoomIds` в `groupProducts`
 - [ ] Тесты: hydrate без slot meta; total=0 без fallback блокирует Next; clamp extras к вместимости
 - [ ] Локальные копии `calendar/services` вместо re-export из stepper — см. ниже
-- [ ] Шаг `extras` (cross-sell) после setup
-- [ ] Шаг `checkout`
+- [ ] Шаг `extras` (мультикорзина / cross-sell) между setup и checkout
+- [x] Шаг `checkout` (контакт + saveRoomBooking / dailySave)
 - [ ] При новых данных экрана — дописать `STEP_DATA_NEEDS`
 
 ## Почему `calendar/services` ↔ stepper — риск

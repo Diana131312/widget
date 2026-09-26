@@ -15,7 +15,7 @@ describe("BookingHeader", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
-    expect(screen.getByText("Шаг 1 из 5")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Бронирование" })).toBeInTheDocument();
   });
 
@@ -33,7 +33,7 @@ describe("BookingHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Шаг 2 из 5")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2 из 4")).toBeInTheDocument();
   });
 
   it("marks current step with aria-current and past steps as buttons", () => {

@@ -158,6 +158,28 @@ describe("useBookingFlow", () => {
     expect(result.current.slotPrice).toBeNull();
   });
 
+  it("continueFromSetup goes to checkout (extras skipped)", () => {
+    const { result } = renderHook(() =>
+      useBookingFlow({
+        initial: {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "setup",
+          categoryId: "banya",
+          roomId: "b1",
+          banyaDate: "2026-10-07",
+          banyaTimeFrom: "12:00",
+          banyaTimeTo: "15:00",
+        },
+      })
+    );
+
+    act(() => {
+      result.current.continueFromSetup();
+    });
+
+    expect(result.current.stepId).toBe("checkout");
+  });
+
   it("goToStep only allows past steps", () => {
     const { result } = renderHook(() =>
       useBookingFlow({
@@ -178,7 +200,7 @@ describe("useBookingFlow", () => {
     expect(result.current.stepId).toBe("setup");
 
     act(() => {
-      result.current.goToStep("extras");
+      result.current.goToStep("checkout");
     });
     expect(result.current.stepId).toBe("setup");
 

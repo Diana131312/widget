@@ -5,6 +5,7 @@ import { useBookingBootstrap } from "./bootstrap/useBookingBootstrap";
 import { BOOKING_ALIAS } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
 import { StepCategory } from "./steps/StepCategory";
+import { StepCheckout } from "./steps/StepCheckout";
 import { StepObject } from "./steps/StepObject";
 import { StepSetup } from "./steps/StepSetup";
 import { BootstrapError } from "./ui/BootstrapError";
@@ -46,6 +47,7 @@ function BookingWidgetInner() {
     setProductQty,
     setBasePriceResolved,
     continueFromSetup,
+    startOver,
     back,
     goToStep,
     hydrate,
@@ -135,11 +137,28 @@ function BookingWidgetInner() {
             onContinue={continueFromSetup}
           />
         )}
-        {stepId === "extras" && (
-          <p className="booking-header__step">
-            Дополнительные услуги — следующий шаг миграции.
-          </p>
-        )}
+        {stepId === "checkout" &&
+          categoryId &&
+          config &&
+          roomId &&
+          basePrice != null &&
+          basePrice > 0 &&
+          guestCount >= 1 && (
+            <StepCheckout
+              categoryId={categoryId}
+              config={config}
+              roomId={roomId}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              banyaDate={banyaDate}
+              banyaTimeFrom={banyaTimeFrom}
+              banyaTimeTo={banyaTimeTo}
+              guestCount={guestCount}
+              productQuantities={productQuantities}
+              basePrice={basePrice}
+              onStartOver={startOver}
+            />
+          )}
       </>
     );
   }

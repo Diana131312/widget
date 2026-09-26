@@ -9,7 +9,7 @@ import {
 function isStepId(value: unknown): value is BookingStepId {
   return (
     typeof value === "string" &&
-    BOOKING_STEPS.some((s) => s.id === value)
+    (BOOKING_STEPS.some((s) => s.id === value) || value === "extras")
   );
 }
 

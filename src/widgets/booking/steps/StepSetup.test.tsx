@@ -235,7 +235,7 @@ describe("StepSetup", () => {
 
     expect(screen.getByText(/Подробный расчёт/)).toBeInTheDocument();
     expect(screen.getByText("Кедровая")).toBeInTheDocument();
-    expect(screen.getAllByText("Стоимость бани").length).toBeGreaterThan(0);
+    expect(screen.getByText("Стоимость")).toBeInTheDocument();
     expect(screen.getByText("Итого")).toBeInTheDocument();
     expect(screen.getAllByText(/4[\s\u00a0]?500/).length).toBeGreaterThan(0);
 
@@ -336,6 +336,6 @@ describe("StepSetup", () => {
       expect(screen.getByRole("button", { name: /Далее/ })).not.toBeDisabled();
     });
     expect(screen.getByText("Дом у озера")).toBeInTheDocument();
-    expect(screen.getByText("Проживание")).toBeInTheDocument();
+    expect(screen.getByText("Стоимость")).toBeInTheDocument();
   });
 });
