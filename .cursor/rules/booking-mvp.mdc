@@ -1,0 +1,53 @@
+---
+description: MVP booking widget — protect old stepper, work only in booking/
+alwaysApply: true
+---
+
+# Booking MVP isolation
+
+## Response ritual
+
+Every assistant reply in this project MUST start with exactly:
+
+Помню про правила
+
+Do this before any other text (including tool summaries).
+
+## Goal
+
+Build a clean MVP widget under `src/widgets/booking/`, then eventually replace `src/widgets/stepper/`. Do not break or rewrite the old widget while migrating.
+
+## Allowed writes
+
+- Create and edit files only under `src/widgets/booking/**`
+- New styles only under `src/widgets/booking/**` (e.g. `booking.css`, colocated CSS modules)
+- Minimal entry wiring only: `src/App.tsx`, `src/main.tsx`, `src/widgets/index.ts` — only to mount/export the booking widget, without changing stepper behavior
+
+## Forbidden writes (read / import only)
+
+- `src/widgets/stepper/**`
+- `src/components/ui/**`
+- `src/lib/**`
+- `src/styles.css`
+- `src/widgets/stepper/stepper.css`
+
+Do not edit, refactor, delete, or “improve” these paths. If a shared UI/lib piece is needed, copy or reimplement it inside `src/widgets/booking/`.
+
+## Migration practice
+
+- Prefer importing reusable logic from stepper for speed, then replace with clean local versions step by step
+- Do not copy the whole stepper tree into booking in one go
+- Do not remove `stepper` until the user explicitly asks
+
+## Examples
+
+```text
+❌ Edit src/components/ui/button.tsx for booking styles
+✅ Create src/widgets/booking/ui/Button.tsx (or booking.css tokens)
+
+❌ Patch stepper.css
+✅ Add src/widgets/booking/booking.css
+
+❌ “Quick fix” in StepperWidget.tsx
+✅ Change only BookingWidget under src/widgets/booking/
+```

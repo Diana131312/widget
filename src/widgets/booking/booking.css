@@ -1,0 +1,230 @@
+/**
+ * Токены с https://les174.com/ (Tilda): Georgia, бренд #485548.
+ * Скоуп только внутри .booking-widget — глобальные стили не трогаем.
+ */
+.booking-widget {
+  --bk-font: Georgia, "Times New Roman", Times, serif;
+  --bk-font-size: 16px;
+
+  --bk-ink: #485548;
+  --bk-ink-dark: #293329;
+  --bk-ink-soft: #5a6b5a;
+  --bk-cream: #fffddd;
+  --bk-accent: #c9c928;
+
+  --bk-bg: #f3f3f3;
+  --bk-surface: #ffffff;
+  --bk-muted: #f0f0f0;
+  --bk-border: #e5e7eb;
+  --bk-text-muted: #6b7280;
+
+  --bk-radius: 12px;
+  --bk-radius-lg: 16px;
+  --bk-content-max: 800px;
+  --bk-page-pad: 20px;
+
+  --bk-title: 18px;
+  --bk-body: 16px;
+  --bk-caption: 14px;
+  --bk-small: 12px;
+  --bk-card-title: 20px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--bk-content-max);
+  min-height: 100%;
+  margin-inline: auto;
+  font-family: var(--bk-font);
+  font-size: var(--bk-font-size);
+  color: var(--bk-ink-dark);
+  background: transparent;
+  line-height: 1.45;
+}
+
+.booking-widget *,
+.booking-widget *::before,
+.booking-widget *::after {
+  box-sizing: border-box;
+}
+
+/* ——— Layout: одна карточка ——— */
+.booking-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 100%;
+  background: var(--bk-surface);
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius-lg);
+  box-shadow: 0 1px 2px rgba(41, 51, 41, 0.06);
+  overflow: hidden;
+}
+
+.booking-layout__main {
+  flex: 1 1 auto;
+  padding: var(--bk-page-pad);
+}
+
+@media (min-width: 768px) {
+  .booking-layout__main {
+    padding: 28px;
+  }
+}
+
+/* ——— Header / stepper ——— */
+.booking-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 12px 16px;
+  background: transparent;
+}
+
+.booking-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+  min-width: 0;
+}
+
+.booking-header__back {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--bk-border);
+  background: var(--bk-surface);
+  color: var(--bk-ink);
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.booking-header__step {
+  margin: 0;
+  font-size: var(--bk-small);
+  font-weight: 500;
+  color: var(--bk-text-muted);
+  white-space: nowrap;
+}
+
+.booking-header__title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: min(50%, 280px);
+  font-size: var(--bk-title);
+  font-weight: 700;
+  color: var(--bk-ink);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.booking-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px 12px;
+  background: transparent;
+}
+
+.booking-steps__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bk-muted);
+  border: none;
+  padding: 0;
+}
+
+.booking-steps__dot--done,
+.booking-steps__dot--current {
+  background: var(--bk-ink);
+}
+
+.booking-steps__dot--current {
+  box-shadow: 0 0 0 3px rgba(72, 85, 72, 0.2);
+}
+
+.booking-steps__line {
+  flex: 0 0 18px;
+  height: 1px;
+  background: var(--bk-border);
+}
+
+.booking-steps__line--done {
+  background: var(--bk-ink);
+}
+
+/* ——— Category home ——— */
+.booking-home__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .booking-home__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+.booking-category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 160px;
+  padding: 24px 16px;
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius-lg);
+  background: var(--bk-surface);
+  color: var(--bk-ink);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.booking-category-card:hover {
+  border-color: var(--bk-ink);
+  box-shadow: 0 6px 18px rgba(72, 85, 72, 0.12);
+  transform: translateY(-1px);
+}
+
+.booking-category-card:active {
+  transform: translateY(0);
+}
+
+.booking-category-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(72, 85, 72, 0.08);
+  color: var(--bk-ink);
+}
+
+.booking-category-card__caption {
+  font-size: var(--bk-caption);
+  font-weight: 500;
+  color: var(--bk-ink);
+  text-align: center;
+}
