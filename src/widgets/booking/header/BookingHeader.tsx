@@ -6,14 +6,17 @@ type BookingHeaderProps = {
   title: string;
   onBack?: () => void;
   canGoBack?: boolean;
+  /** Переход только на прошлые шаги (точки с индексом < текущего). */
+  onStepClick?: (stepId: BookingStepId) => void;
 };
 
-/** Верхняя панель + индикатор шагов. Без корзины и авторизации (см. README TODO). */
+/** Верхняя панель + индикатор шагов. Без корзины и авторизации (см. README). */
 export const BookingHeader: React.FC<BookingHeaderProps> = ({
   stepId,
   title,
   onBack,
   canGoBack = false,
+  onStepClick,
 }) => {
   const index = getStepIndex(stepId);
   const total = BOOKING_STEPS.length;
@@ -44,6 +47,14 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
         {BOOKING_STEPS.map((step, i) => {
           const done = i < index;
           const current = i === index;
+          const className = [
+            "booking-steps__dot",
+            done ? "booking-steps__dot--done" : "",
+            current ? "booking-steps__dot--current" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+
           return (
             <React.Fragment key={step.id}>
               {i > 0 && (
@@ -56,17 +67,22 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
                   aria-hidden
                 />
               )}
-              <span
-                className={[
-                  "booking-steps__dot",
-                  done ? "booking-steps__dot--done" : "",
-                  current ? "booking-steps__dot--current" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                title={step.title}
-                aria-current={current ? "step" : undefined}
-              />
+              {done ? (
+                <button
+                  type="button"
+                  className={className}
+                  title={step.title}
+                  aria-label={`Шаг: ${step.title}`}
+                  onClick={() => onStepClick?.(step.id)}
+                />
+              ) : (
+                <span
+                  className={className}
+                  title={step.title}
+                  aria-label={`Шаг: ${step.title}`}
+                  aria-current={current ? "step" : undefined}
+                />
+              )}
             </React.Fragment>
           );
         })}

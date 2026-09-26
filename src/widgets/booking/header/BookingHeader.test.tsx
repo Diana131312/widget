@@ -36,17 +36,46 @@ describe("BookingHeader", () => {
     expect(screen.getByText("Шаг 2 из 5")).toBeInTheDocument();
   });
 
-  it("marks current step in progress nav", () => {
+  it("marks current step with aria-current and past steps as buttons", () => {
     const { container } = render(
-      <BookingHeader stepId="category" title="Бронирование" />
+      <BookingHeader stepId="setup" title="Параметры" />
     );
 
     const current = container.querySelectorAll(
       '.booking-steps__dot[aria-current="step"]'
     );
     expect(current).toHaveLength(1);
+
+    expect(
+      screen.getByRole("button", { name: "Шаг: Категория" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Шаг: Объект" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Шаг: Параметры" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Шаг: Дополнительно" })
+    ).not.toBeInTheDocument();
+
     expect(
       container.querySelectorAll(".booking-steps__dot")
     ).toHaveLength(BOOKING_STEPS.length);
+  });
+
+  it("calls onStepClick only for past steps", async () => {
+    const user = userEvent.setup();
+    const onStepClick = vi.fn();
+    render(
+      <BookingHeader
+        stepId="setup"
+        title="Параметры"
+        onStepClick={onStepClick}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Шаг: Категория" }));
+    expect(onStepClick).toHaveBeenCalledWith("category");
   });
 });

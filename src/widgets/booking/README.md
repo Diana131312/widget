@@ -4,7 +4,8 @@
 
 - Работать только в этой папке
 - Старый `../stepper` не менять — только читать/импортировать при необходимости
-- Стили — только локальные файлы здесь (`booking.css`)
+- Стили — только локальные файлы здесь (`booking.css`), корень `.bk-widget`
+- Alias API жёстко: `les` (`BOOKING_ALIAS`)
 
 ## Дизайн-токены (с les174.com)
 
@@ -17,6 +18,8 @@
 | Крем (лого) | `#fffddd` |
 | Фон | `#f3f3f3` |
 | Поверхность | `#ffffff` |
+| Календарь: свободно | `--bk-cal-free` (`#6b8f71`) |
+| Календарь: занято | `--bk-cal-busy` (`#b85c5c`) |
 
 ## Запуск
 
@@ -29,26 +32,59 @@
 
 ## Структура
 
-- `BookingWidget.tsx` — оркестратор
-- `useBookingFlow.ts` — состояние шагов / категории
-- `categories.ts` — конфиг категорий (карточки + title шапки)
-- `layout/BookingLayout.tsx` — одна карточка-каркас
+- `BookingWidget.tsx` — оркестратор (корень `.bk-widget`)
+- `useBookingFlow.ts` — UI-состояние шагов + sync в URL
+- `url/` — parse/write/validate deep link
+- `session/` — legacy sessionStorage (не используется виджетом)
+- `bootstrap/` — загрузка `getConfig`, гибкие `STEP_DATA_NEEDS`
+- `categories.ts` — конфиг категорий
+- `layout/BookingLayout.tsx` — карточка-каркас
 - `header/BookingHeader.tsx` — степпер без корзины/авторизации
 - `steps/StepCategory.tsx` — шаг 1
+- `steps/StepObject.tsx` — шаг 2 (список домов/бань)
+- `cards/ObjectCard.tsx` — общая настраиваемая карточка
+- `media/` — карусель, модалка, кеш изображений
+- `calendar/` — календари домов/бань, слоты, rangeLogic
+- `hooks/useNearViewport.ts` — lazy occupancy (±200px)
 - `booking.css` — токены и стили
 
-## TODO (общее)
+## Bootstrap и URL
 
-- [ ] **Корзина** в хедере — убрана из MVP UI
-- [ ] **Авторизация** («Войти» / кабинет) — убрана из MVP UI
-- [ ] Календарь / слоты, параметры брони, checkout
-- [ ] Подключение API (`alias`) как в старом виджете
+- **`useBookingBootstrap`** — `createWidgetApi({ alias: "les" }).getConfig()` в фоне. Лоадер только если шагу нужен `config` (`STEP_DATA_NEEDS`).
+- **Deep link (query)** — источник правды прогресса:
+  - `?bk_step=category`
+  - `?bk_step=object&bk_cat=homes|banya`
+  - `?bk_step=setup&bk_cat=homes&bk_room=…&bk_in=YYYY-MM-DD&bk_out=YYYY-MM-DD`
+  - `?bk_step=setup&bk_cat=banya&bk_room=…&bk_date=YYYY-MM-DD&bk_from=HH:mm&bk_to=HH:mm`
+- При загрузке setup-ссылки проверяются объект, даты/слот и занятость; при невалидности — откат на category/object + toast.
 
-## Исправить на шаге 2 (выбор объекта)
+## Потенциальные проблемы (не блокер MVP)
 
-- [ ] Убрать плейсхолдер текста из `BookingWidget` — сделать `StepObject` (дома / бани)
-- [ ] A11y точек прогресса: `aria-label` на каждой точке (сейчас в основном `title`)
-- [ ] Узкие экраны (≤360px): заголовок по центру не должен наезжать на «Шаг N из 5»
-- [ ] Коллизия CSS: в `src/styles.css` есть старый `.booking-widget` — проверить, что стили booking не конфликтуют; при необходимости усилить скоуп
-- [ ] При необходимости заменить иконку `Flame` на согласованную с заказчиком для бань
-- [ ] Расширить `useBookingFlow` под список объектов / выбранный roomId
+- [ ] Узкие экраны (≤360px): заголовок может наезжать на «Шаг N из 5»
+
+## Следующий выпуск (фичи)
+
+- [ ] Корзина в хедере
+- [ ] Авторизация / «Войти» в хедере
+
+## TODO — открыто
+
+Сделано: a11y точек прогресса (прошлые кликабельны + `aria-current`), `.bk-widget`, a11y карусели (клик по медиа, не nested button), lazy occupancy через IntersectionObserver ±200px, токены `--bk-cal-free` / `--bk-cal-busy`, `checkInTime`/`checkOutTime` у домов.
+
+Ещё открыто:
+
+- [ ] Локальные копии `calendar/services` вместо re-export из stepper — см. ниже
+- [ ] Шаг `setup` после выбора даты/диапазона/слота
+- [ ] При новых данных экрана — дописать `STEP_DATA_NEEDS`
+
+## Почему `calendar/services` ↔ stepper — риск
+
+`src/widgets/booking/calendar/services.ts` сейчас **не содержит своей логики** — только реэкспорт из `src/widgets/stepper/...` (`dailyOccupiedService`, `availabilityService`, `slotsService`, константы рабочего дня).
+
+Чем это плохо для MVP-изоляции:
+
+1. **Тихая поломка booking при правках stepper.** Любой рефактор/смена сигнатуры в старом виджете ломает booking без явного диффа в `booking/`.
+2. **Нельзя безопасно удалить stepper.** Пока booking зависит от этих модулей, stepper нельзя выкинуть даже после полной замены UI.
+3. **Смешение контрактов.** Stepper может начать тащить UI-специфику или другие зависимости — они протекут в booking через re-export.
+
+Что делать позже: скопировать нужные функции в `booking/calendar/` (или тонкие локальные обёртки над API), покрыть тестами, убрать импорты из `stepper/`. Пока не трогаем — только зафиксированный долг.

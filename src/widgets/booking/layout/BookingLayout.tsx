@@ -7,15 +7,17 @@ type BookingLayoutProps = {
   title: string;
   onBack?: () => void;
   canGoBack?: boolean;
+  onStepClick?: (stepId: BookingStepId) => void;
   children: React.ReactNode;
 };
 
-/** Каркас виджета: одна карточка (max-width на `.booking-widget`). */
+/** Каркас виджета: одна карточка (max-width на `.bk-widget`). */
 export const BookingLayout: React.FC<BookingLayoutProps> = ({
   stepId,
   title,
   onBack,
   canGoBack,
+  onStepClick,
   children,
 }) => {
   return (
@@ -25,6 +27,7 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
         title={title}
         onBack={onBack}
         canGoBack={canGoBack}
+        onStepClick={onStepClick}
       />
       <main className="booking-layout__main">{children}</main>
     </div>
