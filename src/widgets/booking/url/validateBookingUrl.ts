@@ -28,11 +28,15 @@ function homeState(state: BookingUrlState): BookingUrlState {
   };
 }
 
-function toObjectStep(categoryId: BookingUrlState["categoryId"]): BookingUrlState {
+function toObjectStep(
+  categoryId: BookingUrlState["categoryId"],
+  roomId: string | null = null
+): BookingUrlState {
   return {
     ...DEFAULT_BOOKING_URL_STATE,
     stepId: "object",
     categoryId,
+    roomId,
   };
 }
 
@@ -60,6 +64,29 @@ export async function validateBookingUrl(
   }
 
   if (stepId === "object") {
+    const roomId = candidate.roomId;
+    if (roomId) {
+      const exists =
+        categoryId === "homes"
+          ? (config.dailyRooms ?? []).some((r) => r.id === roomId)
+          : (config.rooms ?? []).some((r) => r.id === roomId);
+      if (!exists) {
+        return {
+          ok: false,
+          state: toObjectStep(categoryId),
+          reason: "Объект из ссылки не найден",
+        };
+      }
+      return {
+        ok: true,
+        state: {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "object",
+          categoryId,
+          roomId,
+        },
+      };
+    }
     return {
       ok: true,
       state: {
@@ -94,7 +121,7 @@ async function validateHomeSetup(
   if (!roomId || !checkIn || !checkOut) {
     return {
       ok: false,
-      state: toObjectStep(categoryId),
+      state: toObjectStep(categoryId, roomId ?? null),
       reason: "В ссылке неполный выбор дат",
     };
   }
@@ -187,7 +214,7 @@ async function validateBanyaSetup(
   if (!roomId || !banyaDate || !banyaTimeFrom || !banyaTimeTo) {
     return {
       ok: false,
-      state: toObjectStep(categoryId),
+      state: toObjectStep(categoryId, roomId ?? null),
       reason: "В ссылке неполный выбор слота",
     };
   }

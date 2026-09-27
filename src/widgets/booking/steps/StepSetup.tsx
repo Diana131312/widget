@@ -68,7 +68,8 @@ export const StepSetup: React.FC<Props> = ({
 
   const { maxGuests, name: roomName } = roomMeta;
   // TODO(prod): лимит из админки/товара — см. EXTRA_GUEST_HARD_LIMIT
-  const maxExtraGuests = getMaxExtraGuests(guestCount);
+  const maxExtraGuests = getMaxExtraGuests(guestCount, maxGuests);
+  const catalogLayout = /бер[её]з/i.test(roomName) ? "accordion" : "tabs";
 
   const catalog = useMemo(
     () => groupProductsForRoom(config, categoryId, roomId),
@@ -157,6 +158,7 @@ export const StepSetup: React.FC<Props> = ({
           quantities={productQuantities}
           onSetQuantity={onSetProductQty}
           tenantId={tenantId}
+          layout={catalogLayout}
         />
 
         <div className="booking-setup__guests">
@@ -196,14 +198,22 @@ export const StepSetup: React.FC<Props> = ({
           </div>
 
           {extra ? (
-            <div className="booking-setup__extra-guest">
+            <div
+              className={[
+                "booking-setup__extra-guest",
+                maxExtraGuests <= 0 ? "booking-setup__extra-guest--disabled" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-disabled={maxExtraGuests <= 0}
+            >
               <p className="booking-setup__extra-guest-name">{extra.name}</p>
               <div className="booking-qty">
                 <button
                   type="button"
                   className="booking-qty__btn"
                   onClick={() => onSetProductQty(extra.id, extraQty - 1)}
-                  disabled={extraQty <= 0}
+                  disabled={extraQty <= 0 || maxExtraGuests <= 0}
                   aria-label={`Убрать ${extra.name}`}
                 >
                   −
@@ -220,7 +230,7 @@ export const StepSetup: React.FC<Props> = ({
                       Math.min(maxExtraGuests, extraQty + 1)
                     )
                   }
-                  disabled={extraQty >= maxExtraGuests}
+                  disabled={extraQty >= maxExtraGuests || maxExtraGuests <= 0}
                   aria-label={`Добавить ${extra.name}`}
                 >
                   +

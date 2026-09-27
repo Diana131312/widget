@@ -58,6 +58,8 @@
 - **Deep link (query)** — источник правды прогресса:
   - `?bk_step=category`
   - `?bk_step=object&bk_cat=homes|banya`
+  - `?bk_step=object&bk_cat=banya&bk_room=…` — только эта баня/дом (+ «Посмотреть все бани/дома»)
+  - `?bk_cat=…&bk_room=…` без дат → автоматически шаг `object` с фокусом
   - `?bk_step=setup&bk_cat=homes&bk_room=…&bk_in=YYYY-MM-DD&bk_out=YYYY-MM-DD`
   - `?bk_step=setup&bk_cat=banya&bk_room=…&bk_date=YYYY-MM-DD&bk_from=HH:mm&bk_to=HH:mm`
 - При загрузке setup-ссылки проверяются объект, даты/слот и занятость; при невалидности — откат на category/object + toast.

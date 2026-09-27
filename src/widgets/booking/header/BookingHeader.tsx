@@ -1,4 +1,5 @@
 import React from "react";
+import { Home } from "lucide-react";
 import { BOOKING_STEPS, getStepIndex, type BookingStepId } from "../types";
 
 type BookingHeaderProps = {
@@ -6,6 +7,11 @@ type BookingHeaderProps = {
   title: string;
   onBack?: () => void;
   canGoBack?: boolean;
+  /** Режим одной карточки: иконка «домой» → шаг 1 */
+  showHome?: boolean;
+  onHome?: () => void;
+  /** Скрыть «Шаг N из M» (фокус на одну карточку) */
+  hideStepLabel?: boolean;
   /** Переход только на прошлые шаги (точки с индексом < текущего). */
   onStepClick?: (stepId: BookingStepId) => void;
 };
@@ -16,6 +22,9 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
   title,
   onBack,
   canGoBack = false,
+  showHome = false,
+  onHome,
+  hideStepLabel = false,
   onStepClick,
 }) => {
   const index = getStepIndex(stepId);
@@ -26,7 +35,17 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
     <div>
       <header className="booking-header">
         <div className="booking-header__left">
-          {canGoBack && (
+          {showHome && onHome ? (
+            <button
+              type="button"
+              className="booking-header__home"
+              onClick={onHome}
+              aria-label="На главную"
+              title="На главную"
+            >
+              <Home size={18} aria-hidden strokeWidth={2.25} />
+            </button>
+          ) : canGoBack ? (
             <button
               type="button"
               className="booking-header__back"
@@ -35,10 +54,12 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
             >
               ←
             </button>
-          )}
-          <p className="booking-header__step">
-            Шаг {stepNum} из {total}
-          </p>
+          ) : null}
+          {!hideStepLabel ? (
+            <p className="booking-header__step">
+              Шаг {stepNum} из {total}
+            </p>
+          ) : null}
         </div>
         <h2 className="booking-header__title">{title}</h2>
       </header>

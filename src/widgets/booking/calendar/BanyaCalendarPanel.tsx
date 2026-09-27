@@ -3,8 +3,10 @@ import { format, parseISO, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { RoomTimeSlot, WidgetApiClient, WidgetRoom } from "../../../api";
 import { useBookingToast } from "../ui/ToastContext";
+import { RoomNameWithCopy } from "../ui/RoomNameWithCopy";
 import { MonthlyCalendar } from "./MonthlyCalendar";
 import { BanyaTimeSlots } from "./BanyaTimeSlots";
+import { resolveBanyaSlotsVariant } from "./banyaSlotVariants";
 import {
   convertToMonthlyOccupancyData,
   loadMonthlyAvailabilityForRoom,
@@ -33,7 +35,8 @@ type Props = {
 };
 
 /**
- * Календарь бани + слайд к слотам (инфо|календарь → слоты).
+ * Календарь бани + слоты.
+ * По умолчанию — слайд; для «Берёзовой» (temp) — слоты под календарём.
  */
 export const BanyaCalendarPanel: React.FC<Props> = ({
   room,
@@ -44,6 +47,12 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
   onContinue,
 }) => {
   const { showToast } = useBookingToast();
+  const slotsVariant = useMemo(
+    () => resolveBanyaSlotsVariant(roomName),
+    [roomName]
+  );
+  const slotsBelow = slotsVariant === "promo-below";
+
   const [monthStart, setMonthStart] = useState(() => startOfMonth(new Date()));
   const [monthlyData, setMonthlyData] = useState<MonthlyOccupancyData>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,14 +128,23 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     };
   }, [api, room.id, selectedDate, slotsOpen, slotsReloadToken]);
 
-  const selectedLabel = useMemo(() => {
+  const selectedDateObj = useMemo(() => {
     if (!selectedDate) return null;
     try {
-      return format(parseISO(selectedDate), "d MMMM yyyy", { locale: ru });
+      return parseISO(selectedDate);
+    } catch {
+      return null;
+    }
+  }, [selectedDate]);
+
+  const selectedLabel = useMemo(() => {
+    if (!selectedDateObj) return null;
+    try {
+      return format(selectedDateObj, "d MMMM yyyy", { locale: ru });
     } catch {
       return selectedDate;
     }
-  }, [selectedDate]);
+  }, [selectedDate, selectedDateObj]);
 
   const selectedSlot =
     selectedSlotIndex != null ? slots[selectedSlotIndex] ?? null : null;
@@ -134,8 +152,10 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
   const handleDateClick = (date: Date) => {
     if (hasError || isLoading) return;
     const dateStr = format(date, "yyyy-MM-dd");
-    const h = mainRef.current?.offsetHeight;
-    if (h && h > 0) setLockedHeight(h);
+    if (!slotsBelow) {
+      const h = mainRef.current?.offsetHeight;
+      if (h && h > 0) setLockedHeight(h);
+    }
     setSelectedDate(dateStr);
     setSelectedSlotIndex(null);
     setSlotsOpen(true);
@@ -158,15 +178,77 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     setLockedHeight(null);
   };
 
+  const slotsPanel = slotsOpen ? (
+    <div className="booking-slots">
+      <div className="booking-slots__header">
+        {!slotsBelow ? (
+          <button
+            type="button"
+            className="booking-header__back"
+            onClick={handleBackToCalendar}
+            aria-label="Назад"
+          >
+            ←
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="booking-slots__back"
+            onClick={handleBackToCalendar}
+          >
+            Сбросить дату
+          </button>
+        )}
+        <p className="booking-slots__date">
+          {selectedLabel ?? "Выбор времени"}
+        </p>
+      </div>
+
+      <BanyaTimeSlots
+        slots={slots}
+        isLoading={slotsLoading}
+        hasError={slotsError}
+        selectedIndex={selectedSlotIndex}
+        onSelect={(_slot, index) => setSelectedSlotIndex(index)}
+        onRetry={handleRetrySlots}
+        variant={slotsVariant}
+      />
+
+      <button
+        type="button"
+        className="booking-cal__continue"
+        disabled={!selectedDate || !selectedSlot}
+        onClick={() => {
+          if (!selectedDate || !selectedSlot) return;
+          onContinue?.({
+            room,
+            date: selectedDate,
+            timeFrom: selectedSlot.timeFrom,
+            timeTo: selectedSlot.timeTo,
+            price: selectedSlot.price,
+            duration: selectedSlot.duration,
+          });
+        }}
+      >
+        Далее →
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div
       className={[
         "booking-banya-stage",
+        slotsBelow && "booking-banya-stage--below",
         slotsOpen && "booking-banya-stage--slots",
       ]
         .filter(Boolean)
         .join(" ")}
-      style={lockedHeight != null ? { minHeight: lockedHeight } : undefined}
+      style={
+        !slotsBelow && lockedHeight != null
+          ? { minHeight: lockedHeight }
+          : undefined
+      }
     >
       <div className="booking-banya-stage__track">
         <div
@@ -174,7 +256,11 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
           className="booking-banya-stage__panel booking-banya-stage__panel--main"
         >
           <div className="booking-object-card__info">
-            <h4 className="booking-object-card__name">{roomName}</h4>
+            <RoomNameWithCopy
+              name={roomName}
+              roomId={room.id}
+              categoryId="banya"
+            />
             {infoSlot}
           </div>
           <div className="booking-object-card__side">
@@ -185,7 +271,7 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
                 onMonthChange={setMonthStart}
                 isLoading={isLoading}
                 hasError={hasError}
-                selectedDate={null}
+                selectedDate={slotsBelow ? selectedDateObj : null}
                 onDateClick={handleDateClick}
                 onRetry={handleRetryOccupancy}
               />
@@ -193,51 +279,11 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="booking-banya-stage__panel booking-banya-stage__panel--slots">
-          <div className="booking-slots">
-            <div className="booking-slots__header">
-              <button
-                type="button"
-                className="booking-header__back"
-                onClick={handleBackToCalendar}
-                aria-label="Назад"
-              >
-                ←
-              </button>
-              <p className="booking-slots__date">
-                {selectedLabel ?? "Выбор времени"}
-              </p>
-            </div>
-
-            <BanyaTimeSlots
-              slots={slots}
-              isLoading={slotsLoading}
-              hasError={slotsError}
-              selectedIndex={selectedSlotIndex}
-              onSelect={(_slot, index) => setSelectedSlotIndex(index)}
-              onRetry={handleRetrySlots}
-            />
-
-            <button
-              type="button"
-              className="booking-cal__continue"
-              disabled={!selectedDate || !selectedSlot}
-              onClick={() => {
-                if (!selectedDate || !selectedSlot) return;
-                onContinue?.({
-                  room,
-                  date: selectedDate,
-                  timeFrom: selectedSlot.timeFrom,
-                  timeTo: selectedSlot.timeTo,
-                  price: selectedSlot.price,
-                  duration: selectedSlot.duration,
-                });
-              }}
-            >
-              Далее →
-            </button>
+        {(!slotsBelow || slotsOpen) && (
+          <div className="booking-banya-stage__panel booking-banya-stage__panel--slots">
+            {slotsPanel}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

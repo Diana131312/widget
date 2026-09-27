@@ -1,9 +1,13 @@
 import React, { useState } from "react";
+import type { BookingCategoryId } from "../types";
 import { BookingGalleryModal } from "../media/GalleryModal";
 import { BookingImageCarousel } from "../media/ImageCarousel";
+import { RoomNameWithCopy } from "../ui/RoomNameWithCopy";
 
 export type BookingObjectCardProps = {
   name: string;
+  roomId?: string;
+  categoryId?: BookingCategoryId;
   imageRefs: string[];
   tenantId: string | null;
   /** Блок текста/фич под названием (разный для дома и бани) */
@@ -28,6 +32,8 @@ export type BookingObjectCardProps = {
  */
 export const BookingObjectCard: React.FC<BookingObjectCardProps> = ({
   name,
+  roomId,
+  categoryId,
   imageRefs,
   tenantId,
   infoSlot,
@@ -39,6 +45,13 @@ export const BookingObjectCard: React.FC<BookingObjectCardProps> = ({
 }) => {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+
+  const title =
+    roomId && categoryId ? (
+      <RoomNameWithCopy name={name} roomId={roomId} categoryId={categoryId} />
+    ) : (
+      <h4 className="booking-object-card__name">{name}</h4>
+    );
 
   return (
     <>
@@ -64,7 +77,7 @@ export const BookingObjectCard: React.FC<BookingObjectCardProps> = ({
         ) : (
           <div className="booking-object-card__body">
             <div className="booking-object-card__info">
-              <h4 className="booking-object-card__name">{name}</h4>
+              {title}
               {infoSlot}
             </div>
 

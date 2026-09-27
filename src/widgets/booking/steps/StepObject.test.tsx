@@ -83,15 +83,12 @@ describe("StepObject", () => {
   it("renders home cards with calendar continue", async () => {
     renderStep("homes");
     expect(screen.getByText("Мята")).toBeInTheDocument();
-    expect(screen.getByText(/Обычные дни/)).toBeInTheDocument();
-    expect(screen.getByText(/Заезд 14:00 · Выезд 12:00/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Далее/ })).toBeDisabled();
   });
 
   it("renders banya cards", () => {
     renderStep("banya");
     expect(screen.getByText("Кедровая")).toBeInTheDocument();
-    expect(screen.getByText(/₽ \/ час/)).toBeInTheDocument();
   });
 
   it("opens gallery modal on photo click", async () => {

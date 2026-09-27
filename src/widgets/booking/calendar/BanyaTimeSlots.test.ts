@@ -13,7 +13,7 @@ function slot(partial: Partial<RoomTimeSlot> & Pick<RoomTimeSlot, "timeFrom">): 
   } as RoomTimeSlot;
 }
 
-describe("groupSlotsByComment", () => {
+describe("groupSlotsByComment (re-export)", () => {
   it("groups by server comment and keeps order", () => {
     const slots = [
       slot({ timeFrom: "10:00", comment: 'Акция "ЧАС В ПОДАРОК"' }),

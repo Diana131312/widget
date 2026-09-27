@@ -40,6 +40,7 @@ function BookingWidgetInner() {
     basePrice,
     title,
     canGoBack,
+    objectFocus,
     selectCategory,
     selectHome,
     selectBanya,
@@ -49,6 +50,7 @@ function BookingWidgetInner() {
     continueFromSetup,
     startOver,
     back,
+    showAllObjects,
     goToStep,
     hydrate,
   } = useBookingFlow({
@@ -112,6 +114,15 @@ function BookingWidgetInner() {
           <StepObject
             categoryId={categoryId}
             config={config}
+            focusRoomId={objectFocus ? roomId : null}
+            showAllLabel={
+              objectFocus
+                ? categoryId === "banya"
+                  ? "Посмотреть все бани"
+                  : "Посмотреть все дома"
+                : null
+            }
+            onShowAll={objectFocus ? showAllObjects : undefined}
             onSelectHome={selectHome}
             onSelectBanya={selectBanya}
           />
@@ -170,6 +181,9 @@ function BookingWidgetInner() {
         title={title}
         canGoBack={canGoBack}
         onBack={back}
+        showHome={objectFocus}
+        onHome={objectFocus ? startOver : undefined}
+        hideStepLabel={objectFocus}
         onStepClick={goToStep}
       >
         {body}

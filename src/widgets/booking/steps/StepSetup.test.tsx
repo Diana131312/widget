@@ -169,15 +169,15 @@ describe("StepSetup", () => {
 
     expect(screen.getByText("0/8")).toBeInTheDocument();
     expect(screen.getByText("Дополнительный гость")).toBeInTheDocument();
-    // guests=0 → нельзя купить доп. гостей
+    // гости не на максимуме → доп. гости недоступны
     expect(screen.getByText("0/0")).toBeInTheDocument();
   });
 
-  it("limits extra guests to hard cap of 2", async () => {
+  it("limits extra guests to hard cap of 2 after capacity is full", async () => {
     const user = userEvent.setup();
-    render(<Harness guestCount={6} />);
+    render(<Harness guestCount={8} />);
 
-    expect(screen.getByText("6/8")).toBeInTheDocument();
+    expect(screen.getByText("8/8")).toBeInTheDocument();
     expect(screen.getByText("0/2")).toBeInTheDocument();
 
     const addExtra = screen.getByRole("button", {
@@ -189,9 +189,9 @@ describe("StepSetup", () => {
     expect(addExtra).toBeDisabled();
   });
 
-  it("clamps extra guest qty when guests drop to 0", async () => {
+  it("clamps extra guest qty when guests drop below capacity", async () => {
     const user = userEvent.setup();
-    render(<Harness guestCount={3} productQuantities={{ p2: 2 }} />);
+    render(<Harness guestCount={8} productQuantities={{ p2: 2 }} />);
 
     expect(screen.getByText("2/2")).toBeInTheDocument();
 
@@ -199,11 +199,9 @@ describe("StepSetup", () => {
       name: "Уменьшить количество гостей",
     });
     await user.click(dec);
-    await user.click(dec);
-    await user.click(dec);
 
     await waitFor(() => {
-      expect(screen.getByText("0/8")).toBeInTheDocument();
+      expect(screen.getByText("7/8")).toBeInTheDocument();
       expect(screen.getByText("0/0")).toBeInTheDocument();
     });
   });
@@ -305,7 +303,7 @@ describe("StepSetup", () => {
     render(<Harness categoryId="homes" />);
 
     expect(screen.getByText("0/6")).toBeInTheDocument();
-    // MVP: hard limit 2 while guests ≥ 1; at 0 guests → 0
+    // доп. гости только после заполнения вместимости
     expect(screen.getByText("0/0")).toBeInTheDocument();
 
     await user.click(
@@ -319,7 +317,7 @@ describe("StepSetup", () => {
     );
 
     expect(screen.getByText("3/6")).toBeInTheDocument();
-    expect(screen.getByText("0/2")).toBeInTheDocument();
+    expect(screen.getByText("0/0")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(dailyCalculate).toHaveBeenCalledWith(

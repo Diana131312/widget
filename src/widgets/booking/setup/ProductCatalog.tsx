@@ -88,11 +88,44 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
+function ProductGrid({
+  products,
+  quantities,
+  onSetQuantity,
+  tenantId,
+}: {
+  products: WidgetProduct[];
+  quantities: Record<string, number>;
+  onSetQuantity: (productId: string, next: number) => void;
+  tenantId: string | null;
+}) {
+  if (products.length === 0) {
+    return (
+      <p className="booking-setup__empty">В этой категории пока нет товаров.</p>
+    );
+  }
+  return (
+    <div className="booking-product-grid">
+      {products.map((p) => (
+        <ProductCard
+          key={p.id}
+          product={p}
+          quantity={quantities[p.id] ?? 0}
+          onSetQuantity={onSetQuantity}
+          tenantId={tenantId}
+        />
+      ))}
+    </div>
+  );
+}
+
 type ProductCatalogProps = {
   groups: GroupWithProducts[];
   quantities: Record<string, number>;
   onSetQuantity: (productId: string, next: number) => void;
   tenantId: string | null;
+  /** accordion — группы свёрнуты (Берёзовая); tabs — плашки сверху */
+  layout?: "tabs" | "accordion";
 };
 
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
@@ -100,6 +133,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   quantities,
   onSetQuantity,
   tenantId,
+  layout = "tabs",
 }) => {
   const [activeGroupId, setActiveGroupId] = useState(ALL_ID);
 
@@ -123,6 +157,35 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       <p className="booking-setup__empty">
         Нет доступных дополнительных товаров в каталоге.
       </p>
+    );
+  }
+
+  if (layout === "accordion") {
+    return (
+      <div
+        className="booking-product-catalog booking-product-catalog--accordion"
+        aria-label="Дополнительные товары"
+      >
+        {groups.map(({ group, products }) => (
+          <details key={group.id} className="booking-product-acc">
+            <summary className="booking-product-acc__summary">
+              <span className="booking-product-acc__title">{group.name}</span>
+              <span className="booking-product-acc__count">
+                {products.length}
+              </span>
+              <span className="booking-product-acc__chevron" aria-hidden />
+            </summary>
+            <div className="booking-product-acc__body">
+              <ProductGrid
+                products={products}
+                quantities={quantities}
+                onSetQuantity={onSetQuantity}
+                tenantId={tenantId}
+              />
+            </div>
+          </details>
+        ))}
+      </div>
     );
   }
 
@@ -157,21 +220,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         </div>
       </div>
 
-      {visibleProducts.length === 0 ? (
-        <p className="booking-setup__empty">В этой категории пока нет товаров.</p>
-      ) : (
-        <div className="booking-product-grid">
-          {visibleProducts.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              quantity={quantities[p.id] ?? 0}
-              onSetQuantity={onSetQuantity}
-              tenantId={tenantId}
-            />
-          ))}
-        </div>
-      )}
+      <ProductGrid
+        products={visibleProducts}
+        quantities={quantities}
+        onSetQuantity={onSetQuantity}
+        tenantId={tenantId}
+      />
     </div>
   );
 };

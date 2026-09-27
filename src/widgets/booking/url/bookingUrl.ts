@@ -49,7 +49,7 @@ export function parseBookingUrl(
   );
 
   const stepRaw = readParam(params, "step");
-  const stepId: BookingStepId =
+  let stepId: BookingStepId =
     stepRaw && STEPS.has(stepRaw as BookingStepId)
       ? (stepRaw as BookingStepId)
       : "category";
@@ -60,16 +60,64 @@ export function parseBookingUrl(
       ? (catRaw as BookingCategoryId)
       : null;
 
+  const roomId = readParam(params, "room");
+  const checkIn = readParam(params, "in");
+  const checkOut = readParam(params, "out");
+  const banyaDate = readParam(params, "date");
+  const banyaTimeFrom = readParam(params, "from");
+  const banyaTimeTo = readParam(params, "to");
+
+  // Ссылка с id объекта без полного setup → шаг выбора объекта (фокус на одну карточку)
+  const hasSetupDates =
+    Boolean(checkIn && checkOut) ||
+    Boolean(banyaDate && banyaTimeFrom && banyaTimeTo);
+  if (
+    roomId &&
+    categoryId &&
+    !hasSetupDates &&
+    (stepId === "category" || stepId === "object")
+  ) {
+    stepId = "object";
+  }
+
   return {
     stepId,
     categoryId,
-    roomId: readParam(params, "room"),
-    checkIn: readParam(params, "in"),
-    checkOut: readParam(params, "out"),
-    banyaDate: readParam(params, "date"),
-    banyaTimeFrom: readParam(params, "from"),
-    banyaTimeTo: readParam(params, "to"),
+    roomId,
+    checkIn,
+    checkOut,
+    banyaDate,
+    banyaTimeFrom,
+    banyaTimeTo,
   };
+}
+
+/** Абсолютная ссылка на шаг object с фокусом на один объект. */
+export function buildObjectFocusUrl(
+  categoryId: BookingCategoryId,
+  roomId: string
+): string {
+  if (typeof window === "undefined") {
+    return `?bk_step=object&bk_cat=${categoryId}&bk_room=${encodeURIComponent(roomId)}`;
+  }
+  const url = new URL(window.location.href);
+  const keys = [
+    "step",
+    "cat",
+    "room",
+    "in",
+    "out",
+    "date",
+    "from",
+    "to",
+  ] as const;
+  for (const key of keys) {
+    url.searchParams.delete(`${PREFIX}${key}`);
+  }
+  url.searchParams.set(`${PREFIX}step`, "object");
+  url.searchParams.set(`${PREFIX}cat`, categoryId);
+  url.searchParams.set(`${PREFIX}room`, roomId);
+  return url.toString();
 }
 
 /** Запись в текущий URL через replaceState (остальные query-ключи не трогаем). */

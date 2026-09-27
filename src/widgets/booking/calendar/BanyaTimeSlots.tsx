@@ -1,5 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { RoomTimeSlot } from "../../../api";
+import {
+  groupItemsByComment,
+  groupSlotsByComment,
+  groupSlotsByDayPart,
+  splitPromoHourGiftSlots,
+  type BanyaSlotsVariant,
+  type SlotGroup,
+  type SlotGroupItem,
+} from "./banyaSlotVariants";
 
 function formatTimeRange(timeFrom: string, timeTo: string): string {
   if (timeTo === "23:59") return `${timeFrom} — 24:00`;
@@ -15,24 +24,101 @@ function formatRub(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
 }
 
-type SlotGroup = {
-  title: string;
-  items: Array<{ slot: RoomTimeSlot; index: number }>;
-};
+function SlotItemButton({
+  slot,
+  index,
+  selected,
+  onSelect,
+}: {
+  slot: RoomTimeSlot;
+  index: number;
+  selected: boolean;
+  onSelect: (slot: RoomTimeSlot, index: number) => void;
+}) {
+  const available = slot.isAvailable === true;
+  return (
+    <button
+      type="button"
+      className={[
+        "booking-slots__item",
+        !available && "booking-slots__item--disabled",
+        available && selected && "booking-slots__item--selected",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      disabled={!available}
+      aria-pressed={selected}
+      onClick={() => {
+        if (!available) return;
+        onSelect(slot, index);
+      }}
+    >
+      <span className="booking-slots__time-row">
+        <span className="booking-slots__time">
+          {formatTimeRange(slot.timeFrom, slot.timeTo)}
+        </span>
+        <span className="booking-slots__duration">
+          {formatDuration(slot.duration)}
+        </span>
+      </span>
+      {slot.price > 0 ? (
+        <span className="booking-slots__price">{formatRub(slot.price)} ₽</span>
+      ) : null}
+    </button>
+  );
+}
 
-/** Группы по comment с сервера (порядок первого появления). */
-export function groupSlotsByComment(slots: RoomTimeSlot[]): SlotGroup[] {
-  const map = new Map<string, SlotGroup>();
-  slots.forEach((slot, index) => {
-    const title = (slot.comment ?? "").trim() || "Стандарт";
-    const existing = map.get(title);
-    if (existing) {
-      existing.items.push({ slot, index });
-    } else {
-      map.set(title, { title, items: [{ slot, index }] });
-    }
-  });
-  return Array.from(map.values());
+function SlotStaticGroups({
+  groups,
+  selectedIndex,
+  onSelect,
+}: {
+  groups: SlotGroup[];
+  selectedIndex: number | null;
+  onSelect: (slot: RoomTimeSlot, index: number) => void;
+}) {
+  return (
+    <div className="booking-slots__groups" aria-label="Слоты времени">
+      {groups.map((group) => (
+        <section
+          key={group.title}
+          className="booking-slots__group booking-slots__group--static"
+        >
+          <h5 className="booking-slots__group-title">{group.title}</h5>
+          <SlotList
+            items={group.items}
+            selectedIndex={selectedIndex}
+            onSelect={onSelect}
+          />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function SlotList({
+  items,
+  selectedIndex,
+  onSelect,
+}: {
+  items: SlotGroupItem[];
+  selectedIndex: number | null;
+  onSelect: (slot: RoomTimeSlot, index: number) => void;
+}) {
+  return (
+    <ul className="booking-slots__list">
+      {items.map(({ slot, index }) => (
+        <li key={`${slot.timeFrom}-${slot.timeTo}-${index}`}>
+          <SlotItemButton
+            slot={slot}
+            index={index}
+            selected={selectedIndex === index}
+            onSelect={onSelect}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 type Props = {
@@ -42,6 +128,8 @@ type Props = {
   selectedIndex: number | null;
   onSelect: (slot: RoomTimeSlot, index: number) => void;
   onRetry?: () => void;
+  /** Временные варианты: dayparts / promo-below / default */
+  variant?: BanyaSlotsVariant;
 };
 
 export const BanyaTimeSlots: React.FC<Props> = ({
@@ -51,8 +139,22 @@ export const BanyaTimeSlots: React.FC<Props> = ({
   selectedIndex,
   onSelect,
   onRetry,
+  variant = "default",
 }) => {
-  const groups = useMemo(() => groupSlotsByComment(slots), [slots]);
+  const [showOthers, setShowOthers] = useState(false);
+
+  const commentGroups = useMemo(() => groupSlotsByComment(slots), [slots]);
+  const dayPartGroups = useMemo(() => groupSlotsByDayPart(slots), [slots]);
+  const promoSplit = useMemo(() => splitPromoHourGiftSlots(slots), [slots]);
+
+  // Сброс «показать другие» при смене набора слотов (другая дата).
+  const slotsKey = useMemo(
+    () => slots.map((s) => `${s.timeFrom}-${s.timeTo}-${s.comment}`).join("|"),
+    [slots]
+  );
+  useEffect(() => {
+    setShowOthers(false);
+  }, [slotsKey]);
 
   if (isLoading) {
     return (
@@ -112,53 +214,75 @@ export const BanyaTimeSlots: React.FC<Props> = ({
     );
   }
 
-  return (
-    <div className="booking-slots__groups" aria-label="Слоты времени">
-      {groups.map((group) => (
-        <section key={group.title} className="booking-slots__group">
-          <h5 className="booking-slots__group-title">{group.title}</h5>
-          <ul className="booking-slots__list">
-            {group.items.map(({ slot, index }) => {
-              const available = slot.isAvailable === true;
-              const selected = selectedIndex === index;
-              return (
-                <li key={`${slot.timeFrom}-${slot.timeTo}-${index}`}>
-                  <button
-                    type="button"
-                    className={[
-                      "booking-slots__item",
-                      !available && "booking-slots__item--disabled",
-                      available && selected && "booking-slots__item--selected",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={!available}
-                    aria-pressed={selected}
-                    onClick={() => {
-                      if (!available) return;
-                      onSelect(slot, index);
-                    }}
-                  >
-                    <span className="booking-slots__time-row">
-                      <span className="booking-slots__time">
-                        {formatTimeRange(slot.timeFrom, slot.timeTo)}
-                      </span>
-                      <span className="booking-slots__duration">
-                        {formatDuration(slot.duration)}
-                      </span>
-                    </span>
-                    {slot.price > 0 ? (
-                      <span className="booking-slots__price">
-                        {formatRub(slot.price)} ₽
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+  if (variant === "dayparts") {
+    return (
+      <SlotStaticGroups
+        groups={dayPartGroups}
+        selectedIndex={selectedIndex}
+        onSelect={onSelect}
+      />
+    );
+  }
+
+  if (variant === "promo-below") {
+    const hasPromo = promoSplit.promo.length > 0;
+    const hasOthers = promoSplit.others.length > 0;
+    const primary = hasPromo ? promoSplit.promo : promoSplit.others;
+    const primaryTitle = hasPromo
+      ? 'Акция "ЧАС В ПОДАРОК"'
+      : "Другие слоты";
+    const otherGroups = hasPromo
+      ? groupItemsByComment(promoSplit.others)
+      : [];
+
+    return (
+      <div className="booking-slots__groups" aria-label="Слоты времени">
+        <section className="booking-slots__group booking-slots__group--static">
+          <h5 className="booking-slots__group-title">{primaryTitle}</h5>
+          <SlotList
+            items={primary}
+            selectedIndex={selectedIndex}
+            onSelect={onSelect}
+          />
         </section>
-      ))}
-    </div>
+
+        {hasPromo && hasOthers && !showOthers ? (
+          <button
+            type="button"
+            className="booking-slots__more"
+            onClick={() => setShowOthers(true)}
+          >
+            Показать все слоты
+          </button>
+        ) : null}
+
+        {hasPromo && hasOthers && showOthers
+          ? otherGroups.map((group) => (
+              <section
+                key={group.title}
+                className="booking-slots__group booking-slots__group--static"
+              >
+                <h5 className="booking-slots__group-title">{group.title}</h5>
+                <SlotList
+                  items={group.items}
+                  selectedIndex={selectedIndex}
+                  onSelect={onSelect}
+                />
+              </section>
+            ))
+          : null}
+      </div>
+    );
+  }
+
+  return (
+    <SlotStaticGroups
+      groups={commentGroups}
+      selectedIndex={selectedIndex}
+      onSelect={onSelect}
+    />
   );
 };
+
+// Re-export for existing tests / callers
+export { groupSlotsByComment } from "./banyaSlotVariants";

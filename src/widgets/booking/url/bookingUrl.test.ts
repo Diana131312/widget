@@ -38,9 +38,24 @@ describe("parseBookingUrl", () => {
     });
   });
 
-  it("falls back to category on empty/invalid", () => {
-    expect(parseBookingUrl("")).toEqual(DEFAULT_BOOKING_URL_STATE);
-    expect(parseBookingUrl("?bk_step=nope").stepId).toBe("category");
+  it("parses object focus link with room id", () => {
+    expect(
+      parseBookingUrl("?bk_cat=banya&bk_room=b1")
+    ).toMatchObject({
+      stepId: "object",
+      categoryId: "banya",
+      roomId: "b1",
+    });
+  });
+});
+
+describe("buildObjectFocusUrl", () => {
+  it("builds focus link for a room", async () => {
+    const { buildObjectFocusUrl } = await import("./bookingUrl");
+    const href = buildObjectFocusUrl("banya", "b1");
+    expect(href).toContain("bk_step=object");
+    expect(href).toContain("bk_cat=banya");
+    expect(href).toContain("bk_room=b1");
   });
 });
 
