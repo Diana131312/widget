@@ -2,6 +2,19 @@ import type { BookingCategoryId, BookingStepId } from "../types";
 
 const PREFIX = "bk_";
 
+const URL_KEYS = [
+  "step",
+  "cat",
+  "room",
+  "in",
+  "out",
+  "date",
+  "from",
+  "to",
+  "guests",
+  "products",
+] as const;
+
 export type BookingUrlState = {
   stepId: BookingStepId;
   categoryId: BookingCategoryId | null;
@@ -11,6 +24,8 @@ export type BookingUrlState = {
   banyaDate: string | null;
   banyaTimeFrom: string | null;
   banyaTimeTo: string | null;
+  guestCount: number;
+  productQuantities: Record<string, number>;
 };
 
 export const DEFAULT_BOOKING_URL_STATE: BookingUrlState = {
@@ -22,6 +37,8 @@ export const DEFAULT_BOOKING_URL_STATE: BookingUrlState = {
   banyaDate: null,
   banyaTimeFrom: null,
   banyaTimeTo: null,
+  guestCount: 0,
+  productQuantities: {},
 };
 
 const STEPS = new Set<BookingStepId>([
@@ -38,6 +55,47 @@ function readParam(params: URLSearchParams, key: string): string | null {
   const v = params.get(`${PREFIX}${key}`);
   if (v == null || v.trim() === "") return null;
   return v.trim();
+}
+
+/** `id:qty,id:qty` → map (qty ≥ 1). */
+export function decodeProducts(raw: string | null): Record<string, number> {
+  if (!raw) return {};
+  const out: Record<string, number> = {};
+  for (const part of raw.split(",")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const colon = trimmed.lastIndexOf(":");
+    if (colon <= 0) continue;
+    const id = trimmed.slice(0, colon).trim();
+    const qty = Number.parseInt(trimmed.slice(colon + 1).trim(), 10);
+    if (!id || !Number.isFinite(qty) || qty < 1) continue;
+    out[id] = qty;
+  }
+  return out;
+}
+
+/** map → `id:qty,id:qty` (stable id order). */
+export function encodeProducts(qty: Record<string, number>): string | null {
+  const parts: string[] = [];
+  for (const id of Object.keys(qty).sort()) {
+    const n = qty[id];
+    if (typeof n !== "number" || !Number.isFinite(n) || n < 1) continue;
+    parts.push(`${id}:${Math.floor(n)}`);
+  }
+  return parts.length > 0 ? parts.join(",") : null;
+}
+
+function parseGuestCount(raw: string | null): number {
+  if (!raw) return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
+function clearBookingParams(url: URL): void {
+  for (const key of URL_KEYS) {
+    url.searchParams.delete(`${PREFIX}${key}`);
+  }
 }
 
 /** Разбор query (?bk_step=…&bk_cat=…). */
@@ -66,6 +124,8 @@ export function parseBookingUrl(
   const banyaDate = readParam(params, "date");
   const banyaTimeFrom = readParam(params, "from");
   const banyaTimeTo = readParam(params, "to");
+  const guestCount = parseGuestCount(readParam(params, "guests"));
+  const productQuantities = decodeProducts(readParam(params, "products"));
 
   // Ссылка с id объекта без полного setup → шаг выбора объекта (фокус на одну карточку)
   const hasSetupDates =
@@ -80,6 +140,9 @@ export function parseBookingUrl(
     stepId = "object";
   }
 
+  const onSetupLike =
+    stepId === "setup" || stepId === "extras" || stepId === "checkout";
+
   return {
     stepId,
     categoryId,
@@ -89,6 +152,8 @@ export function parseBookingUrl(
     banyaDate,
     banyaTimeFrom,
     banyaTimeTo,
+    guestCount: onSetupLike ? guestCount : 0,
+    productQuantities: onSetupLike ? productQuantities : {},
   };
 }
 
@@ -101,19 +166,7 @@ export function buildObjectFocusUrl(
     return `?bk_step=object&bk_cat=${categoryId}&bk_room=${encodeURIComponent(roomId)}`;
   }
   const url = new URL(window.location.href);
-  const keys = [
-    "step",
-    "cat",
-    "room",
-    "in",
-    "out",
-    "date",
-    "from",
-    "to",
-  ] as const;
-  for (const key of keys) {
-    url.searchParams.delete(`${PREFIX}${key}`);
-  }
+  clearBookingParams(url);
   url.searchParams.set(`${PREFIX}step`, "object");
   url.searchParams.set(`${PREFIX}cat`, categoryId);
   url.searchParams.set(`${PREFIX}room`, roomId);
@@ -125,20 +178,7 @@ export function writeBookingUrl(state: BookingUrlState): void {
   if (typeof window === "undefined") return;
 
   const url = new URL(window.location.href);
-  const keys = [
-    "step",
-    "cat",
-    "room",
-    "in",
-    "out",
-    "date",
-    "from",
-    "to",
-  ] as const;
-
-  for (const key of keys) {
-    url.searchParams.delete(`${PREFIX}${key}`);
-  }
+  clearBookingParams(url);
 
   url.searchParams.set(`${PREFIX}step`, state.stepId);
 
@@ -164,11 +204,38 @@ export function writeBookingUrl(state: BookingUrlState): void {
     url.searchParams.set(`${PREFIX}to`, state.banyaTimeTo);
   }
 
+  const onSetupLike =
+    state.stepId === "setup" ||
+    state.stepId === "extras" ||
+    state.stepId === "checkout";
+  if (onSetupLike && state.guestCount > 0) {
+    url.searchParams.set(`${PREFIX}guests`, String(Math.floor(state.guestCount)));
+  }
+  if (onSetupLike) {
+    const encoded = encodeProducts(state.productQuantities);
+    if (encoded) {
+      url.searchParams.set(`${PREFIX}products`, encoded);
+    }
+  }
+
   const next = `${url.pathname}${url.search}${url.hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (next !== current) {
     window.history.replaceState(window.history.state, "", next);
   }
+}
+
+function productsEqual(
+  a: Record<string, number>,
+  b: Record<string, number>
+): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
 }
 
 export function bookingUrlStateEquals(
@@ -183,6 +250,8 @@ export function bookingUrlStateEquals(
     a.checkOut === b.checkOut &&
     a.banyaDate === b.banyaDate &&
     a.banyaTimeFrom === b.banyaTimeFrom &&
-    a.banyaTimeTo === b.banyaTimeTo
+    a.banyaTimeTo === b.banyaTimeTo &&
+    a.guestCount === b.guestCount &&
+    productsEqual(a.productQuantities, b.productQuantities)
   );
 }

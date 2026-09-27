@@ -148,6 +148,8 @@ describe("useBookingFlow", () => {
           banyaDate: "2026-10-07",
           banyaTimeFrom: "12:00",
           banyaTimeTo: "15:00",
+          guestCount: 4,
+          productQuantities: { p1: 2 },
         },
         { duration: 3, price: 4500 }
       );
@@ -157,6 +159,64 @@ describe("useBookingFlow", () => {
       stepId: "setup",
       slotDuration: 3,
       slotPrice: 4500,
+      basePrice: 4500,
+      guestCount: 4,
+      productQuantities: { p1: 2 },
+    });
+  });
+
+  it("setGuestCount persists guests in snapshot", () => {
+    const onPersist = vi.fn();
+    const { result } = renderHook(() =>
+      useBookingFlow({
+        initial: {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "setup",
+          categoryId: "banya",
+          roomId: "b1",
+          banyaDate: "2026-10-07",
+          banyaTimeFrom: "12:00",
+          banyaTimeTo: "15:00",
+        },
+        onPersist,
+      })
+    );
+
+    act(() => {
+      result.current.setGuestCount(3);
+    });
+
+    expect(result.current.guestCount).toBe(3);
+    expect(onPersist.mock.calls.at(-1)?.[0]).toMatchObject({
+      stepId: "setup",
+      guestCount: 3,
+    });
+  });
+
+  it("setProductQty persists products in snapshot", () => {
+    const onPersist = vi.fn();
+    const { result } = renderHook(() =>
+      useBookingFlow({
+        initial: {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "setup",
+          categoryId: "banya",
+          roomId: "b1",
+          banyaDate: "2026-10-07",
+          banyaTimeFrom: "12:00",
+          banyaTimeTo: "15:00",
+        },
+        onPersist,
+      })
+    );
+
+    act(() => {
+      result.current.setProductQty("p1", 2);
+    });
+
+    expect(result.current.productQuantities).toEqual({ p1: 2 });
+    expect(onPersist.mock.calls.at(-1)?.[0]).toMatchObject({
+      productQuantities: { p1: 2 },
     });
   });
 

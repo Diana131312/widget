@@ -10,6 +10,7 @@ import { StepObject } from "./steps/StepObject";
 import { StepSetup } from "./steps/StepSetup";
 import { BootstrapError } from "./ui/BootstrapError";
 import { BookingLoader } from "./ui/BookingLoader";
+import { DeepLinkIssue } from "./ui/DeepLinkIssue";
 import { BookingToastProvider, useBookingToast } from "./ui/ToastContext";
 import { useBookingFlow } from "./useBookingFlow";
 import {
@@ -64,6 +65,10 @@ function BookingWidgetInner() {
   const [urlReady, setUrlReady] = useState(
     () => urlCandidate.stepId === "category"
   );
+  const [linkIssue, setLinkIssue] = useState<{
+    message: string;
+    actionLabel: string;
+  } | null>(null);
   const validatedRef = useRef(false);
 
   useEffect(() => {
@@ -84,9 +89,25 @@ function BookingWidgetInner() {
       if (!result.ok) {
         hydrate(result.state);
         writeBookingUrl(result.state);
-        showToast(result.reason);
+        if (
+          result.code === "slot_occupied" ||
+          result.code === "dates_occupied"
+        ) {
+          setLinkIssue({
+            message: result.reason,
+            actionLabel:
+              result.code === "dates_occupied"
+                ? "Выбрать другие даты"
+                : "Выбрать другое время",
+          });
+        } else if (
+          result.code !== "missing_room" &&
+          result.code !== "room_not_found"
+        ) {
+          showToast(result.reason);
+        }
       } else {
-        // slotMeta с matched-слота — иначе F5/deep-link теряет duration/price
+        // slotMeta — иначе F5/deep-link теряет duration/price/basePrice
         hydrate(result.state, result.slotMeta ?? null);
         writeBookingUrl(result.state);
       }
@@ -101,11 +122,26 @@ function BookingWidgetInner() {
   const waitingUrl =
     !urlReady && urlCandidate.stepId !== "category" && status !== "error";
 
+  const checkoutPrice =
+    basePrice != null && basePrice > 0
+      ? basePrice
+      : slotPrice != null && slotPrice > 0
+        ? slotPrice
+        : null;
+
   let body: React.ReactNode;
   if (isBlocking || waitingUrl) {
     body = <BookingLoader />;
   } else if (needsConfig && status === "error") {
     body = <BootstrapError error={error} onRetry={reload} />;
+  } else if (linkIssue) {
+    body = (
+      <DeepLinkIssue
+        message={linkIssue.message}
+        actionLabel={linkIssue.actionLabel}
+        onAction={() => setLinkIssue(null)}
+      />
+    );
   } else {
     body = (
       <>
@@ -152,8 +188,7 @@ function BookingWidgetInner() {
           categoryId &&
           config &&
           roomId &&
-          basePrice != null &&
-          basePrice > 0 &&
+          checkoutPrice != null &&
           guestCount >= 1 && (
             <StepCheckout
               categoryId={categoryId}
@@ -166,7 +201,7 @@ function BookingWidgetInner() {
               banyaTimeTo={banyaTimeTo}
               guestCount={guestCount}
               productQuantities={productQuantities}
-              basePrice={basePrice}
+              basePrice={checkoutPrice}
               onStartOver={startOver}
             />
           )}

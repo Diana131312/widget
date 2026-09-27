@@ -96,14 +96,20 @@
 .booking-header {
   position: relative;
   display: flex;
-  align-items: center;
-  min-height: 52px;
-  padding: 20px 16px 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 0;
+  padding: 16px 16px 10px;
   background: transparent;
 }
 
 @media (min-width: 768px) {
   .booking-header {
+    flex-direction: row;
+    align-items: center;
+    min-height: 52px;
+    gap: 0;
     padding: 28px 28px 14px;
   }
 }
@@ -164,12 +170,9 @@
 }
 
 .booking-header__title {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: static;
   margin: 0;
-  max-width: min(50%, 280px);
+  max-width: 100%;
   font-size: var(--bk-title);
   font-weight: 700;
   color: var(--bk-ink);
@@ -178,6 +181,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .booking-header__title {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-width: min(50%, 280px);
+  }
 }
 
 .booking-steps {

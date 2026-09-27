@@ -62,8 +62,13 @@
   - `?bk_cat=…&bk_room=…` без дат → автоматически шаг `object` с фокусом
   - `?bk_step=setup&bk_cat=homes&bk_room=…&bk_in=YYYY-MM-DD&bk_out=YYYY-MM-DD`
   - `?bk_step=setup&bk_cat=banya&bk_room=…&bk_date=YYYY-MM-DD&bk_from=HH:mm&bk_to=HH:mm`
-- При загрузке setup-ссылки проверяются объект, даты/слот и занятость; при невалидности — откат на category/object + toast.
-- Гости / qty товаров в URL не пишутся (только локальный flow-state).
+  - `bk_guests=N` — кол-во гостей (setup/checkout)
+  - `bk_products=id:qty,id:qty` — выбранные доп. товары (setup/checkout)
+- При загрузке setup/checkout-ссылки проверяются объект, даты/слот и занятость; гости/товары clamp’ятся под вместимость и каталог.
+  - Нет `bk_room` / объект не найден → шаг 1 (`category`)
+  - Слот/даты заняты → сообщение + кнопка «Выбрать другое время/даты», объект сохраняется в фокусе
+  - Иначе полное восстановление (в т.ч. checkout + `basePrice` из слота/расчёта)
+- На шагах `category` / `object` `bk_guests` и `bk_products` не пишутся.
 
 ## Потенциальные проблемы (не блокер MVP)
 

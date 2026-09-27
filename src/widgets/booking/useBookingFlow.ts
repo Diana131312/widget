@@ -34,10 +34,12 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   const [banyaTimeTo, setBanyaTimeTo] = useState<string | null>(
     initial.banyaTimeTo ?? null
   );
-  const [guestCount, setGuestCountState] = useState(0);
+  const [guestCount, setGuestCountState] = useState(
+    () => initial.guestCount ?? 0
+  );
   const [productQuantities, setProductQuantities] = useState<
     Record<string, number>
-  >({});
+  >(() => ({ ...(initial.productQuantities ?? {}) }));
   const [basePrice, setBasePrice] = useState<number | null>(null);
   const [slotDuration, setSlotDuration] = useState<number | null>(null);
   const [slotPrice, setSlotPrice] = useState<number | null>(null);
@@ -72,6 +74,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       banyaDate,
       banyaTimeFrom,
       banyaTimeTo,
+      guestCount,
+      productQuantities,
     }),
     [
       stepId,
@@ -82,6 +86,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       banyaDate,
       banyaTimeFrom,
       banyaTimeTo,
+      guestCount,
+      productQuantities,
     ]
   );
 
@@ -96,7 +102,11 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   const hydrate = useCallback(
     (
       next: BookingUrlState,
-      slotMeta?: { duration: number | null; price: number | null } | null
+      slotMeta?: {
+        duration: number | null;
+        price: number | null;
+        basePrice?: number | null;
+      } | null
     ) => {
       skipPersistRef.current = true;
       setStepId(next.stepId);
@@ -107,17 +117,25 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       setBanyaDate(next.banyaDate);
       setBanyaTimeFrom(next.banyaTimeFrom);
       setBanyaTimeTo(next.banyaTimeTo);
-      clearSetupExtras();
+      setGuestCountState(Math.max(0, next.guestCount ?? 0));
+      setProductQuantities({ ...(next.productQuantities ?? {}) });
       if (slotMeta) {
         setSlotDuration(slotMeta.duration);
         setSlotPrice(slotMeta.price);
+        const restored =
+          (slotMeta.basePrice != null && slotMeta.basePrice > 0
+            ? slotMeta.basePrice
+            : null) ??
+          (slotMeta.price != null && slotMeta.price > 0 ? slotMeta.price : null);
+        setBasePrice(restored);
       } else {
         clearSlotMeta();
+        setBasePrice(null);
       }
       // Deep-link с room → пин; иначе снимаем
       setRoomFocusPinned(Boolean(next.roomId));
     },
-    [clearSetupExtras, clearSlotMeta]
+    [clearSlotMeta]
   );
 
   const title =

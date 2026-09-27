@@ -128,7 +128,7 @@ describe("BookingWidget", () => {
     expect(screen.getByText("Мята")).toBeInTheDocument();
   });
 
-  it("falls back from invalid setup deep link", async () => {
+  it("falls back to category when room id is missing from config", async () => {
     window.history.replaceState(
       {},
       "",
@@ -138,10 +138,38 @@ describe("BookingWidget", () => {
     render(<BookingWidget />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Дома" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Бронирование" })
+      ).toBeInTheDocument();
     });
-    expect(window.location.search).toContain("bk_step=object");
-    expect(window.location.search).toContain("bk_cat=homes");
+    expect(window.location.search).toContain("bk_step=category");
+    expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
+  });
+
+  it("shows occupied slot issue with choose-another-time action", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(
+      {},
+      "",
+      "/?bk_step=checkout&bk_cat=banya&bk_room=b1&bk_date=2026-09-29&bk_from=19:00&bk_to=00:00&bk_guests=1"
+    );
+
+    render(<BookingWidget />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /слот времени уже занят/i })
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Выбрать другое время" })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Кедровая")).toBeInTheDocument();
+    });
+    expect(window.location.search).toContain("bk_room=b1");
   });
 
   it("shows friendly bootstrap error without raw Failed to fetch", async () => {
