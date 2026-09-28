@@ -49,7 +49,7 @@ describe("BanyaCalendarPanel", () => {
     ]);
   });
 
-  it("slides to slots on date click and continues after slot", async () => {
+  it("shows slots below calendar on date click and continues after slot", async () => {
     const user = userEvent.setup();
     const onContinue = vi.fn();
     render(
@@ -78,9 +78,14 @@ describe("BanyaCalendarPanel", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Назад")).toBeInTheDocument();
+      expect(screen.getByText(/ЧАС В ПОДАРОК/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/ЧАС В ПОДАРОК/)).toBeInTheDocument();
+    expect(
+      document.querySelector(".booking-banya-stage--below")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Кедровая")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Назад")).not.toBeInTheDocument();
+    expect(screen.queryByText("Сбросить дату")).not.toBeInTheDocument();
     expect(screen.getByText("3 ч")).toBeInTheDocument();
 
     const nextBtn = screen.getByRole("button", { name: /Далее/ });
@@ -99,43 +104,6 @@ describe("BanyaCalendarPanel", () => {
         price: expect.any(Number),
       })
     );
-  });
-
-  it("back clears date and returns to calendar", async () => {
-    const user = userEvent.setup();
-    render(
-      <BookingToastProvider>
-        <BanyaCalendarPanel
-          room={room}
-          api={api}
-          roomName="Кедровая"
-          infoSlot={<p>info</p>}
-        />
-      </BookingToastProvider>
-    );
-
-    await waitFor(() => {
-      expect(loadMonthlyAvailabilityForRoom).toHaveBeenCalled();
-    });
-
-    const nextMonth = addMonths(startOfMonth(new Date()), 1);
-    const day = setDate(nextMonth, 12);
-    await user.click(screen.getByRole("button", { name: "Следующий месяц" }));
-    await user.click(
-      screen.getByRole("button", {
-        name: format(day, "d MMMM yyyy", { locale: ru }),
-      })
-    );
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Назад")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByLabelText("Назад"));
-    expect(
-      document.querySelector(".booking-banya-stage--slots")
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("Кедровая")).toBeInTheDocument();
   });
 
   it("shows retry when occupancy fails", async () => {

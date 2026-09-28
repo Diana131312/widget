@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingWidget } from "./BookingWidget";
+import { resetBookingUrlNavKey } from "./url/bookingUrl";
 
 const getConfig = vi.fn(async () => ({
   settings: { tenantId: "11111111-1111-1111-1111-111111111111" },
@@ -69,6 +70,7 @@ vi.mock("../../api", () => ({
 describe("BookingWidget", () => {
   beforeEach(() => {
     getConfig.mockClear();
+    resetBookingUrlNavKey();
     window.history.replaceState({}, "", "/");
   });
 

@@ -23,6 +23,23 @@ function statusOf(error: unknown): number | null {
   return null;
 }
 
+function bodyTextOf(error: unknown): string {
+  if (!error || typeof error !== "object" || !("body" in error)) return "";
+  const body = (error as { body: unknown }).body;
+  if (typeof body === "string") return body;
+  if (!body || typeof body !== "object") return "";
+  const o = body as Record<string, unknown>;
+  for (const key of ["message", "Message", "error", "Error", "title", "detail"]) {
+    const v = o[key];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  try {
+    return JSON.stringify(body);
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Человекочитаемые тексты для blocking-ошибки bootstrap (без сырого Failed to fetch).
  */
@@ -70,5 +87,42 @@ export function getBootstrapErrorCopy(error: unknown): BootstrapErrorCopy {
   return {
     title: TITLE,
     detail: "Что-то пошло не так. Попробуйте ещё раз",
+  };
+}
+
+/** Ошибки POST /auth (проверка SMS-кода). */
+export function getAuthErrorCopy(error: unknown): BootstrapErrorCopy {
+  const status = statusOf(error);
+  const msg = `${messageOf(error)} ${bodyTextOf(error)}`.toLowerCase();
+  const network = getBootstrapErrorCopy(error);
+
+  if (
+    network.detail === "Проверьте интернет и попробуйте ещё раз" ||
+    network.detail === "Слишком долгий ответ сервера" ||
+    network.detail === "Сервис временно недоступен. Попробуйте позже"
+  ) {
+    return {
+      title: "Не удалось подтвердить код",
+      detail: network.detail,
+    };
+  }
+
+  const looksLikeBadCode =
+    status === 400 ||
+    status === 401 ||
+    status === 403 ||
+    status === 422 ||
+    /неверн|invalid|wrong|incorrect|код|code|expired|истек/.test(msg);
+
+  if (looksLikeBadCode) {
+    return {
+      title: "Неверный код",
+      detail: "Неверный код подтверждения. Проверьте код и попробуйте ещё раз",
+    };
+  }
+
+  return {
+    title: "Не удалось подтвердить код",
+    detail: "Не удалось подтвердить код. Попробуйте ещё раз",
   };
 }

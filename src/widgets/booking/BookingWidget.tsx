@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./booking.css";
 import { createWidgetApi } from "../../api";
 import { useBookingBootstrap } from "./bootstrap/useBookingBootstrap";
@@ -15,6 +15,7 @@ import { BookingToastProvider, useBookingToast } from "./ui/ToastContext";
 import { useBookingFlow } from "./useBookingFlow";
 import {
   parseBookingUrl,
+  rememberBookingUrlNavKey,
   writeBookingUrl,
   type BookingUrlState,
 } from "./url/bookingUrl";
@@ -69,26 +70,30 @@ function BookingWidgetInner() {
     message: string;
     actionLabel: string;
   } | null>(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const validatedRef = useRef(false);
+  const configRef = useRef(config);
+  configRef.current = config;
 
-  useEffect(() => {
-    if (validatedRef.current) return;
-    if (urlCandidate.stepId === "category") {
-      validatedRef.current = true;
-      setUrlReady(true);
-      writeBookingUrl(urlCandidate);
-      return;
-    }
-    if (status !== "ready" || !config) return;
+  const applyUrlCandidate = useCallback(
+    async (candidate: BookingUrlState, opts?: { replaceUrl?: boolean }) => {
+      const replaceUrl = opts?.replaceUrl ?? true;
+      const cfg = configRef.current;
 
-    let cancelled = false;
-    validatedRef.current = true;
+      if (candidate.stepId === "category" || !cfg) {
+        hydrate(candidate);
+        rememberBookingUrlNavKey(candidate);
+        if (replaceUrl) writeBookingUrl(candidate, { mode: "replace" });
+        else rememberBookingUrlNavKey(candidate);
+        setLinkIssue(null);
+        return;
+      }
 
-    void validateBookingUrl(urlCandidate, config, api).then((result) => {
-      if (cancelled) return;
+      const result = await validateBookingUrl(candidate, cfg, api);
       if (!result.ok) {
         hydrate(result.state);
-        writeBookingUrl(result.state);
+        rememberBookingUrlNavKey(result.state);
+        if (replaceUrl) writeBookingUrl(result.state, { mode: "replace" });
         if (
           result.code === "slot_occupied" ||
           result.code === "dates_occupied"
@@ -100,27 +105,67 @@ function BookingWidgetInner() {
                 ? "Выбрать другие даты"
                 : "Выбрать другое время",
           });
-        } else if (
-          result.code !== "missing_room" &&
-          result.code !== "room_not_found"
-        ) {
-          showToast(result.reason);
+        } else {
+          setLinkIssue(null);
+          if (
+            result.code !== "missing_room" &&
+            result.code !== "room_not_found"
+          ) {
+            showToast(result.reason);
+          }
         }
-      } else {
-        // slotMeta — иначе F5/deep-link теряет duration/price/basePrice
-        hydrate(result.state, result.slotMeta ?? null);
-        writeBookingUrl(result.state);
+        return;
       }
+
+      hydrate(result.state, result.slotMeta ?? null);
+      rememberBookingUrlNavKey(result.state);
+      if (replaceUrl) writeBookingUrl(result.state, { mode: "replace" });
+      setLinkIssue(null);
+    },
+    [api, hydrate, showToast]
+  );
+
+  useEffect(() => {
+    if (validatedRef.current) return;
+    if (urlCandidate.stepId === "category") {
+      validatedRef.current = true;
       setUrlReady(true);
+      writeBookingUrl(urlCandidate, { mode: "replace" });
+      return;
+    }
+    if (status !== "ready" || !config) return;
+
+    let cancelled = false;
+    validatedRef.current = true;
+
+    void applyUrlCandidate(urlCandidate, { replaceUrl: true }).then(() => {
+      if (!cancelled) setUrlReady(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [api, config, status, urlCandidate, hydrate, showToast]);
+  }, [status, config, urlCandidate, applyUrlCandidate]);
+
+  // Браузерные Назад / Вперёд
+  useEffect(() => {
+    const onPopState = () => {
+      const candidate = parseBookingUrl();
+      setHistoryBusy(true);
+      void applyUrlCandidate(candidate, { replaceUrl: false })
+        .catch(() => {
+          hydrate(candidate);
+          rememberBookingUrlNavKey(candidate);
+        })
+        .finally(() => setHistoryBusy(false));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [applyUrlCandidate, hydrate]);
 
   const waitingUrl =
-    !urlReady && urlCandidate.stepId !== "category" && status !== "error";
+    (!urlReady && urlCandidate.stepId !== "category" && status !== "error") ||
+    historyBusy;
 
   const checkoutPrice =
     basePrice != null && basePrice > 0
@@ -199,6 +244,7 @@ function BookingWidgetInner() {
               banyaDate={banyaDate}
               banyaTimeFrom={banyaTimeFrom}
               banyaTimeTo={banyaTimeTo}
+              slotDuration={slotDuration}
               guestCount={guestCount}
               productQuantities={productQuantities}
               basePrice={checkoutPrice}

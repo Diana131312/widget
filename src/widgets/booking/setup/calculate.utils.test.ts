@@ -60,6 +60,25 @@ describe("parseBanyaCalculateResponse", () => {
     ]);
   });
 
+  it("reads amount as before-discount, not as total", () => {
+    const view = parseBanyaCalculateResponse({
+      total: 4000,
+      amount: 4500,
+      discount: 500,
+    } as never);
+    expect(view.total).toBe(4000);
+    expect(view.amountBeforeDiscount).toBe(4500);
+    expect(view.discountAmount).toBe(500);
+  });
+
+  it("does not treat amount alone as total when total missing", () => {
+    const view = parseBanyaCalculateResponse({ amount: 3200 } as never);
+    // amount = до скидок; без total берём его как базу, не путаем с предоплатой
+    expect(view.amountBeforeDiscount).toBe(3200);
+    expect(view.basePrice).toBe(3200);
+    expect(view.total).toBe(3200);
+  });
+
   it("returns zero total when API empty", () => {
     const view = parseBanyaCalculateResponse({} as never);
     expect(view.total).toBe(0);

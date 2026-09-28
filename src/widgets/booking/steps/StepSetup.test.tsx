@@ -149,11 +149,16 @@ describe("StepSetup", () => {
     expect(calculateRoom).not.toHaveBeenCalled();
   });
 
-  it("shows catalog tabs and product cards; extra guest stays near guests", async () => {
+  it("shows catalog accordion and product cards; extra guest stays near guests", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    expect(screen.getByRole("tab", { name: "Все" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Веники" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Все" })).not.toBeInTheDocument();
+    const group = screen.getByText("Веники").closest("details");
+    expect(group).toBeTruthy();
+    expect(group).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("Веники"));
+    expect(group).toHaveAttribute("open");
     expect(screen.getByText("Берёзовый")).toBeInTheDocument();
     expect(screen.getByText("на фотосессии")).toBeInTheDocument();
     expect(
@@ -171,6 +176,7 @@ describe("StepSetup", () => {
     expect(screen.getByText("Дополнительный гость")).toBeInTheDocument();
     // гости не на максимуме → доп. гости недоступны
     expect(screen.getByText("0/0")).toBeInTheDocument();
+    expect(document.querySelector(".booking-setup__cta")).toBeInTheDocument();
   });
 
   it("limits extra guests to hard cap of 2 after capacity is full", async () => {

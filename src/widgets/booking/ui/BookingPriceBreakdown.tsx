@@ -31,6 +31,8 @@ type Props = {
   nightLines?: BreakdownNightLine[];
   periodMessage?: string | null;
   heading?: string;
+  /** Предоплата (из /save amount) — до создания брони неизвестна */
+  prepaymentAmount?: number | null;
   className?: string;
 };
 
@@ -69,6 +71,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   nightLines = [],
   periodMessage = null,
   heading = "Подробный расчёт",
+  prepaymentAmount = null,
   className,
 }) => {
   const rootClass = ["booking-price-breakdown", className]
@@ -158,6 +161,14 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
           {total.toLocaleString("ru-RU")} ₽
         </span>
       </div>
+      {prepaymentAmount != null && prepaymentAmount >= 0 ? (
+        <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
+          <span>Предоплата</span>
+          <span className="booking-price-breakdown__num">
+            {prepaymentAmount.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 };

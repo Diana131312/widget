@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RoomTimeSlot } from "../../../api";
 import {
-  classifySlotDayPart,
   groupItemsByComment,
   groupSlotsByComment,
-  groupSlotsByDayPart,
-  resolveBanyaSlotsVariant,
   splitPromoHourGiftSlots,
 } from "./banyaSlotVariants";
 
@@ -21,45 +18,6 @@ function slot(
     ...partial,
   } as RoomTimeSlot;
 }
-
-describe("resolveBanyaSlotsVariant", () => {
-  it("detects ryabinova and berezova", () => {
-    expect(resolveBanyaSlotsVariant("Рябиновая")).toBe("dayparts");
-    expect(resolveBanyaSlotsVariant("Баня Рябиновая")).toBe("dayparts");
-    expect(resolveBanyaSlotsVariant("Берёзовая")).toBe("promo-below");
-    expect(resolveBanyaSlotsVariant("Березовая баня")).toBe("promo-below");
-    expect(resolveBanyaSlotsVariant("Кедровая")).toBe("default");
-  });
-});
-
-describe("classifySlotDayPart", () => {
-  it("puts 10–16 into day (more hours after noon)", () => {
-    expect(classifySlotDayPart("10:00", "16:00")).toBe("День");
-  });
-
-  it("classifies morning / evening", () => {
-    expect(classifySlotDayPart("08:00", "11:00")).toBe("Утро");
-    expect(classifySlotDayPart("19:00", "23:00")).toBe("Вечер");
-  });
-
-  it("treats 00:00 end as evening", () => {
-    expect(classifySlotDayPart("22:00", "00:00")).toBe("Вечер");
-    expect(classifySlotDayPart("20:00", "00:00")).toBe("Вечер");
-  });
-});
-
-describe("groupSlotsByDayPart", () => {
-  it("groups and sorts by duration ascending", () => {
-    const groups = groupSlotsByDayPart([
-      slot({ timeFrom: "10:00", timeTo: "16:00", duration: 6 }),
-      slot({ timeFrom: "12:00", timeTo: "14:00", duration: 2 }),
-      slot({ timeFrom: "08:00", timeTo: "10:00", duration: 2 }),
-      slot({ timeFrom: "19:00", timeTo: "22:00", duration: 3 }),
-    ]);
-    expect(groups.map((g) => g.title)).toEqual(["Утро", "День", "Вечер"]);
-    expect(groups[1].items.map((i) => i.slot.duration)).toEqual([2, 6]);
-  });
-});
 
 describe("groupSlotsByComment", () => {
   it("groups by server comment and keeps order", () => {

@@ -51,6 +51,31 @@ const STEPS = new Set<BookingStepId>([
 
 const CATS = new Set<BookingCategoryId>(["homes", "banya"]);
 
+/** Ключ «навигации»: смена → pushState; гости/товары → replaceState. */
+export function bookingNavigationKey(state: BookingUrlState): string {
+  return [
+    state.stepId,
+    state.categoryId ?? "",
+    state.roomId ?? "",
+    state.checkIn ?? "",
+    state.checkOut ?? "",
+    state.banyaDate ?? "",
+    state.banyaTimeFrom ?? "",
+    state.banyaTimeTo ?? "",
+  ].join("|");
+}
+
+let lastWrittenNavKey: string | null = null;
+
+/** Для тестов / после popstate — синхронизировать ключ без записи URL. */
+export function rememberBookingUrlNavKey(state: BookingUrlState): void {
+  lastWrittenNavKey = bookingNavigationKey(state);
+}
+
+export function resetBookingUrlNavKey(): void {
+  lastWrittenNavKey = null;
+}
+
 function readParam(params: URLSearchParams, key: string): string | null {
   const v = params.get(`${PREFIX}${key}`);
   if (v == null || v.trim() === "") return null;
@@ -173,8 +198,19 @@ export function buildObjectFocusUrl(
   return url.toString();
 }
 
-/** Запись в текущий URL через replaceState (остальные query-ключи не трогаем). */
-export function writeBookingUrl(state: BookingUrlState): void {
+export type WriteBookingUrlOptions = {
+  /**
+   * auto — push при смене шага/объекта/дат, иначе replace;
+   * push / replace — принудительно.
+   */
+  mode?: "auto" | "push" | "replace";
+};
+
+/** Запись в URL. Навигация — pushState, гости/товары — replaceState. */
+export function writeBookingUrl(
+  state: BookingUrlState,
+  options?: WriteBookingUrlOptions
+): void {
   if (typeof window === "undefined") return;
 
   const url = new URL(window.location.href);
@@ -220,9 +256,30 @@ export function writeBookingUrl(state: BookingUrlState): void {
 
   const next = `${url.pathname}${url.search}${url.hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  if (next !== current) {
-    window.history.replaceState(window.history.state, "", next);
+  const navKey = bookingNavigationKey(state);
+  const mode = options?.mode ?? "auto";
+
+  let usePush = false;
+  if (mode === "push") usePush = true;
+  else if (mode === "replace") usePush = false;
+  else {
+    // auto: первый write / тот же nav-ключ → replace; смена шага/дат → push
+    usePush = lastWrittenNavKey != null && lastWrittenNavKey !== navKey;
   }
+
+  if (next !== current) {
+    if (usePush) {
+      window.history.pushState({ bk: navKey }, "", next);
+    } else {
+      window.history.replaceState(
+        { ...(window.history.state as object), bk: navKey },
+        "",
+        next
+      );
+    }
+  }
+
+  lastWrittenNavKey = navKey;
 }
 
 function productsEqual(

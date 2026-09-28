@@ -23,3 +23,10 @@ export function formatRuPhoneMask(digits: string): string {
 export function isRuPhoneComplete(digits: string): boolean {
   return normalizeRuPhoneDigits(digits).length === 11;
 }
+
+/** Телефон для API: +79001234567 */
+export function toApiPhone(maskedPhone: string): string {
+  const digits = normalizeRuPhoneDigits(maskedPhone);
+  if (!digits) return "";
+  return `+${digits}`;
+}

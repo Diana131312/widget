@@ -124,7 +124,7 @@ type ProductCatalogProps = {
   quantities: Record<string, number>;
   onSetQuantity: (productId: string, next: number) => void;
   tenantId: string | null;
-  /** accordion — группы свёрнуты (Берёзовая); tabs — плашки сверху */
+  /** accordion — группы свёрнуты; tabs — плашки сверху (legacy) */
   layout?: "tabs" | "accordion";
 };
 

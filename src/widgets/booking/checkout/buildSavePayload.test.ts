@@ -96,11 +96,12 @@ describe("buildSaveBodies", () => {
         time: "12:00",
         duration: 4,
         personCount: 2,
-        price: 4500,
+        products: [],
         name: "Иван",
         lastName: "Петров",
       },
     });
+    expect(result.kind === "banya" && "price" in result.body).toBe(false);
   });
 
   it("rejects incomplete banya draft", () => {

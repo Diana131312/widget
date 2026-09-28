@@ -69,7 +69,6 @@ export const StepSetup: React.FC<Props> = ({
   const { maxGuests, name: roomName } = roomMeta;
   // TODO(prod): лимит из админки/товара — см. EXTRA_GUEST_HARD_LIMIT
   const maxExtraGuests = getMaxExtraGuests(guestCount, maxGuests);
-  const catalogLayout = /бер[её]з/i.test(roomName) ? "accordion" : "tabs";
 
   const catalog = useMemo(
     () => groupProductsForRoom(config, categoryId, roomId),
@@ -158,9 +157,31 @@ export const StepSetup: React.FC<Props> = ({
           quantities={productQuantities}
           onSetQuantity={onSetProductQty}
           tenantId={tenantId}
-          layout={catalogLayout}
+          layout="accordion"
         />
 
+        <SetupPriceBreakdown
+          categoryId={categoryId}
+          roomName={roomName}
+          banyaDate={banyaDate}
+          banyaTimeFrom={banyaTimeFrom}
+          banyaTimeTo={banyaTimeTo}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          guestCount={guestCount}
+          basePrice={basePrice}
+          banyaCalc={banyaCalc}
+          homesCalc={homesCalc}
+          productLines={productLines}
+          productsSubtotal={productsSubtotal}
+          total={total}
+          isLoading={isLoading}
+          error={error}
+          onRetry={retry}
+        />
+      </div>
+
+      <div className="booking-setup__cta">
         <div className="booking-setup__guests">
           <div className="booking-setup__guests-main">
             <p className="booking-setup__guests-label">Количество гостей</p>
@@ -240,28 +261,6 @@ export const StepSetup: React.FC<Props> = ({
           ) : null}
         </div>
 
-        <SetupPriceBreakdown
-          categoryId={categoryId}
-          roomName={roomName}
-          banyaDate={banyaDate}
-          banyaTimeFrom={banyaTimeFrom}
-          banyaTimeTo={banyaTimeTo}
-          checkIn={checkIn}
-          checkOut={checkOut}
-          guestCount={guestCount}
-          basePrice={basePrice}
-          banyaCalc={banyaCalc}
-          homesCalc={homesCalc}
-          productLines={productLines}
-          productsSubtotal={productsSubtotal}
-          total={total}
-          isLoading={isLoading}
-          error={error}
-          onRetry={retry}
-        />
-      </div>
-
-      <div className="booking-setup__footer">
         <button
           type="button"
           className="booking-setup__continue"

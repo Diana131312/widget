@@ -3,11 +3,18 @@ import type {
   DailyCalculateResponse,
 } from "../../../api";
 
+export type CalcMoneyLine = { label: string; amount: number };
+
 export type BanyaCalculateView = {
+  /** Итоговая стоимость (без товаров) — поле total */
   total: number;
+  /** Сумма до скидок — поле amount */
+  amountBeforeDiscount: number | null;
   basePrice: number | null;
   discountAmount: number | null;
-  lines: { label: string; amount: number }[];
+  /** Доплата за гостя сверх вместимости (за одного) */
+  extraValueForDate: number | null;
+  lines: CalcMoneyLine[];
   raw: CalculateRoomResponse;
 };
 
@@ -32,21 +39,17 @@ function readNumber(obj: Record<string, unknown>, keys: string[]): number | null
   return null;
 }
 
+/**
+ * /calculate: total = итоговая стоимость, amount = до скидок (не предоплата!).
+ * Предоплата приходит только в ответе /save как amount.
+ */
 export function parseBanyaCalculateResponse(
   raw: CalculateRoomResponse
 ): BanyaCalculateView {
   const o = raw as Record<string, unknown>;
   const total =
-    readNumber(o, [
-      "total",
-      "totalPrice",
-      "Total",
-      "TotalPrice",
-      "amount",
-      "Amount",
-      "sum",
-      "Sum",
-    ]) ?? 0;
+    readNumber(o, ["total", "totalPrice", "Total", "TotalPrice"]) ?? 0;
+  const amountBeforeDiscount = readNumber(o, ["amount", "Amount"]);
   let basePrice = readNumber(o, [
     "basePrice",
     "BasePrice",
@@ -61,12 +64,19 @@ export function parseBanyaCalculateResponse(
     "discount",
     "Discount",
   ]);
+  const extraValueForDate = readNumber(o, [
+    "extraValueForDate",
+    "ExtraValueForDate",
+  ]);
 
+  if (basePrice == null && amountBeforeDiscount != null && amountBeforeDiscount > 0) {
+    basePrice = amountBeforeDiscount;
+  }
   if (basePrice == null && total > 0) {
     basePrice = total;
   }
 
-  const lines: { label: string; amount: number }[] = [];
+  const lines: CalcMoneyLine[] = [];
   if (basePrice != null && basePrice > 0) {
     lines.push({ label: "Стоимость бани", amount: basePrice });
   }
@@ -76,8 +86,10 @@ export function parseBanyaCalculateResponse(
 
   return {
     total: total > 0 ? total : basePrice ?? 0,
+    amountBeforeDiscount,
     basePrice,
     discountAmount,
+    extraValueForDate,
     lines,
     raw,
   };
@@ -88,7 +100,7 @@ export function parseHomesCalculateResponse(
 ): HomesCalculateView {
   const o = raw as Record<string, unknown>;
   const total =
-    readNumber(o, ["totalPrice", "TotalPrice", "total", "Total", "amount"]) ??
+    readNumber(o, ["totalPrice", "TotalPrice", "total", "Total"]) ??
     raw.totalPrice ??
     0;
 

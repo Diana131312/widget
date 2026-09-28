@@ -1,7 +1,7 @@
 import type { WidgetGetResponse, WidgetProduct } from "../../../api";
 import { computeDurationHours } from "../setup/calculate.utils";
 import type { BookingCategoryId } from "../types";
-import { formatRuPhoneMask } from "./phone";
+import { toApiPhone } from "./phone";
 
 export type CheckoutDraft = {
   categoryId: BookingCategoryId;
@@ -61,17 +61,50 @@ export function splitFullName(fullName: string): {
   };
 }
 
+export type BanyaSaveBody = {
+  roomId: string;
+  date: string;
+  time: string;
+  duration: number;
+  personCount: number;
+  name: string;
+  lastName?: string;
+  phone: string;
+  messenger: "telegram" | "max";
+  comment: string;
+  discounts: number[];
+  promoCode: null;
+  products: Array<{ id: string; name: string; price: number; count: number }>;
+  checkCode?: string;
+};
+
+export type HomesSaveBody = {
+  dailyRoomId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  personCount: number;
+  name: string;
+  lastName?: string;
+  phone: string;
+  messenger: "telegram" | "max";
+  comment?: string;
+  products: Array<{ id: string; name: string; price: number; count: number }>;
+  checkCode?: string;
+};
+
 /** Тела запросов dailySave / saveRoomBooking (без alias — его добавит API-клиент). */
 export function buildSaveBodies(
   draft: CheckoutDraft,
   contact: CheckoutContact,
-  products: Array<{ id: string; name: string; price: number; count: number }>
+  products: Array<{ id: string; name: string; price: number; count: number }>,
+  checkCode?: string
 ):
-  | { kind: "homes"; body: Record<string, unknown> }
-  | { kind: "banya"; body: Record<string, unknown> }
+  | { kind: "homes"; body: HomesSaveBody }
+  | { kind: "banya"; body: BanyaSaveBody }
   | { kind: "invalid"; reason: string } {
   const { name, lastName } = splitFullName(contact.fullName);
-  const phone = formatRuPhoneMask(contact.phone);
+  const phone = toApiPhone(contact.phone);
+  const productList = products.length > 0 ? products : [];
 
   if (draft.categoryId === "homes") {
     if (!draft.checkIn || !draft.checkOut) {
@@ -89,7 +122,8 @@ export function buildSaveBodies(
         phone,
         messenger: contact.messenger,
         comment: contact.comment.trim() || undefined,
-        products,
+        products: productList,
+        ...(checkCode ? { checkCode } : {}),
       },
     };
   }
@@ -118,8 +152,8 @@ export function buildSaveBodies(
       comment: contact.comment.trim(),
       discounts: [],
       promoCode: null,
-      price: draft.total,
-      products,
+      products: productList,
+      ...(checkCode ? { checkCode } : {}),
     },
   };
 }

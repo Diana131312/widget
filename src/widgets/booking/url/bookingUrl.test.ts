@@ -1,11 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_BOOKING_URL_STATE,
   decodeProducts,
   encodeProducts,
   parseBookingUrl,
+  resetBookingUrlNavKey,
   writeBookingUrl,
 } from "./bookingUrl";
+
+beforeEach(() => {
+  resetBookingUrlNavKey();
+  window.history.replaceState({}, "", "/");
+});
 
 describe("decodeProducts / encodeProducts", () => {
   it("roundtrips product quantities", () => {
@@ -97,7 +103,9 @@ describe("buildObjectFocusUrl", () => {
 });
 
 describe("writeBookingUrl", () => {
-  it("writes replaceState query", () => {
+  it("writes replaceState query on first write", () => {
+    const pushSpy = vi.spyOn(window.history, "pushState");
+    const replaceSpy = vi.spyOn(window.history, "replaceState");
     writeBookingUrl({
       ...DEFAULT_BOOKING_URL_STATE,
       stepId: "object",
@@ -105,6 +113,62 @@ describe("writeBookingUrl", () => {
     });
     expect(window.location.search).toContain("bk_step=object");
     expect(window.location.search).toContain("bk_cat=homes");
+    expect(replaceSpy).toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+    pushSpy.mockRestore();
+    replaceSpy.mockRestore();
+  });
+
+  it("pushes history when navigation key changes", () => {
+    writeBookingUrl({
+      ...DEFAULT_BOOKING_URL_STATE,
+      stepId: "object",
+      categoryId: "homes",
+    });
+    const pushSpy = vi.spyOn(window.history, "pushState");
+    writeBookingUrl({
+      ...DEFAULT_BOOKING_URL_STATE,
+      stepId: "setup",
+      categoryId: "homes",
+      roomId: "d1",
+      checkIn: "2026-10-10",
+      checkOut: "2026-10-12",
+    });
+    expect(pushSpy).toHaveBeenCalled();
+    expect(window.location.search).toContain("bk_step=setup");
+    pushSpy.mockRestore();
+  });
+
+  it("replaces history when only guests/products change", () => {
+    writeBookingUrl({
+      ...DEFAULT_BOOKING_URL_STATE,
+      stepId: "setup",
+      categoryId: "banya",
+      roomId: "b1",
+      banyaDate: "2026-10-07",
+      banyaTimeFrom: "12:00",
+      banyaTimeTo: "15:00",
+      guestCount: 1,
+    });
+    const pushSpy = vi.spyOn(window.history, "pushState");
+    const replaceSpy = vi.spyOn(window.history, "replaceState");
+    writeBookingUrl({
+      ...DEFAULT_BOOKING_URL_STATE,
+      stepId: "setup",
+      categoryId: "banya",
+      roomId: "b1",
+      banyaDate: "2026-10-07",
+      banyaTimeFrom: "12:00",
+      banyaTimeTo: "15:00",
+      guestCount: 3,
+      productQuantities: { p1: 2 },
+    });
+    expect(window.location.search).toContain("bk_guests=3");
+    expect(window.location.search).toContain("bk_products=p1%3A2");
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(replaceSpy).toHaveBeenCalled();
+    pushSpy.mockRestore();
+    replaceSpy.mockRestore();
   });
 
   it("writes guests and products on setup", () => {

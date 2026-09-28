@@ -3,6 +3,7 @@ import {
   formatRuPhoneMask,
   isRuPhoneComplete,
   normalizeRuPhoneDigits,
+  toApiPhone,
 } from "./phone";
 
 describe("phone", () => {
@@ -18,5 +19,10 @@ describe("phone", () => {
   it("detects complete RU phone", () => {
     expect(isRuPhoneComplete("+7 (900) 123-45-67")).toBe(true);
     expect(isRuPhoneComplete("+7 (900) 123")).toBe(false);
+  });
+
+  it("builds API phone", () => {
+    expect(toApiPhone("+7 (900) 123-45-67")).toBe("+79001234567");
+    expect(toApiPhone("89001234567")).toBe("+79001234567");
   });
 });
