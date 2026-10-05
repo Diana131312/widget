@@ -31,13 +31,46 @@ function bodyTextOf(error: unknown): string {
   const o = body as Record<string, unknown>;
   for (const key of ["message", "Message", "error", "Error", "title", "detail"]) {
     const v = o[key];
-    if (typeof v === "string" && v.trim()) return v;
+    if (typeof v === "string" && v.trim()) return v.trim();
   }
   try {
     return JSON.stringify(body);
   } catch {
     return "";
   }
+}
+
+/** Сообщение с бэка, если оно человекочитаемое. */
+export function getApiBodyMessage(error: unknown): string | null {
+  const text = bodyTextOf(error);
+  if (!text) return null;
+  // не показываем сырой JSON-объект
+  if (text.startsWith("{") || text.startsWith("[")) return null;
+  if (text.length > 280) return null;
+  return text;
+}
+
+/**
+ * Ошибки API с приоритетом текста из ответа (например «Время уже занято»).
+ * Сеть/таймаут — дружелюбные тексты; иначе body.message или общий fallback.
+ */
+export function getWidgetApiErrorDetail(error: unknown): string {
+  const apiMessage = getApiBodyMessage(error);
+  if (apiMessage) return apiMessage;
+
+  const network = getBootstrapErrorCopy(error);
+  if (
+    network.detail === "Проверьте интернет и попробуйте ещё раз" ||
+    network.detail === "Слишком долгий ответ сервера"
+  ) {
+    return network.detail;
+  }
+
+  if (error instanceof Error && error.message && !error.message.startsWith("Widget API")) {
+    return error.message;
+  }
+
+  return network.detail;
 }
 
 /**

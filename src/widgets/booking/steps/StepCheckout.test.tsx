@@ -1,26 +1,9 @@
-import React, { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import React from "react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { WidgetGetResponse } from "../../../api";
-import { BookingToastProvider } from "../ui/ToastContext";
 import { StepCheckout } from "./StepCheckout";
-
-const sendSms = vi.hoisted(() => vi.fn());
-const auth = vi.hoisted(() => vi.fn());
-const saveRoomBooking = vi.hoisted(() => vi.fn());
-const dailySave = vi.hoisted(() => vi.fn());
-const setToken = vi.hoisted(() => vi.fn());
-
-vi.mock("../../../api", () => ({
-  createWidgetApi: () => ({
-    sendSms,
-    auth,
-    saveRoomBooking,
-    dailySave,
-    setToken,
-  }),
-}));
 
 const config = {
   settings: { confirmMessage: "Ждём вас в LES!" },
@@ -39,98 +22,63 @@ const config = {
       barcode: null,
       image: null,
     },
-    {
-      id: "p2",
-      name: "Полотенце",
-      price: 500,
-      isPublic: true,
-      productGroupId: "g1",
-      roomIds: ["b1"],
-      dailyRoomIds: [],
-      description: "",
-      barcode: null,
-      image: null,
-    },
   ],
 } as unknown as WidgetGetResponse;
 
 function Harness({
-  productQuantities = { p1: 1, p2: 1 },
-  onStartOver = vi.fn(),
+  onContinue = vi.fn(),
+  calcMeta = {
+    prepay: 3000,
+    prepayIncludesProducts: false,
+    extraValueForDate: 1000,
+  },
 }: {
-  productQuantities?: Record<string, number>;
-  onStartOver?: () => void;
+  onContinue?: (contact: unknown) => void;
+  calcMeta?: {
+    prepay: number | null;
+    prepayIncludesProducts: boolean | null;
+    extraValueForDate: number | null;
+  } | null;
 }) {
   return (
-    <BookingToastProvider>
-      <StepCheckout
-        categoryId="banya"
-        config={config}
-        roomId="b1"
-        checkIn={null}
-        checkOut={null}
-        banyaDate="2026-10-07"
-        banyaTimeFrom="12:00"
-        banyaTimeTo="15:00"
-        slotDuration={3}
-        guestCount={1}
-        productQuantities={productQuantities}
-        basePrice={5200}
-        onStartOver={onStartOver}
-      />
-    </BookingToastProvider>
+    <StepCheckout
+      categoryId="banya"
+      config={config}
+      roomId="b1"
+      checkIn={null}
+      checkOut={null}
+      banyaDate="2026-10-07"
+      banyaTimeFrom="12:00"
+      banyaTimeTo="15:00"
+      guestCount={1}
+      productQuantities={{ p1: 1 }}
+      basePrice={5200}
+      calcMeta={calcMeta}
+      onContinue={onContinue}
+    />
   );
 }
 
 describe("StepCheckout", () => {
-  beforeEach(() => {
-    sendSms.mockReset();
-    auth.mockReset();
-    saveRoomBooking.mockReset();
-    dailySave.mockReset();
-    setToken.mockReset();
-    sendSms.mockResolvedValue({ success: true });
-    auth.mockResolvedValue({ token: "jwt", expiresAt: "2099-01-01" });
-    saveRoomBooking.mockResolvedValue({
-      bookingId: "bk1",
-      price: 6200,
-      amount: 3000,
-      paymentLink: null,
-      timeoutMinutes: 30,
-    });
-  });
-
-  it("shows the same detailed breakdown structure as setup", () => {
+  it("shows prepay and extra guest fee from calculate", () => {
     render(<Harness />);
-
-    expect(screen.getByText("Подробный расчёт")).toBeInTheDocument();
-    expect(screen.getByText("Баня")).toBeInTheDocument();
-    expect(screen.getByText("Рябиновая")).toBeInTheDocument();
-    expect(screen.getByText("Дата")).toBeInTheDocument();
-    expect(screen.getByText("Время")).toBeInTheDocument();
-    expect(screen.getByText("Гостей")).toBeInTheDocument();
-    expect(screen.getAllByText("Стоимость").length).toBeGreaterThan(0);
-    expect(screen.getByText("Доп. товары")).toBeInTheDocument();
-    expect(screen.getByText("Веник")).toBeInTheDocument();
-    expect(screen.getByText("Полотенце")).toBeInTheDocument();
-    expect(screen.getByText("Итого")).toBeInTheDocument();
-
-    expect(screen.getAllByText(/5[\s\u00a0]?200/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/6[\s\u00a0]?200/).length).toBeGreaterThan(0);
-    expect(screen.queryByText("Стоимость бани")).not.toBeInTheDocument();
+    expect(screen.getByText("Предоплата (без товаров)")).toBeInTheDocument();
+    expect(screen.getAllByText(/3[\s\u00a0]?000/).length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/предоплаты появится после создания брони/i)
+      screen.getByText("Доплата за гостя сверх вместимости")
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/1[\s\u00a0]?000/).length).toBeGreaterThan(0);
   });
 
   it("keeps submit disabled until form is valid", async () => {
     const user = userEvent.setup();
     render(<Harness />);
 
-    const submit = screen.getByRole("button", { name: "Забронировать" });
+    const submit = screen.getByRole("button", { name: "Далее →" });
     expect(submit).toBeDisabled();
 
-    await user.type(screen.getByLabelText("ФИО"), "Иван");
+    await user.type(screen.getByLabelText("Фамилия"), "Петров");
+    await user.type(screen.getByLabelText("Имя"), "Иван");
     await user.type(screen.getByLabelText("Телефон"), "9001234567");
     expect(submit).toBeDisabled();
 
@@ -138,123 +86,59 @@ describe("StepCheckout", () => {
     expect(submit).not.toBeDisabled();
   });
 
-  it("sends SMS then creates booking with checkCode after OTP", async () => {
+  it("passes separate name fields and phone channel", async () => {
     const user = userEvent.setup();
-    render(<Harness />);
+    const onContinue = vi.fn();
+    render(<Harness onContinue={onContinue} />);
 
-    await user.type(screen.getByLabelText("ФИО"), "Иван Петров");
+    await user.type(screen.getByLabelText("Фамилия"), "Петров");
+    await user.type(screen.getByLabelText("Имя"), "Иван");
     await user.type(screen.getByLabelText("Телефон"), "9001234567");
+    await user.click(screen.getByText("По телефону"));
     await user.click(screen.getByText(/конфиденциальности/i));
-    await user.click(screen.getByRole("button", { name: "Забронировать" }));
+    await user.click(screen.getByRole("button", { name: "Далее →" }));
 
-    await waitFor(() => {
-      expect(sendSms).toHaveBeenCalledWith(
-        expect.objectContaining({
-          number: "+79001234567",
-          messenger: "telegram",
-        })
-      );
-    });
-
-    expect(screen.getByText("Подтверждение телефона")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Код из сообщения"), "1234");
-    await user.click(
-      screen.getByRole("button", { name: "Подтвердить и забронировать" })
-    );
-
-    await waitFor(() => {
-      expect(auth).toHaveBeenCalledWith({
-        phone: "+79001234567",
-        code: "1234",
-      });
-      expect(saveRoomBooking).toHaveBeenCalledWith(
-        expect.objectContaining({
-          roomId: "b1",
-          date: "2026-10-07",
-          time: "12:00",
-          duration: 3,
-          personCount: 1,
-          checkCode: "1234",
-          products: expect.any(Array),
-        })
-      );
-    });
-
-    expect(screen.getByText("Бронь создана")).toBeInTheDocument();
-    expect(screen.getByText(/Предоплата/)).toBeInTheDocument();
-    expect(screen.getAllByText(/3[\s\u00a0]?000/).length).toBeGreaterThan(0);
-  });
-
-  it("returns to start from success screen", async () => {
-    const user = userEvent.setup();
-    const onStartOver = vi.fn();
-    function Wrap() {
-      const [done, setDone] = useState(false);
-      if (done) return <p>restarted</p>;
-      return (
-        <Harness
-          onStartOver={() => {
-            onStartOver();
-            setDone(true);
-          }}
-        />
-      );
-    }
-    render(<Wrap />);
-
-    await user.type(screen.getByLabelText("ФИО"), "Иван");
-    await user.type(screen.getByLabelText("Телефон"), "9001234567");
-    await user.click(screen.getByText(/конфиденциальности/i));
-    await user.click(screen.getByRole("button", { name: "Забронировать" }));
-    await waitFor(() => {
-      expect(screen.getByLabelText("Код из сообщения")).toBeInTheDocument();
-    });
-    await user.type(screen.getByLabelText("Код из сообщения"), "1234");
-    await user.click(
-      screen.getByRole("button", { name: "Подтвердить и забронировать" })
-    );
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "К началу" })).toBeInTheDocument();
-    });
-    await user.click(screen.getByRole("button", { name: "К началу" }));
-
-    expect(onStartOver).toHaveBeenCalled();
-    expect(screen.getByText("restarted")).toBeInTheDocument();
-  });
-
-  it("shows empty extras when no products selected", () => {
-    render(<Harness productQuantities={{}} />);
-    expect(screen.getByText("Доп. товары")).toBeInTheDocument();
-    expect(screen.getByText("Нет")).toBeInTheDocument();
-  });
-
-  it("shows wrong-code message when auth fails", async () => {
-    const user = userEvent.setup();
-    auth.mockRejectedValueOnce(
-      Object.assign(new Error("Widget API request failed: 400 Bad Request"), {
-        status: 400,
-        body: { message: "Invalid code" },
+    expect(onContinue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: "Иван",
+        lastName: "Петров",
+        verifyChannel: "call",
       })
     );
-    render(<Harness />);
+  });
 
-    await user.type(screen.getByLabelText("ФИО"), "Иван Петров");
-    await user.type(screen.getByLabelText("Телефон"), "9001234567");
-    await user.click(screen.getByText(/конфиденциальности/i));
-    await user.click(screen.getByRole("button", { name: "Забронировать" }));
-    await waitFor(() => {
-      expect(screen.getByLabelText("Код из сообщения")).toBeInTheDocument();
-    });
-    await user.type(screen.getByLabelText("Код из сообщения"), "0000");
-    await user.click(
-      screen.getByRole("button", { name: "Подтвердить и забронировать" })
+  it("shows max and telegram channel notes", async () => {
+    const user = userEvent.setup();
+    render(
+      <StepCheckout
+        categoryId="banya"
+        config={
+          {
+            ...config,
+            company: { telegram: "@les_bot" },
+          } as unknown as WidgetGetResponse
+        }
+        roomId="b1"
+        checkIn={null}
+        checkOut={null}
+        banyaDate="2026-10-07"
+        banyaTimeFrom="12:00"
+        banyaTimeTo="15:00"
+        guestCount={1}
+        productQuantities={{}}
+        basePrice={5200}
+        onContinue={vi.fn()}
+      />
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Неверный код подтверждения/)
-      ).toBeInTheDocument();
-    });
-    expect(saveRoomBooking).not.toHaveBeenCalled();
+    expect(screen.getByText(/Важно, чтобы бот/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "ссылка на бота" })
+    ).toHaveAttribute("href", "https://t.me/les_bot");
+
+    await user.click(screen.getByText("MAX"));
+    expect(
+      screen.queryByText(/Если нет аккаунта в MAX/i)
+    ).not.toBeInTheDocument();
   });
 });

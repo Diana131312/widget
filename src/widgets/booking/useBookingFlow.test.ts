@@ -273,6 +273,66 @@ describe("useBookingFlow", () => {
     expect(result.current.stepId).toBe("checkout");
   });
 
+  it("checkout → verify → done; back from verify/done returns to checkout", () => {
+    const { result } = renderHook(() =>
+      useBookingFlow({
+        initial: {
+          ...DEFAULT_BOOKING_URL_STATE,
+          stepId: "checkout",
+          categoryId: "banya",
+          roomId: "b1",
+          banyaDate: "2026-10-07",
+          banyaTimeFrom: "12:00",
+          banyaTimeTo: "15:00",
+          guestCount: 1,
+        },
+      })
+    );
+
+    act(() => {
+      result.current.continueFromCheckout({
+        firstName: "Иван",
+        lastName: "Петров",
+        phone: "+7 (900) 123-45-67",
+        comment: "",
+        verifyChannel: "telegram",
+      });
+    });
+    expect(result.current.stepId).toBe("verify");
+    expect(result.current.contactDraft?.firstName).toBe("Иван");
+
+    act(() => {
+      result.current.back();
+    });
+    expect(result.current.stepId).toBe("checkout");
+
+    act(() => {
+      result.current.continueFromCheckout({
+        firstName: "Иван",
+        lastName: "Петров",
+        phone: "+7 (900) 123-45-67",
+        comment: "",
+        verifyChannel: "telegram",
+      });
+      result.current.completeBooking({
+        bookingId: "bk1",
+        price: 5000,
+        prepayment: 2000,
+        paymentLink: null,
+        timeoutMinutes: 30,
+        message: "ok",
+        totalFallback: 5000,
+      });
+    });
+    expect(result.current.stepId).toBe("done");
+
+    act(() => {
+      result.current.back();
+    });
+    expect(result.current.stepId).toBe("checkout");
+    expect(result.current.bookingResult).toBeNull();
+  });
+
   it("goToStep only allows past steps", () => {
     const { result } = renderHook(() =>
       useBookingFlow({

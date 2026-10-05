@@ -6,8 +6,10 @@ import { BOOKING_ALIAS } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
 import { StepCategory } from "./steps/StepCategory";
 import { StepCheckout } from "./steps/StepCheckout";
+import { StepDone } from "./steps/StepDone";
 import { StepObject } from "./steps/StepObject";
 import { StepSetup } from "./steps/StepSetup";
+import { StepVerify } from "./steps/StepVerify";
 import { BootstrapError } from "./ui/BootstrapError";
 import { BookingLoader } from "./ui/BookingLoader";
 import { DeepLinkIssue } from "./ui/DeepLinkIssue";
@@ -50,14 +52,24 @@ function BookingWidgetInner() {
     setProductQty,
     setBasePriceResolved,
     continueFromSetup,
+    continueFromCheckout,
+    completeBooking,
     startOver,
     back,
     showAllObjects,
     goToStep,
     hydrate,
+    contactDraft,
+    bookingResult,
+    calcMeta,
   } = useBookingFlow({
     initial: urlCandidate,
-    onPersist: writeBookingUrl,
+    onPersist: (state) => {
+      // done заменяет verify в истории → браузерный «назад» сразу на checkout
+      writeBookingUrl(state, {
+        mode: state.stepId === "done" ? "replace" : "auto",
+      });
+    },
   });
 
   const { config, isBlocking, needsConfig, status, error, reload } =
@@ -163,6 +175,15 @@ function BookingWidgetInner() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [applyUrlCandidate, hydrate]);
 
+  // verify/done без локальных данных (F5 / чужая ссылка) → checkout
+  useEffect(() => {
+    if (stepId === "verify" && !contactDraft) {
+      goToStep("checkout");
+    } else if (stepId === "done" && !bookingResult) {
+      goToStep("checkout");
+    }
+  }, [stepId, contactDraft, bookingResult, goToStep]);
+
   const waitingUrl =
     (!urlReady && urlCandidate.stepId !== "category" && status !== "error") ||
     historyBusy;
@@ -244,13 +265,42 @@ function BookingWidgetInner() {
               banyaDate={banyaDate}
               banyaTimeFrom={banyaTimeFrom}
               banyaTimeTo={banyaTimeTo}
+              guestCount={guestCount}
+              productQuantities={productQuantities}
+              basePrice={checkoutPrice}
+              calcMeta={calcMeta}
+              initialContact={contactDraft}
+              onContinue={continueFromCheckout}
+            />
+          )}
+        {stepId === "verify" &&
+          categoryId &&
+          config &&
+          roomId &&
+          contactDraft &&
+          checkoutPrice != null &&
+          guestCount >= 1 && (
+            <StepVerify
+              categoryId={categoryId}
+              config={config}
+              roomId={roomId}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              banyaDate={banyaDate}
+              banyaTimeFrom={banyaTimeFrom}
+              banyaTimeTo={banyaTimeTo}
               slotDuration={slotDuration}
               guestCount={guestCount}
               productQuantities={productQuantities}
               basePrice={checkoutPrice}
-              onStartOver={startOver}
+              contact={contactDraft}
+              onComplete={completeBooking}
+              onBackToCheckout={() => goToStep("checkout")}
             />
           )}
+        {stepId === "done" && bookingResult && (
+          <StepDone result={bookingResult} onStartOver={startOver} />
+        )}
       </>
     );
   }

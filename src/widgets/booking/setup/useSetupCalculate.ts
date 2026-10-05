@@ -28,7 +28,10 @@ type SetupCalculateInput = {
 type Args = {
   api: WidgetApiClient;
   input: SetupCalculateInput | null;
-  onPriceResolved: (totalPrice: number) => void;
+  onPriceResolved: (
+    totalPrice: number,
+    meta?: import("./calculate.utils").SetupCalcMeta
+  ) => void;
 };
 
 export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
@@ -96,7 +99,11 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
           }
           setHomesCalc(view);
           setBanyaCalc(null);
-          onPriceResolvedRef.current(view.total);
+          onPriceResolvedRef.current(view.total, {
+            prepay: null,
+            prepayIncludesProducts: null,
+            extraValueForDate: null,
+          });
         } else if (input.categoryId === "banya") {
           if (
             !input.banyaDate ||
@@ -147,7 +154,11 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
           }
           setBanyaCalc(view);
           setHomesCalc(null);
-          onPriceResolvedRef.current(view.total);
+          onPriceResolvedRef.current(view.total, {
+            prepay: view.prepay,
+            prepayIncludesProducts: view.prepayIncludesProducts,
+            extraValueForDate: view.extraValueForDate,
+          });
         }
       } catch (err) {
         if (cancelled) return;

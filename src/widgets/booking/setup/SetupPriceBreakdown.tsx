@@ -43,6 +43,7 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
   checkOut,
   guestCount,
   basePrice,
+  banyaCalc,
   homesCalc,
   productLines,
   total,
@@ -110,6 +111,7 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
         id: product.id,
         name: product.name,
         qty,
+        unitPrice: product.price,
         lineTotal,
       }))}
       total={total}
@@ -120,6 +122,9 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
       checkOut={checkOut}
       nightLines={homesCalc?.nightPrices ?? []}
       periodMessage={homesCalc?.periodMessage ?? null}
+      prepaymentAmount={banyaCalc?.prepay ?? null}
+      prepayIncludesProducts={banyaCalc?.prepayIncludesProducts ?? null}
+      extraValueForDate={banyaCalc?.extraValueForDate ?? null}
     />
   );
 };

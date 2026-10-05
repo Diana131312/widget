@@ -71,6 +71,19 @@ describe("parseBanyaCalculateResponse", () => {
     expect(view.discountAmount).toBe(500);
   });
 
+  it("reads prepay and extraValueForDate", () => {
+    const view = parseBanyaCalculateResponse({
+      total: 0,
+      amount: 0,
+      prepay: 3000,
+      prepayIncludesProducts: false,
+      extraValueForDate: 1000,
+    } as never);
+    expect(view.prepay).toBe(3000);
+    expect(view.prepayIncludesProducts).toBe(false);
+    expect(view.extraValueForDate).toBe(1000);
+  });
+
   it("does not treat amount alone as total when total missing", () => {
     const view = parseBanyaCalculateResponse({ amount: 3200 } as never);
     // amount = до скидок; без total берём его как базу, не путаем с предоплатой

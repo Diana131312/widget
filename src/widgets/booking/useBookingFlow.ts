@@ -43,6 +43,16 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   const [basePrice, setBasePrice] = useState<number | null>(null);
   const [slotDuration, setSlotDuration] = useState<number | null>(null);
   const [slotPrice, setSlotPrice] = useState<number | null>(null);
+  const [contactDraft, setContactDraft] =
+    useState<import("./checkout/checkoutDraft").CheckoutContactDraft | null>(
+      null
+    );
+  const [bookingResult, setBookingResult] =
+    useState<import("./checkout/checkoutDraft").BookingResultDraft | null>(
+      null
+    );
+  const [calcMeta, setCalcMeta] =
+    useState<import("./checkout/checkoutDraft").BookingCalcMeta | null>(null);
   /**
    * true — зашли по ссылке с room id: при «Назад» с setup оставляем фокус на объекте.
    * false — шли из списка всех: при «Назад» убираем room из URL/стейта.
@@ -57,6 +67,9 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     setGuestCountState(0);
     setProductQuantities({});
     setBasePrice(null);
+    setCalcMeta(null);
+    setContactDraft(null);
+    setBookingResult(null);
   }, []);
 
   const clearSlotMeta = useCallback(() => {
@@ -119,6 +132,10 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       setBanyaTimeTo(next.banyaTimeTo);
       setGuestCountState(Math.max(0, next.guestCount ?? 0));
       setProductQuantities({ ...(next.productQuantities ?? {}) });
+      // Контакт / результат брони не в URL — сбрасываем при hydrate из ссылки
+      setContactDraft(null);
+      setBookingResult(null);
+      setCalcMeta(null);
       if (slotMeta) {
         setSlotDuration(slotMeta.duration);
         setSlotPrice(slotMeta.price);
@@ -145,7 +162,11 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
         ? "Параметры"
         : stepId === "checkout" || stepId === "extras"
           ? "Оформление"
-          : (categoryId && getCategoryConfig(categoryId)?.title) || ROOT_TITLE;
+          : stepId === "verify"
+            ? "Подтверждение"
+            : stepId === "done"
+              ? "Готово"
+              : (categoryId && getCategoryConfig(categoryId)?.title) || ROOT_TITLE;
 
   const clearObjectSelection = useCallback(() => {
     setRoomId(null);
@@ -159,7 +180,15 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   }, [clearSetupExtras, clearSlotMeta]);
 
   const back = useCallback(() => {
+    // verify и done: назад всегда на 4-й шаг (оформление)
+    if (stepId === "done" || stepId === "verify") {
+      setBookingResult(null);
+      setStepId("checkout");
+      return;
+    }
     if (stepId === "checkout" || stepId === "extras") {
+      setContactDraft(null);
+      setBookingResult(null);
       setStepId("setup");
       return;
     }
@@ -171,7 +200,6 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
       setBanyaTimeTo(null);
       clearSetupExtras();
       clearSlotMeta();
-      // Из списка всех — убрать room; из deep-link — оставить фокус
       if (!roomFocusPinned) {
         setRoomId(null);
       }
@@ -280,6 +308,7 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
   const setGuestCount = useCallback((next: number) => {
     setGuestCountState(Math.max(0, next));
     setBasePrice(null);
+    setCalcMeta(null);
   }, []);
 
   const setProductQty = useCallback((productId: string, next: number) => {
@@ -291,14 +320,38 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     });
   }, []);
 
-  const setBasePriceResolved = useCallback((price: number) => {
-    setBasePrice(price);
-  }, []);
+  const setBasePriceResolved = useCallback(
+    (
+      price: number,
+      meta?: import("./checkout/checkoutDraft").BookingCalcMeta
+    ) => {
+      setBasePrice(price);
+      if (meta) setCalcMeta(meta);
+    },
+    []
+  );
 
   const continueFromSetup = useCallback(() => {
     // extras (мультикорзина) временно пропускаем
     setStepId("checkout");
   }, []);
+
+  const continueFromCheckout = useCallback(
+    (contact: import("./checkout/checkoutDraft").CheckoutContactDraft) => {
+      setContactDraft(contact);
+      setBookingResult(null);
+      setStepId("verify");
+    },
+    []
+  );
+
+  const completeBooking = useCallback(
+    (result: import("./checkout/checkoutDraft").BookingResultDraft) => {
+      setBookingResult(result);
+      setStepId("done");
+    },
+    []
+  );
 
   const startOver = useCallback(() => {
     setStepId("category");
@@ -333,11 +386,22 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
         return;
       }
       if (target === "setup") {
+        setContactDraft(null);
+        setBookingResult(null);
         setStepId("setup");
         return;
       }
+      if (target === "checkout") {
+        setBookingResult(null);
+        setStepId("checkout");
+        return;
+      }
+      if (target === "verify") {
+        setBookingResult(null);
+        setStepId("verify");
+        return;
+      }
       if (target === "extras") {
-        // временно недоступен
         return;
       }
       setStepId(target);
@@ -359,6 +423,9 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     guestCount,
     productQuantities,
     basePrice,
+    contactDraft,
+    bookingResult,
+    calcMeta,
     title,
     canGoBack,
     objectFocus,
@@ -369,6 +436,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     setProductQty,
     setBasePriceResolved,
     continueFromSetup,
+    continueFromCheckout,
+    completeBooking,
     startOver,
     back,
     showAllObjects,

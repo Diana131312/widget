@@ -2,40 +2,62 @@ import React from "react";
 import { isRuPhoneComplete } from "./phone";
 
 type Props = {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phoneDisplay: string;
   comment: string;
-  onFullNameChange: (v: string) => void;
+  onFirstNameChange: (v: string) => void;
+  onLastNameChange: (v: string) => void;
   onPhoneChange: (rawInput: string) => void;
   onCommentChange: (v: string) => void;
 };
 
 export const ContactFields: React.FC<Props> = ({
-  fullName,
+  firstName,
+  lastName,
   phoneDisplay,
   comment,
-  onFullNameChange,
+  onFirstNameChange,
+  onLastNameChange,
   onPhoneChange,
   onCommentChange,
 }) => {
   const phoneOk = isRuPhoneComplete(phoneDisplay);
-  const nameOk = fullName.trim().length >= 2;
+  const firstOk = firstName.trim().length >= 1;
+  const lastOk = lastName.trim().length >= 1;
 
   return (
     <div className="booking-checkout__fields">
       <div className="booking-checkout__field">
-        <label className="booking-checkout__label" htmlFor="bk-checkout-name">
-          ФИО
+        <label className="booking-checkout__label" htmlFor="bk-checkout-last">
+          Фамилия
         </label>
         <input
-          id="bk-checkout-name"
+          id="bk-checkout-last"
           className="booking-checkout__input"
-          value={fullName}
-          onChange={(e) => onFullNameChange(e.target.value)}
-          placeholder="Иванов Иван"
-          autoComplete="name"
+          value={lastName}
+          onChange={(e) => onLastNameChange(e.target.value)}
+          placeholder="Иванов"
+          autoComplete="family-name"
         />
-        {!nameOk && fullName.length > 0 ? (
+        {!lastOk && lastName.length > 0 ? (
+          <p className="booking-checkout__hint">Укажите фамилию</p>
+        ) : null}
+      </div>
+
+      <div className="booking-checkout__field">
+        <label className="booking-checkout__label" htmlFor="bk-checkout-first">
+          Имя
+        </label>
+        <input
+          id="bk-checkout-first"
+          className="booking-checkout__input"
+          value={firstName}
+          onChange={(e) => onFirstNameChange(e.target.value)}
+          placeholder="Иван"
+          autoComplete="given-name"
+        />
+        {!firstOk && firstName.length > 0 ? (
           <p className="booking-checkout__hint">Укажите имя</p>
         ) : null}
       </div>

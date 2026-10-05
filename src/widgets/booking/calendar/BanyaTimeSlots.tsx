@@ -6,9 +6,9 @@ import {
   type SlotGroupItem,
 } from "./banyaSlotVariants";
 
-function formatTimeRange(timeFrom: string, timeTo: string): string {
-  if (timeTo === "23:59") return `${timeFrom} — 24:00`;
-  return `${timeFrom} — ${timeTo}`;
+function formatTimeEnd(timeTo: string): string {
+  if (timeTo === "23:59") return "24:00";
+  return timeTo;
 }
 
 function formatDuration(hours: number): string {
@@ -37,7 +37,8 @@ function SlotItemButton({
       type="button"
       className={[
         "booking-slots__item",
-        !available && "booking-slots__item--disabled",
+        available && "booking-slots__item--free",
+        !available && "booking-slots__item--busy",
         available && selected && "booking-slots__item--selected",
       ]
         .filter(Boolean)
@@ -49,9 +50,9 @@ function SlotItemButton({
         onSelect(slot, index);
       }}
     >
-      <span className="booking-slots__time-row">
+      <span className="booking-slots__item-main">
         <span className="booking-slots__time">
-          {formatTimeRange(slot.timeFrom, slot.timeTo)}
+          {slot.timeFrom} – {formatTimeEnd(slot.timeTo)}
         </span>
         <span className="booking-slots__duration">
           {formatDuration(slot.duration)}
@@ -59,7 +60,9 @@ function SlotItemButton({
       </span>
       {slot.price > 0 ? (
         <span className="booking-slots__price">{formatRub(slot.price)} ₽</span>
-      ) : null}
+      ) : (
+        <span className="booking-slots__price booking-slots__price--empty" />
+      )}
     </button>
   );
 }

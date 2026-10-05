@@ -2,10 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BookingHeader } from "../header/BookingHeader";
-import { BOOKING_STEPS } from "../types";
 
 describe("BookingHeader", () => {
-  it("hides back on first step", () => {
+  it("hides back on first step and shows step counter only", () => {
     render(
       <BookingHeader
         stepId="category"
@@ -15,8 +14,11 @@ describe("BookingHeader", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
-    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Бронирование" })).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Бронирование" })
+    ).not.toBeInTheDocument();
+    expect(document.querySelector(".booking-steps")).not.toBeInTheDocument();
   });
 
   it("shows back and calls onBack", async () => {
@@ -33,49 +35,29 @@ describe("BookingHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Шаг 2 из 4")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
   });
 
-  it("marks current step with aria-current and past steps as buttons", () => {
-    const { container } = render(
-      <BookingHeader stepId="setup" title="Параметры" />
-    );
-
-    const current = container.querySelectorAll(
-      '.booking-steps__dot[aria-current="step"]'
-    );
-    expect(current).toHaveLength(1);
-
-    expect(
-      screen.getByRole("button", { name: "Шаг: Категория" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Шаг: Объект" })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Шаг: Параметры" })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Шаг: Дополнительно" })
-    ).not.toBeInTheDocument();
-
-    expect(
-      container.querySelectorAll(".booking-steps__dot")
-    ).toHaveLength(BOOKING_STEPS.length);
-  });
-
-  it("calls onStepClick only for past steps", async () => {
-    const user = userEvent.setup();
-    const onStepClick = vi.fn();
+  it("hides step label when hideStepLabel", () => {
     render(
       <BookingHeader
-        stepId="setup"
-        title="Параметры"
-        onStepClick={onStepClick}
+        stepId="object"
+        title="Дома"
+        hideStepLabel
+        showHome
+        onHome={vi.fn()}
       />
     );
+    expect(screen.queryByText(/Шаг \d+ из/)).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole("button", { name: "Шаг: Категория" }));
-    expect(onStepClick).toHaveBeenCalledWith("category");
+  it("shows verify as step 5 of 6 and done as 6 of 6", () => {
+    const { rerender } = render(
+      <BookingHeader stepId="verify" canGoBack onBack={vi.fn()} />
+    );
+    expect(screen.getByText("Шаг 5 из 6")).toBeInTheDocument();
+
+    rerender(<BookingHeader stepId="done" canGoBack onBack={vi.fn()} />);
+    expect(screen.getByText("Шаг 6 из 6")).toBeInTheDocument();
   });
 });

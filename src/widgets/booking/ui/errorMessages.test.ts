@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getAuthErrorCopy, getBootstrapErrorCopy } from "./errorMessages";
+import {
+  getAuthErrorCopy,
+  getBootstrapErrorCopy,
+  getWidgetApiErrorDetail,
+} from "./errorMessages";
 
 describe("getBootstrapErrorCopy", () => {
   it("maps network / Failed to fetch", () => {
@@ -29,6 +33,25 @@ describe("getBootstrapErrorCopy", () => {
     const copy = getBootstrapErrorCopy(new Error("weird"));
     expect(copy.title).toBe("Не удалось загрузить данные");
     expect(copy.detail).toBe("Что-то пошло не так. Попробуйте ещё раз");
+  });
+});
+
+describe("getWidgetApiErrorDetail", () => {
+  it("prefers API body message over generic 5xx text", () => {
+    const err = Object.assign(
+      new Error("Widget API request failed: 500 Internal Server Error"),
+      {
+        status: 500,
+        body: { message: "Время уже занято" },
+      }
+    );
+    expect(getWidgetApiErrorDetail(err)).toBe("Время уже занято");
+  });
+
+  it("keeps network copy when no body message", () => {
+    expect(getWidgetApiErrorDetail(new TypeError("Failed to fetch"))).toBe(
+      "Проверьте интернет и попробуйте ещё раз"
+    );
   });
 });
 

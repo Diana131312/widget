@@ -42,7 +42,13 @@ describe("useSetupCalculate", () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.banyaCalc?.total).toBe(4500);
-    expect(onPriceResolved).toHaveBeenCalledWith(4500);
+    expect(onPriceResolved).toHaveBeenCalledWith(
+      4500,
+      expect.objectContaining({
+        prepay: null,
+        extraValueForDate: null,
+      })
+    );
     expect(calculateRoom).toHaveBeenCalledWith(
       expect.objectContaining({ duration: 3, personCount: 2 })
     );
@@ -68,7 +74,13 @@ describe("useSetupCalculate", () => {
     });
 
     expect(result.current.banyaCalc?.total).toBe(3200);
-    expect(onPriceResolved).toHaveBeenCalledWith(3200);
+    expect(onPriceResolved).toHaveBeenCalledWith(
+      3200,
+      expect.objectContaining({
+        prepay: null,
+        extraValueForDate: null,
+      })
+    );
   });
 
   it("errors when API total is empty and no slotPrice (do not unlock Next)", async () => {

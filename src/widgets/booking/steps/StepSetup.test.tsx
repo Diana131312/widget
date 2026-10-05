@@ -173,9 +173,8 @@ describe("StepSetup", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByText("0/8")).toBeInTheDocument();
-    expect(screen.getByText("Дополнительный гость")).toBeInTheDocument();
-    // гости не на максимуме → доп. гости недоступны
-    expect(screen.getByText("0/0")).toBeInTheDocument();
+    // гости не на максимуме → инпут доп. гостей скрыт
+    expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
     expect(document.querySelector(".booking-setup__cta")).toBeInTheDocument();
   });
 
@@ -208,7 +207,7 @@ describe("StepSetup", () => {
 
     await waitFor(() => {
       expect(screen.getByText("7/8")).toBeInTheDocument();
-      expect(screen.getByText("0/0")).toBeInTheDocument();
+      expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
     });
   });
 
@@ -309,8 +308,8 @@ describe("StepSetup", () => {
     render(<Harness categoryId="homes" />);
 
     expect(screen.getByText("0/6")).toBeInTheDocument();
-    // доп. гости только после заполнения вместимости
-    expect(screen.getByText("0/0")).toBeInTheDocument();
+    // доп. гости только после заполнения вместимости — инпут скрыт
+    expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Увеличить количество гостей" })
@@ -323,7 +322,7 @@ describe("StepSetup", () => {
     );
 
     expect(screen.getByText("3/6")).toBeInTheDocument();
-    expect(screen.getByText("0/0")).toBeInTheDocument();
+    expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(dailyCalculate).toHaveBeenCalledWith(

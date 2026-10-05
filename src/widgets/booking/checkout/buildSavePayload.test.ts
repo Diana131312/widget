@@ -32,13 +32,14 @@ describe("buildCheckoutProducts", () => {
 
 describe("buildSaveBodies", () => {
   const contact = {
-    fullName: "Иван Петров",
+    firstName: "Иван",
+    lastName: "Петров",
     phone: "+7 (900) 123-45-67",
     comment: "Окно",
-    messenger: "telegram" as const,
+    verifyChannel: "telegram" as const,
   };
 
-  it("builds homes dailySave body", () => {
+  it("builds homes dailySave body without extras", () => {
     const result = buildSaveBodies(
       {
         categoryId: "homes",
@@ -56,7 +57,7 @@ describe("buildSaveBodies", () => {
       contact,
       [{ id: "p1", name: "Веник", price: 500, count: 1 }]
     );
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       kind: "homes",
       body: {
         dailyRoomId: "d1",
@@ -65,43 +66,81 @@ describe("buildSaveBodies", () => {
         personCount: 3,
         name: "Иван",
         lastName: "Петров",
+        phone: "+79001234567",
         messenger: "telegram",
+        comment: "Окно",
+        products: [{ id: "p1", name: "Веник", price: 500, count: 1 }],
       },
     });
   });
 
-  it("builds banya saveRoomBooking body with slot duration", () => {
+  it("builds banya save body per widget API", () => {
     const result = buildSaveBodies(
       {
         categoryId: "banya",
         roomId: "b1",
-        guestCount: 2,
+        guestCount: 4,
         productQuantities: {},
-        total: 4500,
+        total: 6000,
         checkIn: null,
         checkOut: null,
-        banyaDate: "2026-10-07",
-        banyaTimeFrom: "12:00",
-        banyaTimeTo: "15:00",
-        slotDuration: 4,
+        banyaDate: "2026-10-05",
+        banyaTimeFrom: "18:00",
+        banyaTimeTo: "21:00",
+        slotDuration: 3,
       },
       contact,
-      []
+      [],
+      "1234"
     );
-    expect(result).toMatchObject({
+
+    expect(result).toEqual({
       kind: "banya",
       body: {
         roomId: "b1",
-        date: "2026-10-07",
-        time: "12:00",
-        duration: 4,
-        personCount: 2,
-        products: [],
+        date: "2026-10-05",
+        time: "18:00:00",
+        duration: 3,
+        personCount: 4,
         name: "Иван",
         lastName: "Петров",
+        phone: "+79001234567",
+        messenger: "telegram",
+        comment: "Окно",
+        promoCode: null,
+        discounts: [],
+        products: [],
+        checkCode: "1234",
       },
     });
-    expect(result.kind === "banya" && "price" in result.body).toBe(false);
+  });
+
+  it("sends messenger null for call channel", () => {
+    const result = buildSaveBodies(
+      {
+        categoryId: "banya",
+        roomId: "b1",
+        guestCount: 1,
+        productQuantities: {},
+        total: 3000,
+        checkIn: null,
+        checkOut: null,
+        banyaDate: "2026-10-05",
+        banyaTimeFrom: "12:00",
+        banyaTimeTo: "15:00",
+        slotDuration: 3,
+      },
+      { ...contact, verifyChannel: "call" },
+      []
+    );
+    expect(result.kind).toBe("banya");
+    if (result.kind === "banya") {
+      expect(result.body.messenger).toBeNull();
+      expect(result.body.products).toEqual([]);
+      expect("price" in result.body).toBe(false);
+      expect("periodProducts" in result.body).toBe(false);
+      expect("personName" in result.body).toBe(false);
+    }
   });
 
   it("rejects incomplete banya draft", () => {

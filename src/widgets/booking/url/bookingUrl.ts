@@ -1,4 +1,5 @@
 import type { BookingCategoryId, BookingStepId } from "../types";
+import { isCheckoutLikeStep } from "../types";
 
 const PREFIX = "bk_";
 
@@ -47,6 +48,8 @@ const STEPS = new Set<BookingStepId>([
   "setup",
   "extras",
   "checkout",
+  "verify",
+  "done",
 ]);
 
 const CATS = new Set<BookingCategoryId>(["homes", "banya"]);
@@ -165,8 +168,7 @@ export function parseBookingUrl(
     stepId = "object";
   }
 
-  const onSetupLike =
-    stepId === "setup" || stepId === "extras" || stepId === "checkout";
+  const onSetupLike = isCheckoutLikeStep(stepId);
 
   return {
     stepId,
@@ -240,10 +242,7 @@ export function writeBookingUrl(
     url.searchParams.set(`${PREFIX}to`, state.banyaTimeTo);
   }
 
-  const onSetupLike =
-    state.stepId === "setup" ||
-    state.stepId === "extras" ||
-    state.stepId === "checkout";
+  const onSetupLike = isCheckoutLikeStep(state.stepId);
   if (onSetupLike && state.guestCount > 0) {
     url.searchParams.set(`${PREFIX}guests`, String(Math.floor(state.guestCount)));
   }

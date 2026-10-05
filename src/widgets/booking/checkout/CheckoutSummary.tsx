@@ -17,6 +17,9 @@ type Props = {
   banyaTimeTo: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  prepaymentAmount?: number | null;
+  prepayIncludesProducts?: boolean | null;
+  extraValueForDate?: number | null;
 };
 
 /** Тот же блок расчёта, что на setup. */

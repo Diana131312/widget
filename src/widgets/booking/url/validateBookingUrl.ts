@@ -67,7 +67,15 @@ function toObjectStep(
 }
 
 function setupStepId(candidate: BookingUrlState): BookingUrlState["stepId"] {
-  return candidate.stepId === "checkout" ? "checkout" : "setup";
+  if (
+    candidate.stepId === "checkout" ||
+    candidate.stepId === "verify" ||
+    candidate.stepId === "done"
+  ) {
+    // verify/done без контакта в URL всегда открываем как checkout
+    return "checkout";
+  }
+  return "setup";
 }
 
 /** Clamp гостей и qty товаров под комнату/каталог. */
@@ -305,7 +313,10 @@ async function validateHomeSetup(
     }
   }
 
-  const wantCheckout = candidate.stepId === "checkout";
+  const wantCheckout =
+    candidate.stepId === "checkout" ||
+    candidate.stepId === "verify" ||
+    candidate.stepId === "done";
   const stepId =
     wantCheckout && basePrice != null && basePrice > 0 && extras.guestCount >= 1
       ? "checkout"
@@ -394,7 +405,10 @@ async function validateBanyaSetup(
 
     const slotPrice =
       typeof match.price === "number" && match.price > 0 ? match.price : null;
-    const wantCheckout = candidate.stepId === "checkout";
+    const wantCheckout =
+      candidate.stepId === "checkout" ||
+      candidate.stepId === "verify" ||
+      candidate.stepId === "done";
     const canCheckout =
       wantCheckout &&
       slotPrice != null &&

@@ -25,7 +25,10 @@ type Props = {
   basePrice: number | null;
   onGuestCountChange: (next: number) => void;
   onSetProductQty: (productId: string, next: number) => void;
-  onBasePriceResolved: (price: number) => void;
+  onBasePriceResolved: (
+    price: number,
+    meta?: import("../setup/calculate.utils").SetupCalcMeta
+  ) => void;
   onContinue: () => void;
 };
 
@@ -218,23 +221,15 @@ export const StepSetup: React.FC<Props> = ({
             </div>
           </div>
 
-          {extra ? (
-            <div
-              className={[
-                "booking-setup__extra-guest",
-                maxExtraGuests <= 0 ? "booking-setup__extra-guest--disabled" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-disabled={maxExtraGuests <= 0}
-            >
+          {extra && maxExtraGuests > 0 ? (
+            <div className="booking-setup__extra-guest">
               <p className="booking-setup__extra-guest-name">{extra.name}</p>
               <div className="booking-qty">
                 <button
                   type="button"
                   className="booking-qty__btn"
                   onClick={() => onSetProductQty(extra.id, extraQty - 1)}
-                  disabled={extraQty <= 0 || maxExtraGuests <= 0}
+                  disabled={extraQty <= 0}
                   aria-label={`Убрать ${extra.name}`}
                 >
                   −
@@ -251,7 +246,7 @@ export const StepSetup: React.FC<Props> = ({
                       Math.min(maxExtraGuests, extraQty + 1)
                     )
                   }
-                  disabled={extraQty >= maxExtraGuests || maxExtraGuests <= 0}
+                  disabled={extraQty >= maxExtraGuests}
                   aria-label={`Добавить ${extra.name}`}
                 >
                   +

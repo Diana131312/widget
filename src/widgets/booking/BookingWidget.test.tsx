@@ -77,10 +77,10 @@ describe("BookingWidget", () => {
   it("starts on category step without back", () => {
     render(<BookingWidget />);
 
-    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Бронирование" })
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Бронирование" })
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
   });
@@ -92,18 +92,14 @@ describe("BookingWidget", () => {
     await user.click(screen.getByRole("button", { name: "Коттеджи" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Дома" })).toBeInTheDocument();
+      expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
     });
-    expect(screen.getByText("Шаг 2 из 4")).toBeInTheDocument();
     expect(screen.getByText("Мята")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Назад" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
 
-    expect(screen.getByText("Шаг 1 из 4")).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Бронирование" })
-    ).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
   });
 
@@ -114,7 +110,7 @@ describe("BookingWidget", () => {
     await user.click(screen.getByRole("button", { name: "Бани на дровах" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Бани" })).toBeInTheDocument();
+      expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
     });
     expect(screen.getByText("Кедровая")).toBeInTheDocument();
   });
@@ -125,9 +121,9 @@ describe("BookingWidget", () => {
     render(<BookingWidget />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Дома" })).toBeInTheDocument();
+      expect(screen.getByText("Мята")).toBeInTheDocument();
     });
-    expect(screen.getByText("Мята")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
   });
 
   it("falls back to category when room id is missing from config", async () => {
@@ -140,12 +136,10 @@ describe("BookingWidget", () => {
     render(<BookingWidget />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Бронирование" })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
     });
     expect(window.location.search).toContain("bk_step=category");
-    expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
   });
 
   it("shows occupied slot issue with choose-another-time action", async () => {

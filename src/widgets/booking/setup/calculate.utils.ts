@@ -12,8 +12,12 @@ export type BanyaCalculateView = {
   amountBeforeDiscount: number | null;
   basePrice: number | null;
   discountAmount: number | null;
-  /** Доплата за гостя сверх вместимости (за одного) */
+  /** Доплата за каждого гостя сверх вместимости */
   extraValueForDate: number | null;
+  /** Предоплата за баню из /calculate */
+  prepay: number | null;
+  /** Предоплата уже включает доп. товары */
+  prepayIncludesProducts: boolean | null;
   lines: CalcMoneyLine[];
   raw: CalculateRoomResponse;
 };
@@ -24,6 +28,13 @@ export type HomesCalculateView = {
   nightPrices: { date: string; price: number }[];
   periodMessage: string | null;
   raw: DailyCalculateResponse;
+};
+
+/** Мета расчёта, которую тащим на checkout. */
+export type SetupCalcMeta = {
+  prepay: number | null;
+  prepayIncludesProducts: boolean | null;
+  extraValueForDate: number | null;
 };
 
 /** API иногда отдаёт числа строками — иначе total=0 и расчёт «ломается». */
@@ -39,9 +50,23 @@ function readNumber(obj: Record<string, unknown>, keys: string[]): number | null
   return null;
 }
 
+function readBoolean(
+  obj: Record<string, unknown>,
+  keys: string[]
+): boolean | null {
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === "boolean") return v;
+  }
+  return null;
+}
+
 /**
- * /calculate: total = итоговая стоимость, amount = до скидок (не предоплата!).
- * Предоплата приходит только в ответе /save как amount.
+ * /calculate:
+ * - total = стоимость брони (без товаров)
+ * - amount = до скидок
+ * - prepay = предоплата
+ * - extraValueForDate = доплата за гостя сверх вместимости
  */
 export function parseBanyaCalculateResponse(
   raw: CalculateRoomResponse
@@ -68,6 +93,11 @@ export function parseBanyaCalculateResponse(
     "extraValueForDate",
     "ExtraValueForDate",
   ]);
+  const prepay = readNumber(o, ["prepay", "Prepay", "prepayment", "Prepayment"]);
+  const prepayIncludesProducts = readBoolean(o, [
+    "prepayIncludesProducts",
+    "PrepayIncludesProducts",
+  ]);
 
   if (basePrice == null && amountBeforeDiscount != null && amountBeforeDiscount > 0) {
     basePrice = amountBeforeDiscount;
@@ -90,6 +120,8 @@ export function parseBanyaCalculateResponse(
     basePrice,
     discountAmount,
     extraValueForDate,
+    prepay,
+    prepayIncludesProducts,
     lines,
     raw,
   };
@@ -125,4 +157,14 @@ export function computeDurationHours(timeFrom: string, timeTo: string): number {
   const to = toH * 60 + (toM || 0);
   const diff = to - from;
   return diff > 0 ? diff / 60 : 1;
+}
+
+/** HH:mm или HH:mm:ss → HH:mm:ss для /save */
+export function toApiTime(time: string): string {
+  const parts = time.trim().split(":");
+  if (parts.length >= 3) return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:${parts[2].padStart(2, "0")}`;
+  if (parts.length === 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:00`;
+  }
+  return time;
 }

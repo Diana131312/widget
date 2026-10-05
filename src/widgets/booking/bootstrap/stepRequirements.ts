@@ -15,6 +15,8 @@ export const STEP_DATA_NEEDS: Record<BookingStepId, StepDataNeeds> = {
   setup: { config: true },
   extras: { config: true },
   checkout: { config: true },
+  verify: { config: true },
+  done: { config: true },
 };
 
 export function stepNeedsConfig(stepId: BookingStepId): boolean {

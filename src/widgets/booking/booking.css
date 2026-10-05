@@ -96,9 +96,9 @@
 .booking-header {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   min-height: 0;
   padding: 16px 16px 10px;
   background: transparent;
@@ -106,10 +106,7 @@
 
 @media (min-width: 768px) {
   .booking-header {
-    flex-direction: row;
-    align-items: center;
-    min-height: 52px;
-    gap: 0;
+    min-height: 48px;
     padding: 28px 28px 14px;
   }
 }
@@ -163,10 +160,18 @@
 .booking-header__step {
   margin: 0;
   font-family: var(--bk-cal-font);
-  font-size: var(--bk-small);
-  font-weight: 500;
-  color: var(--bk-text-muted);
+  font-size: var(--bk-caption);
+  font-weight: 600;
+  color: var(--bk-ink-soft);
   white-space: nowrap;
+}
+
+.booking-header__title {
+  display: none;
+}
+
+.booking-steps {
+  display: none;
 }
 
 .booking-header__title {
@@ -1573,7 +1578,7 @@ button.booking-steps__dot:focus-visible {
   margin: 0;
   flex: 1 1 auto;
   min-width: 0;
-  font-size: var(--bk-cal-num); /* 18px как Bukza list-day-title */
+  font-size: var(--bk-body);
   font-weight: 600;
   color: var(--bk-ink);
   line-height: 1.35;
@@ -1637,10 +1642,11 @@ button.booking-steps__dot:focus-visible {
 .booking-slots__item {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 10px 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 12px 14px;
   border: 1px solid var(--bk-border);
   border-radius: 10px;
   background: var(--bk-surface);
@@ -1651,41 +1657,66 @@ button.booking-steps__dot:focus-visible {
 }
 
 .booking-slots__item:hover:not(:disabled) {
-  border-color: var(--bk-ink);
+  filter: brightness(0.98);
 }
 
-.booking-slots__item--selected {
-  border-color: var(--bk-ink);
-  background: rgba(72, 85, 72, 0.12);
+.booking-slots__item--free {
+  border-color: rgba(107, 143, 113, 0.55);
+  background: rgba(107, 143, 113, 0.12);
+  color: var(--bk-ink-dark);
 }
 
-.booking-slots__item--disabled {
-  opacity: 0.4;
+.booking-slots__item--free.booking-slots__item--selected {
+  border-color: var(--bk-add);
+  background: rgba(107, 143, 113, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(107, 143, 113, 0.35);
+}
+
+.booking-slots__item--busy {
+  border-color: rgba(184, 92, 92, 0.45);
+  background: rgba(184, 92, 92, 0.1);
+  color: #8a3f3f;
   cursor: not-allowed;
-  text-decoration: line-through;
+  opacity: 1;
+  text-decoration: none;
 }
 
-.booking-slots__time-row {
+.booking-slots__item-main {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .booking-slots__time {
-  font-size: var(--bk-cal-weekday); /* ~14px как interval */
-  font-weight: 500;
+  font-size: var(--bk-cal-num);
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .booking-slots__duration {
-  font-size: 0.75rem; /* 12px как Bukza interval__name */
+  font-size: var(--bk-cal-weekday);
   font-weight: 500;
-  color: var(--bk-ink-soft);
+  color: inherit;
+  opacity: 0.85;
 }
 
 .booking-slots__price {
-  font-size: 0.75rem;
-  color: var(--bk-ink-soft);
+  flex: 0 0 auto;
+  font-size: var(--bk-cal-num);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.booking-slots__price--empty {
+  min-width: 1ch;
+}
+
+.booking-slots__item--busy .booking-slots__price {
+  font-weight: 600;
 }
 
 .booking-slots .booking-cal__continue {
@@ -2495,6 +2526,37 @@ button.booking-steps__dot:focus-visible {
   margin: 0;
   font-size: var(--bk-small);
   color: #a16207;
+  line-height: 1.4;
+}
+
+.booking-checkout__hint .booking-checkout__bot-link {
+  display: inline;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: 600;
+  text-underline-offset: 2px;
+}
+
+.booking-checkout__channel-note {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--bk-radius);
+  background: rgba(161, 98, 7, 0.08);
+  border: 1px solid rgba(161, 98, 7, 0.22);
+  font-size: var(--bk-caption);
+  color: #a16207;
+  line-height: 1.4;
+}
+
+.booking-checkout__channel-note-link {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 2px;
 }
 
 .booking-checkout__messenger {
@@ -2624,6 +2686,68 @@ button.booking-steps__dot:focus-visible {
   cursor: pointer;
 }
 
+.booking-checkout__dial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin: 8px 0 12px;
+  border-radius: var(--bk-radius);
+  background: rgba(107, 143, 113, 0.14);
+  border: 1px solid rgba(107, 143, 113, 0.4);
+  color: var(--bk-ink-dark);
+  font-size: var(--bk-body);
+  font-weight: 600;
+  font-family: var(--bk-cal-font);
+  text-decoration: none;
+}
+
+.booking-verify__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.booking-verify__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(72, 85, 72, 0.22);
+  border-radius: var(--bk-radius);
+  background: rgba(72, 85, 72, 0.05);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--bk-ink-dark);
+}
+
+.booking-verify__choice:hover:not(:disabled) {
+  border-color: var(--bk-add);
+  background: rgba(107, 143, 113, 0.12);
+}
+
+.booking-verify__choice:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.booking-verify__choice-title {
+  font-size: var(--bk-body);
+  font-weight: 600;
+}
+
+.booking-verify__choice-detail {
+  font-size: var(--bk-caption);
+  color: var(--bk-ink-soft);
+  line-height: 1.35;
+}
+
+
 .booking-checkout__bot-link:hover,
 .booking-checkout__linkish:hover {
   color: var(--bk-ink-dark);
@@ -2655,6 +2779,22 @@ button.booking-steps__dot:focus-visible {
 .booking-checkout__success-meta strong {
   color: var(--bk-ink-dark);
   font-variant-numeric: tabular-nums;
+}
+
+.booking-checkout__countdown-time {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--bk-cal-font);
+  letter-spacing: 0.02em;
+}
+
+.booking-checkout__countdown--expired {
+  color: #a33;
+  font-weight: 600;
+}
+
+.booking-price-breakdown__num--formula {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .booking-checkout__submit {

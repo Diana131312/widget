@@ -1,7 +1,8 @@
 import type { WidgetGetResponse, WidgetProduct } from "../../../api";
-import { computeDurationHours } from "../setup/calculate.utils";
 import type { BookingCategoryId } from "../types";
+import { computeDurationHours, toApiTime } from "../setup/calculate.utils";
 import { toApiPhone } from "./phone";
+import type { VerifyChannel } from "./checkoutDraft";
 
 export type CheckoutDraft = {
   categoryId: BookingCategoryId;
@@ -18,16 +19,24 @@ export type CheckoutDraft = {
 };
 
 export type CheckoutContact = {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   comment: string;
-  messenger: "telegram" | "max";
+  verifyChannel: VerifyChannel;
+};
+
+export type SaveProductLine = {
+  id: string;
+  name: string;
+  price: number;
+  count: number;
 };
 
 export function buildCheckoutProducts(
   config: WidgetGetResponse,
   quantities: Record<string, number>
-): Array<{ id: string; name: string; price: number; count: number }> {
+): SaveProductLine[] {
   const byId = new Map<string, WidgetProduct>();
   for (const p of config.products ?? []) byId.set(p.id, p);
 
@@ -42,23 +51,14 @@ export function buildCheckoutProducts(
         count,
       };
     })
-    .filter(Boolean) as Array<{
-    id: string;
-    name: string;
-    price: number;
-    count: number;
-  }>;
+    .filter(Boolean) as SaveProductLine[];
 }
 
-export function splitFullName(fullName: string): {
-  name: string;
-  lastName: string | undefined;
-} {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  return {
-    name: parts[0] ?? "",
-    lastName: parts.slice(1).join(" ") || undefined,
-  };
+export function toApiMessenger(
+  channel: VerifyChannel
+): "telegram" | "max" | null {
+  if (channel === "call") return null;
+  return channel;
 }
 
 export type BanyaSaveBody = {
@@ -68,13 +68,13 @@ export type BanyaSaveBody = {
   duration: number;
   personCount: number;
   name: string;
-  lastName?: string;
+  lastName: string;
   phone: string;
-  messenger: "telegram" | "max";
+  messenger: "telegram" | "max" | null;
   comment: string;
-  discounts: number[];
   promoCode: null;
-  products: Array<{ id: string; name: string; price: number; count: number }>;
+  discounts: number[];
+  products: SaveProductLine[];
   checkCode?: string;
 };
 
@@ -84,27 +84,34 @@ export type HomesSaveBody = {
   checkOutDate: string;
   personCount: number;
   name: string;
-  lastName?: string;
+  lastName: string;
   phone: string;
-  messenger: "telegram" | "max";
-  comment?: string;
-  products: Array<{ id: string; name: string; price: number; count: number }>;
+  messenger: "telegram" | "max" | null;
+  comment: string;
+  products: SaveProductLine[];
   checkCode?: string;
 };
 
-/** Тела запросов dailySave / saveRoomBooking (без alias — его добавит API-клиент). */
+/** Тела /save и /daily-save строго по widget API (без alias — добавит клиент). */
 export function buildSaveBodies(
   draft: CheckoutDraft,
   contact: CheckoutContact,
-  products: Array<{ id: string; name: string; price: number; count: number }>,
+  products: SaveProductLine[],
   checkCode?: string
 ):
   | { kind: "homes"; body: HomesSaveBody }
   | { kind: "banya"; body: BanyaSaveBody }
   | { kind: "invalid"; reason: string } {
-  const { name, lastName } = splitFullName(contact.fullName);
+  const name = contact.firstName.trim();
+  const lastName = contact.lastName.trim();
   const phone = toApiPhone(contact.phone);
+  const messenger = toApiMessenger(contact.verifyChannel);
   const productList = products.length > 0 ? products : [];
+  const comment = contact.comment.trim();
+
+  if (!name || !lastName) {
+    return { kind: "invalid", reason: "Укажите имя и фамилию" };
+  }
 
   if (draft.categoryId === "homes") {
     if (!draft.checkIn || !draft.checkOut) {
@@ -120,8 +127,8 @@ export function buildSaveBodies(
         name,
         lastName,
         phone,
-        messenger: contact.messenger,
-        comment: contact.comment.trim() || undefined,
+        messenger,
+        comment,
         products: productList,
         ...(checkCode ? { checkCode } : {}),
       },
@@ -142,16 +149,16 @@ export function buildSaveBodies(
     body: {
       roomId: draft.roomId,
       date: draft.banyaDate,
-      time: draft.banyaTimeFrom,
+      time: toApiTime(draft.banyaTimeFrom),
       duration,
       personCount: Math.max(1, draft.guestCount),
       name,
       lastName,
       phone,
-      messenger: contact.messenger,
-      comment: contact.comment.trim(),
-      discounts: [],
+      messenger,
+      comment,
       promoCode: null,
+      discounts: [],
       products: productList,
       ...(checkCode ? { checkCode } : {}),
     },
