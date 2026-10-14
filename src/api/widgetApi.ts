@@ -448,7 +448,7 @@ export function createWidgetApi(config: WidgetApiClientConfig): WidgetApiClient 
         method: "POST",
         path: `/daily-save`,
         body: { ...args, alias } satisfies DailySaveRequest,
-        auth: "none",
+        auth: "jwt", // как /save: JWT опционален, добавим если есть
       });
     },
   };

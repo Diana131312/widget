@@ -7,7 +7,19 @@ import { StepCheckout } from "./StepCheckout";
 
 const config = {
   settings: { confirmMessage: "Ждём вас в LES!" },
-  rooms: [{ id: "b1", name: "Рябиновая", capacity: 4, maxCapacity: 8 }],
+  rooms: [
+    {
+      id: "b1",
+      name: "Рябиновая",
+      capacity: 4,
+      maxCapacity: 8,
+      pricePeriod: {
+        includedCapacity: 6,
+        extraValue: 1000,
+        extraType: 0,
+      },
+    },
+  ],
   dailyRooms: [],
   products: [
     {
@@ -27,17 +39,25 @@ const config = {
 
 function Harness({
   onContinue = vi.fn(),
+  guestCount = 7,
   calcMeta = {
     prepay: 3000,
     prepayIncludesProducts: false,
     extraValueForDate: 1000,
+    discountAmount: null,
+    discountText: null,
+    amountBeforeDiscount: null,
   },
 }: {
   onContinue?: (contact: unknown) => void;
+  guestCount?: number;
   calcMeta?: {
     prepay: number | null;
     prepayIncludesProducts: boolean | null;
     extraValueForDate: number | null;
+    discountAmount: number | null;
+    discountText: string | null;
+    amountBeforeDiscount: number | null;
   } | null;
 }) {
   return (
@@ -50,7 +70,8 @@ function Harness({
       banyaDate="2026-10-07"
       banyaTimeFrom="12:00"
       banyaTimeTo="15:00"
-      guestCount={1}
+      slotDuration={3}
+      guestCount={guestCount}
       productQuantities={{ p1: 1 }}
       basePrice={5200}
       calcMeta={calcMeta}
@@ -60,13 +81,12 @@ function Harness({
 }
 
 describe("StepCheckout", () => {
-  it("shows prepay and extra guest fee from calculate", () => {
+  it("shows prepay and computed extra guest surcharge", () => {
     render(<Harness />);
-    expect(screen.getByText("Предоплата (без товаров)")).toBeInTheDocument();
+    expect(screen.getByText("Предоплата")).toBeInTheDocument();
     expect(screen.getAllByText(/3[\s\u00a0]?000/).length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("Доплата за гостя сверх вместимости")
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Доп\. гости/)).toBeInTheDocument();
+    // 1 доп. гость × 1000
     expect(screen.getAllByText(/1[\s\u00a0]?000/).length).toBeGreaterThan(0);
   });
 

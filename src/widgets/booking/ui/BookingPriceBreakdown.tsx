@@ -17,6 +17,19 @@ export type BreakdownNightLine = {
   price: number;
 };
 
+export type ExtraGuestBreakdown = {
+  extraGuests: number;
+  unitPrice: number;
+  surcharge: number;
+  /** extraType === 1 — умножали на часы (бани) */
+  perHour: boolean;
+  durationHours: number;
+  /** Дома: число ночей в доплате */
+  nights?: number;
+  /** Дома: тариф одинаковый все ночи — можно показать формулу × ночи */
+  ratesEqual?: boolean;
+};
+
 type Props = {
   categoryId: BookingCategoryId;
   roomName: string;
@@ -36,8 +49,12 @@ type Props = {
   /** Предоплата из /calculate (prepay) или после /save */
   prepaymentAmount?: number | null;
   prepayIncludesProducts?: boolean | null;
-  /** Доплата за каждого гостя сверх вместимости */
-  extraValueForDate?: number | null;
+  /** Сумма скидки (amount − total или originalPrice − total) */
+  discountAmount?: number | null;
+  discountText?: string | null;
+  amountBeforeDiscount?: number | null;
+  /** Доплата за доп. гостей (клиентский расчёт) */
+  extraGuest?: ExtraGuestBreakdown | null;
   className?: string;
 };
 
@@ -76,8 +93,10 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   periodMessage = null,
   heading = "Подробный расчёт",
   prepaymentAmount = null,
-  prepayIncludesProducts = null,
-  extraValueForDate = null,
+  discountAmount = null,
+  discountText = null,
+  amountBeforeDiscount = null,
+  extraGuest = null,
   className,
 }) => {
   const rootClass = ["booking-price-breakdown", className]
@@ -85,11 +104,21 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
     .join(" ");
 
   const showExtra =
-    categoryId === "banya" &&
-    extraValueForDate != null &&
-    extraValueForDate > 0;
+    extraGuest != null &&
+    extraGuest.extraGuests > 0 &&
+    extraGuest.surcharge > 0;
+  const showDiscount =
+    (discountAmount != null && discountAmount > 0) || Boolean(discountText);
   const showPrepay =
     prepaymentAmount != null && prepaymentAmount > 0;
+
+  const costLabel =
+    amountBeforeDiscount != null &&
+    amountBeforeDiscount > 0 &&
+    discountAmount != null &&
+    discountAmount > 0
+      ? amountBeforeDiscount
+      : basePrice;
 
   return (
     <div className={rootClass}>
@@ -142,14 +171,36 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
         <li className="booking-price-breakdown__row">
           <span>Стоимость</span>
           <span className="booking-price-breakdown__num">
-            {basePrice.toLocaleString("ru-RU")} ₽
+            {costLabel.toLocaleString("ru-RU")} ₽
           </span>
         </li>
+        {showDiscount ? (
+          <li className="booking-price-breakdown__row">
+            <span>
+              Скидка
+              {discountText ? ` (${discountText})` : ""}
+            </span>
+            <span className="booking-price-breakdown__num">
+              {discountAmount != null && discountAmount > 0
+                ? `−${discountAmount.toLocaleString("ru-RU")} ₽`
+                : "—"}
+            </span>
+          </li>
+        ) : null}
         {showExtra ? (
           <li className="booking-price-breakdown__row">
-            <span>Доплата за гостя сверх вместимости</span>
+            <span>
+              Доп. гости
+              {extraGuest!.nights != null &&
+              extraGuest!.nights > 0 &&
+              extraGuest!.ratesEqual !== false
+                ? ` (${extraGuest!.extraGuests} × ${extraGuest!.unitPrice.toLocaleString("ru-RU")} ₽ × ${extraGuest!.nights} ноч.)`
+                : extraGuest!.perHour
+                  ? ` (${extraGuest!.extraGuests} × ${extraGuest!.unitPrice.toLocaleString("ru-RU")} ₽ × ${extraGuest!.durationHours} ч)`
+                  : ` (${extraGuest!.extraGuests} × ${extraGuest!.unitPrice.toLocaleString("ru-RU")} ₽)`}
+            </span>
             <span className="booking-price-breakdown__num">
-              {extraValueForDate!.toLocaleString("ru-RU")} ₽
+              {extraGuest!.surcharge.toLocaleString("ru-RU")} ₽
             </span>
           </li>
         ) : null}
@@ -184,14 +235,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
       </div>
       {showPrepay ? (
         <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
-          <span>
-            Предоплата
-            {prepayIncludesProducts === true
-              ? " (с товарами)"
-              : prepayIncludesProducts === false
-                ? " (без товаров)"
-                : ""}
-          </span>
+          <span>Предоплата</span>
           <span className="booking-price-breakdown__num">
             {prepaymentAmount!.toLocaleString("ru-RU")} ₽
           </span>

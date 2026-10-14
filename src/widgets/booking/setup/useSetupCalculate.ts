@@ -25,6 +25,9 @@ type SetupCalculateInput = {
   slotPrice: number | null;
 };
 
+/** Пауза перед /calculate при смене гостей — меньше скачков UI и лишних запросов. */
+export const SETUP_CALCULATE_DEBOUNCE_MS = 650;
+
 type Args = {
   api: WidgetApiClient;
   input: SetupCalculateInput | null;
@@ -44,6 +47,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
   const guestCount = input?.guestCount ?? 0;
   const onPriceResolvedRef = useRef(onPriceResolved);
   onPriceResolvedRef.current = onPriceResolved;
+  const hadCalcRef = useRef(false);
 
   const retry = useCallback(() => {
     setReloadToken((n) => n + 1);
@@ -51,6 +55,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
 
   useEffect(() => {
     if (!input) {
+      hadCalcRef.current = false;
       setBanyaCalc(null);
       setHomesCalc(null);
       setError(null);
@@ -59,6 +64,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
     }
 
     if (guestCount < 1) {
+      hadCalcRef.current = false;
       setBanyaCalc(null);
       setHomesCalc(null);
       setError(null);
@@ -67,13 +73,17 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
     }
 
     let cancelled = false;
-    // Сразу убираем стейл прошлых цифр — иначе 350ms «ломаный» расчёт с basePrice=0.
-    setIsLoading(true);
     setError(null);
-    setBanyaCalc(null);
-    setHomesCalc(null);
+    // Не чистим прошлый расчёт сразу — блок не скачет при кликах по гостям.
+    // Спиннер только если ещё не было успешного расчёта.
+    if (!hadCalcRef.current) {
+      setIsLoading(true);
+    }
 
     const timer = window.setTimeout(async () => {
+      if (!cancelled && !hadCalcRef.current) {
+        setIsLoading(true);
+      }
       try {
         if (input.categoryId === "homes") {
           if (!input.checkIn || !input.checkOut || !input.roomId) {
@@ -94,15 +104,20 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
           if (view.total <= 0) {
             setHomesCalc(null);
             setBanyaCalc(null);
+            hadCalcRef.current = false;
             setError("Сервер вернул пустую стоимость. Попробуйте ещё раз");
             return;
           }
           setHomesCalc(view);
           setBanyaCalc(null);
+          hadCalcRef.current = true;
           onPriceResolvedRef.current(view.total, {
-            prepay: null,
-            prepayIncludesProducts: null,
+            prepay: view.prepay,
+            prepayIncludesProducts: view.prepayIncludesProducts,
             extraValueForDate: null,
+            discountAmount: view.discountAmount,
+            discountText: view.discountText,
+            amountBeforeDiscount: view.originalPrice,
           });
         } else if (input.categoryId === "banya") {
           if (
@@ -149,27 +164,33 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
           if (view.total <= 0) {
             setBanyaCalc(null);
             setHomesCalc(null);
+            hadCalcRef.current = false;
             setError("Сервер вернул пустую стоимость. Попробуйте ещё раз");
             return;
           }
           setBanyaCalc(view);
           setHomesCalc(null);
+          hadCalcRef.current = true;
           onPriceResolvedRef.current(view.total, {
             prepay: view.prepay,
             prepayIncludesProducts: view.prepayIncludesProducts,
             extraValueForDate: view.extraValueForDate,
+            discountAmount: view.discountAmount,
+            discountText: null,
+            amountBeforeDiscount: view.amountBeforeDiscount,
           });
         }
       } catch (err) {
         if (cancelled) return;
         setBanyaCalc(null);
         setHomesCalc(null);
+        hadCalcRef.current = false;
         const { detail } = getBootstrapErrorCopy(err);
         setError(detail);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
-    }, 350);
+    }, SETUP_CALCULATE_DEBOUNCE_MS);
 
     return () => {
       cancelled = true;

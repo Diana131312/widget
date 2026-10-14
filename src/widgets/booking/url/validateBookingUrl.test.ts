@@ -63,7 +63,7 @@ const config = {
 const api = {} as WidgetApiClient;
 
 describe("sanitizeSetupExtras", () => {
-  it("clamps guests and drops unknown products", () => {
+  it("clamps guests and drops unknown / catalog extra-guest products", () => {
     const result = sanitizeSetupExtras(
       {
         ...DEFAULT_BOOKING_URL_STATE,
@@ -76,22 +76,23 @@ describe("sanitizeSetupExtras", () => {
       8
     );
     expect(result.guestCount).toBe(8);
-    expect(result.productQuantities).toEqual({ p1: 2, p2: 2 });
+    // p2 «Доп. гость» больше не из каталога qty
+    expect(result.productQuantities).toEqual({ p1: 2 });
   });
 
-  it("drops extra guest when below capacity", () => {
+  it("always drops catalog extra-guest product quantities", () => {
     const result = sanitizeSetupExtras(
       {
         ...DEFAULT_BOOKING_URL_STATE,
         categoryId: "banya",
         roomId: "b1",
-        guestCount: 3,
+        guestCount: 8,
         productQuantities: { p2: 2 },
       },
       config,
       8
     );
-    expect(result.guestCount).toBe(3);
+    expect(result.guestCount).toBe(8);
     expect(result.productQuantities).toEqual({});
   });
 });

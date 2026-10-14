@@ -48,27 +48,30 @@ describe("parseBanyaCalculateResponse", () => {
     expect(view.basePrice).toBe(4500);
   });
 
-  it("includes discount line when present", () => {
+  it("treats discount as percent; sum = amount − total", () => {
     const view = parseBanyaCalculateResponse({
       total: 4000,
-      basePrice: 4500,
-      discountAmount: 500,
+      amount: 4500,
+      discount: 10,
     } as never);
+    expect(view.total).toBe(4000);
+    expect(view.amountBeforeDiscount).toBe(4500);
+    expect(view.discountPercent).toBe(10);
+    expect(view.discountAmount).toBe(500);
     expect(view.lines).toEqual([
       { label: "Стоимость бани", amount: 4500 },
       { label: "Скидка", amount: -500 },
     ]);
   });
 
-  it("reads amount as before-discount, not as total", () => {
+  it("does not treat discount percent as money amount", () => {
     const view = parseBanyaCalculateResponse({
-      total: 4000,
-      amount: 4500,
-      discount: 500,
+      total: 9900,
+      amount: 9900,
+      discount: 10,
     } as never);
-    expect(view.total).toBe(4000);
-    expect(view.amountBeforeDiscount).toBe(4500);
-    expect(view.discountAmount).toBe(500);
+    expect(view.discountPercent).toBe(10);
+    expect(view.discountAmount).toBeNull();
   });
 
   it("reads prepay and extraValueForDate", () => {
@@ -86,7 +89,6 @@ describe("parseBanyaCalculateResponse", () => {
 
   it("does not treat amount alone as total when total missing", () => {
     const view = parseBanyaCalculateResponse({ amount: 3200 } as never);
-    // amount = до скидок; без total берём его как базу, не путаем с предоплатой
     expect(view.amountBeforeDiscount).toBe(3200);
     expect(view.basePrice).toBe(3200);
     expect(view.total).toBe(3200);
@@ -116,5 +118,19 @@ describe("parseHomesCalculateResponse", () => {
       periodMessage: "мин. 2 ночи",
     });
     expect(view.nightPrices).toHaveLength(2);
+  });
+
+  it("reads originalPrice and discountText", () => {
+    const view = parseHomesCalculateResponse({
+      nights: 2,
+      nightPrices: [],
+      totalPrice: 8000,
+      originalPrice: 9800,
+      discountText: "Скидка 18%",
+      periodMessage: null,
+    } as never);
+    expect(view.originalPrice).toBe(9800);
+    expect(view.discountText).toBe("Скидка 18%");
+    expect(view.discountAmount).toBe(1800);
   });
 });

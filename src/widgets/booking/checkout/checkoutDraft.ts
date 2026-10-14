@@ -1,5 +1,7 @@
 export type VerifyChannel = "telegram" | "max" | "call";
 
+export type PaymentMode = "prepay" | "full";
+
 export type CheckoutContactDraft = {
   firstName: string;
   lastName: string;
@@ -11,17 +13,22 @@ export type CheckoutContactDraft = {
 export type BookingResultDraft = {
   bookingId: string;
   price: number | null;
+  /** Сумма к оплате (amount из ответа save) */
   prepayment: number;
   paymentLink: string | null;
   timeoutMinutes: number | null;
   message: string;
   /** Итого с товарами (для fallback отображения) */
   totalFallback: number;
+  paymentMode?: PaymentMode | null;
 };
 
-/** Мета /calculate, сохраняем для шага 4. */
+/** Мета /calculate, сохраняем для шага 4–5. */
 export type BookingCalcMeta = {
   prepay: number | null;
   prepayIncludesProducts: boolean | null;
   extraValueForDate: number | null;
+  discountAmount: number | null;
+  discountText: string | null;
+  amountBeforeDiscount: number | null;
 };

@@ -64,17 +64,7 @@ export const StepDone: React.FC<Props> = ({ result, onStartOver }) => {
       </p>
       <ul className="booking-checkout__success-meta">
         <li>
-          Стоимость{" "}
-          <strong>
-            {(result.price != null && result.price > 0
-              ? result.price
-              : result.totalFallback
-            ).toLocaleString("ru-RU")}{" "}
-            ₽
-          </strong>
-        </li>
-        <li>
-          Предоплата{" "}
+          К оплате{" "}
           <strong>{result.prepayment.toLocaleString("ru-RU")} ₽</strong>
         </li>
         {result.timeoutMinutes != null && result.timeoutMinutes > 0 ? (

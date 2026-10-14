@@ -72,10 +72,9 @@ const config = {
 } as unknown as WidgetGetResponse;
 
 describe("groupProductsForRoom", () => {
-  it("filters by room, excludes extra guest from sections", () => {
+  it("filters by room and drops catalog extra-guest products", () => {
     const result = groupProductsForRoom(config, "banya", "r1");
 
-    expect(result.extraGuestProduct?.id).toBe("p2");
     const sectionIds = result.groups.flatMap((g) =>
       g.products.map((p) => p.id)
     );
@@ -84,6 +83,7 @@ describe("groupProductsForRoom", () => {
     expect(sectionIds).not.toContain("p2");
     expect(sectionIds).not.toContain("p4");
     expect(sectionIds).not.toContain("p5");
+    expect(result.productsById.has("p2")).toBe(false);
 
     const other = result.groups.find((g) => g.group.name === "Другое");
     expect(other?.products.map((p) => p.id)).toEqual(["p3"]);

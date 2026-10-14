@@ -52,7 +52,7 @@ function SlotItemButton({
     >
       <span className="booking-slots__item-main">
         <span className="booking-slots__time">
-          {slot.timeFrom} – {formatTimeEnd(slot.timeTo)}
+          {slot.timeFrom}&nbsp;–&nbsp;{formatTimeEnd(slot.timeTo)}
         </span>
         <span className="booking-slots__duration">
           {formatDuration(slot.duration)}

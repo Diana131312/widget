@@ -30,7 +30,19 @@ vi.mock("../checkout/authCall", () => ({
 
 const config = {
   settings: { confirmMessage: "Ждём вас в LES!" },
-  rooms: [{ id: "b1", name: "Рябиновая", capacity: 4, maxCapacity: 8 }],
+  rooms: [
+    {
+      id: "b1",
+      name: "Рябиновая",
+      capacity: 4,
+      maxCapacity: 8,
+      pricePeriod: {
+        includedCapacity: 6,
+        extraValue: 1000,
+        extraType: 0,
+      },
+    },
+  ],
   dailyRooms: [],
   products: [],
 } as unknown as WidgetGetResponse;
@@ -43,10 +55,21 @@ function Harness({
     comment: "",
     verifyChannel: "telegram" as const,
   },
+  guestCount = 1,
+  calcMeta = {
+    prepay: null,
+    prepayIncludesProducts: null,
+    extraValueForDate: 1000,
+    discountAmount: null,
+    discountText: null,
+    amountBeforeDiscount: null,
+  },
   onComplete = vi.fn(),
   onBackToCheckout = vi.fn(),
 }: {
   contact?: CheckoutContactDraft;
+  guestCount?: number;
+  calcMeta?: import("../checkout/checkoutDraft").BookingCalcMeta | null;
   onComplete?: (r: unknown) => void;
   onBackToCheckout?: () => void;
 }) {
@@ -62,9 +85,10 @@ function Harness({
         banyaTimeFrom="12:00"
         banyaTimeTo="15:00"
         slotDuration={3}
-        guestCount={1}
+        guestCount={guestCount}
         productQuantities={{}}
         basePrice={5200}
+        calcMeta={calcMeta}
         contact={contact}
         onComplete={onComplete}
         onBackToCheckout={onBackToCheckout}
@@ -107,16 +131,23 @@ describe("StepVerify", () => {
     expect(screen.getByText("Код из сообщения")).toBeInTheDocument();
   });
 
-  it("creates booking with lean save payload", async () => {
+  it("after code verify asks payment mode then saves with paymentMode", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
     render(<Harness onComplete={onComplete} />);
 
     await waitFor(() => expect(sendSms).toHaveBeenCalled());
     await user.type(screen.getByLabelText("Код"), "1234");
-    await user.click(
-      screen.getByRole("button", { name: "Подтвердить и забронировать" })
-    );
+    await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
+
+    await waitFor(() => {
+      expect(auth).toHaveBeenCalled();
+      expect(screen.getByText("Способ оплаты")).toBeInTheDocument();
+    });
+    expect(saveRoomBooking).not.toHaveBeenCalled();
+
+    await user.click(screen.getByLabelText(/Полная/));
+    await user.click(screen.getByRole("button", { name: "Забронировать" }));
 
     await waitFor(() => {
       expect(saveRoomBooking).toHaveBeenCalledWith({
@@ -133,9 +164,31 @@ describe("StepVerify", () => {
         promoCode: null,
         discounts: [],
         products: [],
+        paymentMode: "full",
         checkCode: "1234",
       });
       expect(onComplete).toHaveBeenCalled();
+    });
+  });
+
+  it("does not send zero-uuid extra guest product in save", async () => {
+    const user = userEvent.setup();
+    render(<Harness guestCount={8} />);
+
+    await waitFor(() => expect(sendSms).toHaveBeenCalled());
+    await user.type(screen.getByLabelText("Код"), "1234");
+    await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
+    await waitFor(() => expect(screen.getByText("Способ оплаты")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Забронировать" }));
+
+    await waitFor(() => {
+      expect(saveRoomBooking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          personCount: 8,
+          paymentMode: "prepay",
+          products: [],
+        })
+      );
     });
   });
 

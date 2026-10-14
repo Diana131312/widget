@@ -1,11 +1,16 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import type { WidgetGetResponse, WidgetProduct } from "../../../api";
 import { createWidgetApi } from "../../../api";
 import { BOOKING_ALIAS } from "../constants";
 import type { BookingCategoryId } from "../types";
-import { getMaxExtraGuests } from "../setup/extraGuestLimit";
+import { computeDurationHours } from "../setup/calculate.utils";
 import { groupProductsForRoom } from "../setup/groupProducts";
 import { ProductCatalog } from "../setup/ProductCatalog";
+import {
+  getRoomGuestLimits,
+  nightPriceWithoutExtraGuests,
+  resolveExtraGuestSurcharge,
+} from "../setup/roomGuestPricing";
 import { SetupPriceBreakdown } from "../setup/SetupPriceBreakdown";
 import { useSetupCalculate } from "../setup/useSetupCalculate";
 
@@ -55,39 +60,21 @@ export const StepSetup: React.FC<Props> = ({
   const tenantId = config.settings?.tenantId ?? null;
 
   const roomMeta = useMemo(() => {
+    const limits = getRoomGuestLimits(config, categoryId, roomId);
     if (categoryId === "homes") {
       const room = config.dailyRooms?.find((r) => r.id === roomId);
-      return {
-        name: room?.name ?? "Дом",
-        maxGuests: room?.maxCapacity ?? room?.capacity ?? 10,
-      };
+      return { name: room?.name ?? "Дом", ...limits };
     }
     const room = config.rooms?.find((r) => r.id === roomId);
-    return {
-      name: room?.name ?? "Баня",
-      maxGuests: room?.maxCapacity ?? room?.capacity ?? 10,
-    };
+    return { name: room?.name ?? "Баня", ...limits };
   }, [categoryId, config, roomId]);
 
   const { maxGuests, name: roomName } = roomMeta;
-  // TODO(prod): лимит из админки/товара — см. EXTRA_GUEST_HARD_LIMIT
-  const maxExtraGuests = getMaxExtraGuests(guestCount, maxGuests);
 
   const catalog = useMemo(
     () => groupProductsForRoom(config, categoryId, roomId),
     [config, categoryId, roomId]
   );
-
-  const extra = catalog.extraGuestProduct;
-  const extraQty = extra ? productQuantities[extra.id] ?? 0 : 0;
-
-  // Сжимаем qty доп. гостей, если уменьшили число гостей.
-  useEffect(() => {
-    if (!extra) return;
-    if (extraQty > maxExtraGuests) {
-      onSetProductQty(extra.id, maxExtraGuests);
-    }
-  }, [extra, extraQty, maxExtraGuests, onSetProductQty]);
 
   const calcInput = useMemo(
     () => ({
@@ -123,6 +110,54 @@ export const StepSetup: React.FC<Props> = ({
       onPriceResolved: onBasePriceResolved,
     });
 
+  const extraGuest = useMemo(() => {
+    const result = resolveExtraGuestSurcharge({
+      config,
+      categoryId,
+      roomId,
+      guestCount,
+      calcMeta: banyaCalc
+        ? { extraValueForDate: banyaCalc.extraValueForDate }
+        : null,
+      slotDuration,
+      banyaTimeFrom,
+      banyaTimeTo,
+      checkIn,
+      checkOut,
+      nightDates: homesCalc?.nightPrices.map((n) => n.date) ?? null,
+    });
+    if (result.surcharge <= 0) return null;
+    const durationHours =
+      slotDuration != null && slotDuration > 0
+        ? slotDuration
+        : banyaTimeFrom && banyaTimeTo
+          ? computeDurationHours(banyaTimeFrom, banyaTimeTo)
+          : 1;
+    return {
+      extraGuests: result.extraGuests,
+      unitPrice: result.unitPrice,
+      surcharge: result.surcharge,
+      perHour: roomMeta.extraType === 1,
+      durationHours,
+      nights: result.nights > 0 ? result.nights : undefined,
+      ratesEqual: result.ratesEqual,
+      includedInRoomTotal: result.includedInRoomTotal,
+    };
+  }, [
+    config,
+    categoryId,
+    roomId,
+    guestCount,
+    banyaCalc,
+    homesCalc,
+    slotDuration,
+    banyaTimeFrom,
+    banyaTimeTo,
+    checkIn,
+    checkOut,
+    roomMeta.extraType,
+  ]);
+
   const productLines = useMemo(() => {
     const lines: {
       product: WidgetProduct;
@@ -141,7 +176,20 @@ export const StepSetup: React.FC<Props> = ({
   }, [productQuantities, catalog.productsById]);
 
   const productsSubtotal = productLines.reduce((s, l) => s + l.lineTotal, 0);
-  const total = (basePrice ?? 0) + productsSubtotal;
+  const extraSurcharge = extraGuest?.surcharge ?? 0;
+  // Дома: /daily-calculate уже включает доплату в totalPrice — не удваиваем.
+  // Бани: /calculate без доплаты — прибавляем на клиенте.
+  const total =
+    (basePrice ?? 0) +
+    productsSubtotal +
+    (extraGuest?.includedInRoomTotal ? 0 : extraSurcharge);
+  const displayRoomBase =
+    extraGuest?.includedInRoomTotal && extraSurcharge > 0
+      ? Math.max(0, (basePrice ?? 0) - extraSurcharge)
+      : (basePrice ?? 0);
+
+  // Пока идёт debounce/пересчёт — оставляем прежний блок, не прячем его спиннером
+  const showCalcLoading = isLoading && !hasCalculation;
 
   const canProceed =
     guestCount >= 1 &&
@@ -172,13 +220,32 @@ export const StepSetup: React.FC<Props> = ({
           checkIn={checkIn}
           checkOut={checkOut}
           guestCount={guestCount}
-          basePrice={basePrice}
+          basePrice={displayRoomBase}
           banyaCalc={banyaCalc}
-          homesCalc={homesCalc}
+          homesCalc={
+            homesCalc && extraGuest && extraGuest.extraGuests > 0
+              ? {
+                  ...homesCalc,
+                  nightPrices: homesCalc.nightPrices.map((n) => {
+                    const room = config.dailyRooms?.find((r) => r.id === roomId);
+                    return {
+                      date: n.date,
+                      price: nightPriceWithoutExtraGuests(
+                        n.price,
+                        n.date,
+                        extraGuest.extraGuests,
+                        room?.pricePeriod
+                      ),
+                    };
+                  }),
+                }
+              : homesCalc
+          }
           productLines={productLines}
           productsSubtotal={productsSubtotal}
           total={total}
-          isLoading={isLoading}
+          extraGuest={extraGuest}
+          isLoading={showCalcLoading}
           error={error}
           onRetry={retry}
         />
@@ -220,40 +287,6 @@ export const StepSetup: React.FC<Props> = ({
               </button>
             </div>
           </div>
-
-          {extra && maxExtraGuests > 0 ? (
-            <div className="booking-setup__extra-guest">
-              <p className="booking-setup__extra-guest-name">{extra.name}</p>
-              <div className="booking-qty">
-                <button
-                  type="button"
-                  className="booking-qty__btn"
-                  onClick={() => onSetProductQty(extra.id, extraQty - 1)}
-                  disabled={extraQty <= 0}
-                  aria-label={`Убрать ${extra.name}`}
-                >
-                  −
-                </button>
-                <span className="booking-qty__value" aria-live="polite">
-                  {extraQty}/{maxExtraGuests}
-                </span>
-                <button
-                  type="button"
-                  className="booking-qty__btn"
-                  onClick={() =>
-                    onSetProductQty(
-                      extra.id,
-                      Math.min(maxExtraGuests, extraQty + 1)
-                    )
-                  }
-                  disabled={extraQty >= maxExtraGuests}
-                  aria-label={`Добавить ${extra.name}`}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
 
         <button

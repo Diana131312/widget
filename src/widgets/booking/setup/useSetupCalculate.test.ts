@@ -143,7 +143,7 @@ describe("useSetupCalculate", () => {
     });
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 800));
     });
 
     expect(calculateRoom).toHaveBeenCalledTimes(1);

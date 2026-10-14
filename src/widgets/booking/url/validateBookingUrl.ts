@@ -12,9 +12,7 @@ import {
   rangeHasOccupiedNights,
 } from "../calendar/services";
 import { parseHomesCalculateResponse } from "../setup/calculate.utils";
-import { getMaxExtraGuests } from "../setup/extraGuestLimit";
 import { groupProductsForRoom } from "../setup/groupProducts";
-import { isExtraGuestProduct } from "../setup/isExtraGuestProduct";
 import {
   DEFAULT_BOOKING_URL_STATE,
   type BookingUrlState,
@@ -99,21 +97,15 @@ export function sanitizeSetupExtras(
     candidate.categoryId,
     candidate.roomId
   );
-  const maxExtra = getMaxExtraGuests(guestCount, maxGuests);
   const productQuantities: Record<string, number> = {};
 
   for (const [id, qtyRaw] of Object.entries(candidate.productQuantities ?? {})) {
+    // Товары «доп. гость» из каталога больше не принимаем — доплата считается отдельно
     const product: WidgetProduct | undefined = catalog.productsById.get(id);
     if (!product) continue;
     let qty = Math.floor(qtyRaw);
     if (!Number.isFinite(qty) || qty < 1) continue;
-
-    if (isExtraGuestProduct(product.name)) {
-      if (maxExtra <= 0) continue;
-      qty = Math.min(qty, maxExtra);
-    } else {
-      qty = Math.min(qty, 99);
-    }
+    qty = Math.min(qty, 99);
     if (qty >= 1) productQuantities[id] = qty;
   }
 

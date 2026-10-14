@@ -265,6 +265,7 @@ function BookingWidgetInner() {
               banyaDate={banyaDate}
               banyaTimeFrom={banyaTimeFrom}
               banyaTimeTo={banyaTimeTo}
+              slotDuration={slotDuration}
               guestCount={guestCount}
               productQuantities={productQuantities}
               basePrice={checkoutPrice}
@@ -293,6 +294,7 @@ function BookingWidgetInner() {
               guestCount={guestCount}
               productQuantities={productQuantities}
               basePrice={checkoutPrice}
+              calcMeta={calcMeta}
               contact={contactDraft}
               onComplete={completeBooking}
               onBackToCheckout={() => goToStep("checkout")}

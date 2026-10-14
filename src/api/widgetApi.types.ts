@@ -484,6 +484,9 @@ export type SaveProductItem = {
   count: number;
 } & UnknownRecord;
 
+/** Режим оплаты при /save, /daily-save, /order/save */
+export type WidgetPaymentMode = "prepay" | "full";
+
 export type SaveRoomBookingRequest = {
   alias: string;
   date: LocalDate;
@@ -501,12 +504,15 @@ export type SaveRoomBookingRequest = {
   personCount: number;
   checkCode?: string;
   comment?: string;
+  /** prepay — предоплата (по умолчанию), full — полная оплата */
+  paymentMode?: WidgetPaymentMode;
 } & UnknownRecord;
 
 export type SaveBookingResponse = {
   bookingId: Guid;
   amount: number;
   paymentLink: string;
+  paymentMode?: WidgetPaymentMode;
   token?: string;
   tokenExpiresAt?: IsoDateTime;
 } & UnknownRecord;
@@ -619,6 +625,12 @@ export type DailyCalculateResponse = {
   nightPrices: { date: LocalDate; price: number }[];
   totalPrice: number;
   periodMessage: string | null;
+  /** Цена до скидки */
+  originalPrice?: number | null;
+  /** Текст скидки */
+  discountText?: string | null;
+  prepay?: number | null;
+  prepayIncludesProducts?: boolean | null;
 } & UnknownRecord;
 
 export type DailySaveRequest = {
@@ -635,6 +647,7 @@ export type DailySaveRequest = {
   promoCode?: string | null;
   checkCode?: string;
   products?: SaveProductItem[];
+  paymentMode?: WidgetPaymentMode;
 } & UnknownRecord;
 
 export type DailySaveResponse = SaveBookingResponse;

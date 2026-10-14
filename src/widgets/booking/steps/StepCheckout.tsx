@@ -12,6 +12,11 @@ import {
   isRuPhoneComplete,
 } from "../checkout/phone";
 import { buildCheckoutProducts } from "../checkout/buildSavePayload";
+import { computeDurationHours } from "../setup/calculate.utils";
+import {
+  getRoomGuestLimits,
+  resolveExtraGuestSurcharge,
+} from "../setup/roomGuestPricing";
 import type { BookingCategoryId } from "../types";
 
 type Props = {
@@ -23,6 +28,7 @@ type Props = {
   banyaDate: string | null;
   banyaTimeFrom: string | null;
   banyaTimeTo: string | null;
+  slotDuration?: number | null;
   guestCount: number;
   productQuantities: Record<string, number>;
   basePrice: number;
@@ -41,6 +47,7 @@ export const StepCheckout: React.FC<Props> = ({
   banyaDate,
   banyaTimeFrom,
   banyaTimeTo,
+  slotDuration = null,
   guestCount,
   productQuantities,
   basePrice,
@@ -86,7 +93,60 @@ export const StepCheckout: React.FC<Props> = ({
     lineTotal: p.price * p.count,
   }));
   const productsSubtotal = productLines.reduce((s, l) => s + l.lineTotal, 0);
-  const total = basePrice + productsSubtotal;
+
+  const extraGuest = useMemo(() => {
+    const result = resolveExtraGuestSurcharge({
+      config,
+      categoryId,
+      roomId,
+      guestCount,
+      calcMeta,
+      slotDuration,
+      banyaTimeFrom,
+      banyaTimeTo,
+      checkIn,
+      checkOut,
+    });
+    if (result.surcharge <= 0) return null;
+    const limits = getRoomGuestLimits(config, categoryId, roomId);
+    const durationHours =
+      slotDuration != null && slotDuration > 0
+        ? slotDuration
+        : banyaTimeFrom && banyaTimeTo
+          ? computeDurationHours(banyaTimeFrom, banyaTimeTo)
+          : 1;
+    return {
+      extraGuests: result.extraGuests,
+      unitPrice: result.unitPrice,
+      surcharge: result.surcharge,
+      perHour: limits.extraType === 1,
+      durationHours,
+      nights: result.nights > 0 ? result.nights : undefined,
+      ratesEqual: result.ratesEqual,
+      includedInRoomTotal: result.includedInRoomTotal,
+    };
+  }, [
+    config,
+    categoryId,
+    roomId,
+    guestCount,
+    calcMeta,
+    slotDuration,
+    banyaTimeFrom,
+    banyaTimeTo,
+    checkIn,
+    checkOut,
+  ]);
+
+  const extraSurcharge = extraGuest?.surcharge ?? 0;
+  const total =
+    basePrice +
+    productsSubtotal +
+    (extraGuest?.includedInRoomTotal ? 0 : extraSurcharge);
+  const displayRoomBase =
+    extraGuest?.includedInRoomTotal && extraSurcharge > 0
+      ? Math.max(0, basePrice - extraSurcharge)
+      : basePrice;
 
   const formValid =
     firstName.trim().length >= 1 &&
@@ -101,7 +161,7 @@ export const StepCheckout: React.FC<Props> = ({
           categoryId={categoryId}
           roomName={roomName}
           guestCount={guestCount}
-          basePrice={basePrice}
+          basePrice={displayRoomBase}
           productLines={productLines}
           total={total}
           banyaDate={banyaDate}
@@ -111,7 +171,10 @@ export const StepCheckout: React.FC<Props> = ({
           checkOut={checkOut}
           prepaymentAmount={calcMeta?.prepay ?? null}
           prepayIncludesProducts={calcMeta?.prepayIncludesProducts ?? null}
-          extraValueForDate={calcMeta?.extraValueForDate ?? null}
+          discountAmount={calcMeta?.discountAmount ?? null}
+          discountText={calcMeta?.discountText ?? null}
+          amountBeforeDiscount={calcMeta?.amountBeforeDiscount ?? null}
+          extraGuest={extraGuest}
         />
 
         <ContactFields

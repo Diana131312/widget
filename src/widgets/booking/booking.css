@@ -25,9 +25,9 @@
   --bk-border: #e5e7eb;
   --bk-text-muted: #6b7280;
 
-  /* Полоски занятости календаря */
-  --bk-cal-free: #6b8f71;
-  --bk-cal-busy: #b85c5c;
+  /* Полоски занятости календаря + слоты */
+  --bk-cal-free: rgb(0, 136, 0);
+  --bk-cal-busy: rgb(212, 0, 0);
 
   --bk-radius: 12px;
   --bk-radius-lg: 16px;
@@ -1622,21 +1622,24 @@ button.booking-steps__dot:focus-visible {
 }
 
 .booking-slots__more {
-  align-self: center;
+  width: 100%;
+  align-self: stretch;
+  margin-top: 4px;
+  padding: 10px 12px;
+  height: 44px;
+  box-sizing: border-box;
   border: none;
-  background: var(--bk-add);
+  border-radius: 10px;
+  background: var(--bk-ink);
   color: #fff;
   font-family: var(--bk-cal-font);
   font-size: var(--bk-cal-weekday);
-  font-weight: 600;
-  border-radius: 10px;
-  padding: 10px 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .booking-slots__more:hover {
-  filter: brightness(0.95);
-  background: var(--bk-add);
+  background: var(--bk-ink-dark);
 }
 
 .booking-slots__item {
@@ -1645,37 +1648,41 @@ button.booking-steps__dot:focus-visible {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 10px 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--bk-border);
-  border-radius: 10px;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
   background: var(--bk-surface);
-  font-family: inherit;
+  /* Как mat-button / interval__button в Bukza */
+  font-family: var(--bk-cal-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.0892857143em;
   text-align: left;
   cursor: pointer;
-  color: var(--bk-ink-dark);
+  color: #fff;
 }
 
 .booking-slots__item:hover:not(:disabled) {
-  filter: brightness(0.98);
+  filter: brightness(0.95);
 }
 
 .booking-slots__item--free {
-  border-color: rgba(107, 143, 113, 0.55);
-  background: rgba(107, 143, 113, 0.12);
-  color: var(--bk-ink-dark);
+  border-color: var(--bk-cal-free);
+  background: var(--bk-cal-free);
+  color: #fff;
 }
 
 .booking-slots__item--free.booking-slots__item--selected {
-  border-color: var(--bk-add);
-  background: rgba(107, 143, 113, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(107, 143, 113, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+  filter: brightness(0.92);
 }
 
 .booking-slots__item--busy {
-  border-color: rgba(184, 92, 92, 0.45);
-  background: rgba(184, 92, 92, 0.1);
-  color: #8a3f3f;
+  border-color: var(--bk-cal-busy);
+  background: var(--bk-cal-busy);
+  color: #fff;
   cursor: not-allowed;
   opacity: 1;
   text-decoration: none;
@@ -1683,30 +1690,50 @@ button.booking-steps__dot:focus-visible {
 
 .booking-slots__item-main {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
+/* Bukza .interval__time */
 .booking-slots__time {
-  font-size: var(--bk-cal-num);
-  font-weight: 600;
-  line-height: 1.25;
+  font-family: var(--bk-cal-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.0892857143em;
+  text-transform: initial;
+  white-space: nowrap;
 }
 
 .booking-slots__duration {
-  font-size: var(--bk-cal-weekday);
+  font-family: var(--bk-cal-font);
+  font-size: 12px;
   font-weight: 500;
+  line-height: 16px;
+  letter-spacing: normal;
   color: inherit;
   opacity: 0.85;
+  white-space: nowrap;
+}
+
+.booking-slots__item--free .booking-slots__duration,
+.booking-slots__item--busy .booking-slots__duration,
+.booking-slots__item--free .booking-slots__price,
+.booking-slots__item--busy .booking-slots__price {
+  color: #fff;
 }
 
 .booking-slots__price {
   flex: 0 0 auto;
-  font-size: var(--bk-cal-num);
-  font-weight: 700;
+  font-family: var(--bk-cal-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.0892857143em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1716,7 +1743,7 @@ button.booking-steps__dot:focus-visible {
 }
 
 .booking-slots__item--busy .booking-slots__price {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .booking-slots .booking-cal__continue {

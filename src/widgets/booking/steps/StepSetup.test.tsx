@@ -13,6 +13,11 @@ const config = {
       name: "Кедровая",
       capacity: 4,
       maxCapacity: 8,
+      pricePeriod: {
+        includedCapacity: 6,
+        extraValue: 1000,
+        extraType: 0,
+      },
     },
   ],
   dailyRooms: [
@@ -21,6 +26,14 @@ const config = {
       name: "Дом у озера",
       capacity: 2,
       maxCapacity: 6,
+      pricePeriod: {
+        weekDayPrice: 5000,
+        weekEndPrice: 5000,
+        preWeekEndPrice: 5000,
+        extraGuestWeekDay: 1000,
+        extraGuestWeekEnd: 1000,
+        extraGuestPreWeekEnd: 1000,
+      },
     },
   ],
   productGroups: [{ id: "g1", name: "Веники", image: null }],
@@ -56,14 +69,22 @@ const calculateRoom = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
     total: 4500,
     basePrice: 4500,
+    extraValueForDate: 1000,
   })
 );
 const dailyCalculate = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({
-    nights: 1,
-    nightPrices: [{ date: "2026-10-10", price: 5000 }],
-    totalPrice: 5000,
-    periodMessage: null,
+  vi.fn().mockImplementation(async (args: { personCount: number }) => {
+    const extra = Math.max(0, args.personCount - 2);
+    const night = 5000 + extra * 1000;
+    return {
+      nights: 2,
+      nightPrices: [
+        { date: "2026-10-10", price: night },
+        { date: "2026-10-11", price: night },
+      ],
+      totalPrice: night * 2,
+      periodMessage: null,
+    };
   })
 );
 
@@ -131,12 +152,23 @@ describe("StepSetup", () => {
   beforeEach(() => {
     calculateRoom.mockClear();
     dailyCalculate.mockClear();
-    calculateRoom.mockResolvedValue({ total: 4500, basePrice: 4500 });
-    dailyCalculate.mockResolvedValue({
-      nights: 1,
-      nightPrices: [{ date: "2026-10-10", price: 5000 }],
-      totalPrice: 5000,
-      periodMessage: null,
+    calculateRoom.mockResolvedValue({
+      total: 4500,
+      basePrice: 4500,
+      extraValueForDate: 1000,
+    });
+    dailyCalculate.mockImplementation(async (args: { personCount: number }) => {
+      const extra = Math.max(0, args.personCount - 2);
+      const night = 5000 + extra * 1000;
+      return {
+        nights: 2,
+        nightPrices: [
+          { date: "2026-10-10", price: night },
+          { date: "2026-10-11", price: night },
+        ],
+        totalPrice: night * 2,
+        periodMessage: null,
+      };
     });
   });
 
@@ -149,7 +181,7 @@ describe("StepSetup", () => {
     expect(calculateRoom).not.toHaveBeenCalled();
   });
 
-  it("shows catalog accordion and product cards; extra guest stays near guests", async () => {
+  it("shows catalog accordion; hides catalog extra-guest product", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     expect(screen.queryByRole("tab", { name: "Все" })).not.toBeInTheDocument();
@@ -160,55 +192,25 @@ describe("StepSetup", () => {
     await user.click(screen.getByText("Веники"));
     expect(group).toHaveAttribute("open");
     expect(screen.getByText("Берёзовый")).toBeInTheDocument();
-    expect(screen.getByText("на фотосессии")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Добавить Берёзовый" })
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: "Добавить Берёзовый" })
-    );
-    expect(
-      screen.getByRole("button", { name: "Убрать Берёзовый" })
-    ).toBeInTheDocument();
-
-    expect(screen.getByText("0/8")).toBeInTheDocument();
-    // гости не на максимуме → инпут доп. гостей скрыт
     expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
+    expect(screen.getByText("0/8")).toBeInTheDocument();
     expect(document.querySelector(".booking-setup__cta")).toBeInTheDocument();
+    expect(
+      document.querySelector(".booking-setup__extra-guest")
+    ).not.toBeInTheDocument();
   });
 
-  it("limits extra guests to hard cap of 2 after capacity is full", async () => {
+  it("shows extra guest surcharge in price when above includedCapacity", async () => {
     const user = userEvent.setup();
-    render(<Harness guestCount={8} />);
-
-    expect(screen.getByText("8/8")).toBeInTheDocument();
-    expect(screen.getByText("0/2")).toBeInTheDocument();
-
-    const addExtra = screen.getByRole("button", {
-      name: "Добавить Дополнительный гость",
-    });
-    await user.click(addExtra);
-    await user.click(addExtra);
-    expect(screen.getByText("2/2")).toBeInTheDocument();
-    expect(addExtra).toBeDisabled();
-  });
-
-  it("clamps extra guest qty when guests drop below capacity", async () => {
-    const user = userEvent.setup();
-    render(<Harness guestCount={8} productQuantities={{ p2: 2 }} />);
-
-    expect(screen.getByText("2/2")).toBeInTheDocument();
-
-    const dec = screen.getByRole("button", {
-      name: "Уменьшить количество гостей",
-    });
-    await user.click(dec);
+    render(<Harness guestCount={7} />);
 
     await waitFor(() => {
-      expect(screen.getByText("7/8")).toBeInTheDocument();
-      expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Далее/ })).not.toBeDisabled();
     });
+
+    expect(screen.getByText(/Доп\. гости/)).toBeInTheDocument();
+    // 1 × 1000 = 1000
+    expect(screen.getAllByText(/1[\s\u00a0]?000/).length).toBeGreaterThan(0);
   });
 
   it("calls calculateRoom with slot duration and enables Next", async () => {
@@ -308,8 +310,9 @@ describe("StepSetup", () => {
     render(<Harness categoryId="homes" />);
 
     expect(screen.getByText("0/6")).toBeInTheDocument();
-    // доп. гости только после заполнения вместимости — инпут скрыт
-    expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
+    expect(
+      document.querySelector(".booking-setup__extra-guest")
+    ).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Увеличить количество гостей" })
@@ -322,7 +325,6 @@ describe("StepSetup", () => {
     );
 
     expect(screen.getByText("3/6")).toBeInTheDocument();
-    expect(screen.queryByText("Дополнительный гость")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(dailyCalculate).toHaveBeenCalledWith(
@@ -334,11 +336,17 @@ describe("StepSetup", () => {
         })
       );
     });
+  });
+
+  it("shows homes extra guest surcharge above capacity", async () => {
+    render(<Harness categoryId="homes" guestCount={4} />);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Далее/ })).not.toBeDisabled();
     });
-    expect(screen.getByText("Дом у озера")).toBeInTheDocument();
-    expect(screen.getByText("Стоимость")).toBeInTheDocument();
+
+    // capacity=2 → 2 доп. × 1000 × 2 ночи = 4000
+    expect(screen.getByText(/Доп\. гости/)).toBeInTheDocument();
+    expect(screen.getAllByText(/4[\s\u00a0]?000/).length).toBeGreaterThan(0);
   });
 });

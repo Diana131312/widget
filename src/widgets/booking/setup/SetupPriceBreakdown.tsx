@@ -1,7 +1,10 @@
 import React from "react";
 import type { WidgetProduct } from "../../../api";
 import type { BookingCategoryId } from "../types";
-import { BookingPriceBreakdown } from "../ui/BookingPriceBreakdown";
+import {
+  BookingPriceBreakdown,
+  type ExtraGuestBreakdown,
+} from "../ui/BookingPriceBreakdown";
 import type {
   BanyaCalculateView,
   HomesCalculateView,
@@ -28,6 +31,7 @@ type Props = {
   productLines: PriceLineItem[];
   productsSubtotal: number;
   total: number;
+  extraGuest?: ExtraGuestBreakdown | null;
   isLoading: boolean;
   error: string | null;
   onRetry?: () => void;
@@ -47,6 +51,7 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
   homesCalc,
   productLines,
   total,
+  extraGuest = null,
   isLoading,
   error,
   onRetry,
@@ -100,6 +105,17 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
     );
   }
 
+  const discountAmount =
+    banyaCalc?.discountAmount ?? homesCalc?.discountAmount ?? null;
+  const discountText = homesCalc?.discountText ?? null;
+  const amountBeforeDiscount =
+    banyaCalc?.amountBeforeDiscount ?? homesCalc?.originalPrice ?? null;
+  const prepay = banyaCalc?.prepay ?? homesCalc?.prepay ?? null;
+  const prepayIncludesProducts =
+    banyaCalc?.prepayIncludesProducts ??
+    homesCalc?.prepayIncludesProducts ??
+    null;
+
   return (
     <BookingPriceBreakdown
       className="booking-setup-calc"
@@ -122,9 +138,12 @@ export const SetupPriceBreakdown: React.FC<Props> = ({
       checkOut={checkOut}
       nightLines={homesCalc?.nightPrices ?? []}
       periodMessage={homesCalc?.periodMessage ?? null}
-      prepaymentAmount={banyaCalc?.prepay ?? null}
-      prepayIncludesProducts={banyaCalc?.prepayIncludesProducts ?? null}
-      extraValueForDate={banyaCalc?.extraValueForDate ?? null}
+      prepaymentAmount={prepay}
+      prepayIncludesProducts={prepayIncludesProducts}
+      discountAmount={discountAmount}
+      discountText={discountText}
+      amountBeforeDiscount={amountBeforeDiscount}
+      extraGuest={extraGuest}
     />
   );
 };

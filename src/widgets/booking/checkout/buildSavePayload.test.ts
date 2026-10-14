@@ -70,6 +70,7 @@ describe("buildSaveBodies", () => {
         messenger: "telegram",
         comment: "Окно",
         products: [{ id: "p1", name: "Веник", price: 500, count: 1 }],
+        paymentMode: "prepay",
       },
     });
   });
@@ -91,7 +92,7 @@ describe("buildSaveBodies", () => {
       },
       contact,
       [],
-      "1234"
+      { checkCode: "1234", paymentMode: "full" }
     );
 
     expect(result).toEqual({
@@ -110,6 +111,7 @@ describe("buildSaveBodies", () => {
         promoCode: null,
         discounts: [],
         products: [],
+        paymentMode: "full",
         checkCode: "1234",
       },
     });
@@ -137,6 +139,7 @@ describe("buildSaveBodies", () => {
     if (result.kind === "banya") {
       expect(result.body.messenger).toBeNull();
       expect(result.body.products).toEqual([]);
+      expect(result.body.paymentMode).toBe("prepay");
       expect("price" in result.body).toBe(false);
       expect("periodProducts" in result.body).toBe(false);
       expect("personName" in result.body).toBe(false);

@@ -3,6 +3,7 @@ import type { BookingCategoryId } from "../types";
 import {
   BookingPriceBreakdown,
   type BreakdownProductLine,
+  type ExtraGuestBreakdown,
 } from "../ui/BookingPriceBreakdown";
 
 type Props = {
@@ -19,7 +20,10 @@ type Props = {
   checkOut: string | null;
   prepaymentAmount?: number | null;
   prepayIncludesProducts?: boolean | null;
-  extraValueForDate?: number | null;
+  discountAmount?: number | null;
+  discountText?: string | null;
+  amountBeforeDiscount?: number | null;
+  extraGuest?: ExtraGuestBreakdown | null;
 };
 
 /** Тот же блок расчёта, что на setup. */

@@ -1,8 +1,9 @@
 import type { WidgetGetResponse, WidgetProduct } from "../../../api";
 import type { BookingCategoryId } from "../types";
 import { computeDurationHours, toApiTime } from "../setup/calculate.utils";
+import { isExtraGuestProduct } from "../setup/isExtraGuestProduct";
 import { toApiPhone } from "./phone";
-import type { VerifyChannel } from "./checkoutDraft";
+import type { PaymentMode, VerifyChannel } from "./checkoutDraft";
 
 export type CheckoutDraft = {
   categoryId: BookingCategoryId;
@@ -44,6 +45,8 @@ export function buildCheckoutProducts(
     .map(([id, count]) => {
       const product = byId.get(id);
       if (!product || count <= 0) return null;
+      // Старые товары «доп. гость» не передаём — доплата идёт нулевым UUID
+      if (isExtraGuestProduct(product.name)) return null;
       return {
         id: product.id,
         name: product.name,
@@ -75,6 +78,7 @@ export type BanyaSaveBody = {
   promoCode: null;
   discounts: number[];
   products: SaveProductLine[];
+  paymentMode: PaymentMode;
   checkCode?: string;
 };
 
@@ -89,6 +93,7 @@ export type HomesSaveBody = {
   messenger: "telegram" | "max" | null;
   comment: string;
   products: SaveProductLine[];
+  paymentMode: PaymentMode;
   checkCode?: string;
 };
 
@@ -97,7 +102,7 @@ export function buildSaveBodies(
   draft: CheckoutDraft,
   contact: CheckoutContact,
   products: SaveProductLine[],
-  checkCode?: string
+  options?: { checkCode?: string; paymentMode?: PaymentMode }
 ):
   | { kind: "homes"; body: HomesSaveBody }
   | { kind: "banya"; body: BanyaSaveBody }
@@ -108,6 +113,8 @@ export function buildSaveBodies(
   const messenger = toApiMessenger(contact.verifyChannel);
   const productList = products.length > 0 ? products : [];
   const comment = contact.comment.trim();
+  const checkCode = options?.checkCode;
+  const paymentMode: PaymentMode = options?.paymentMode ?? "prepay";
 
   if (!name || !lastName) {
     return { kind: "invalid", reason: "Укажите имя и фамилию" };
@@ -130,6 +137,7 @@ export function buildSaveBodies(
         messenger,
         comment,
         products: productList,
+        paymentMode,
         ...(checkCode ? { checkCode } : {}),
       },
     };
@@ -160,6 +168,7 @@ export function buildSaveBodies(
       promoCode: null,
       discounts: [],
       products: productList,
+      paymentMode,
       ...(checkCode ? { checkCode } : {}),
     },
   };

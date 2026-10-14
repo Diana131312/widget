@@ -6,13 +6,16 @@ import type {
 export type CalcMoneyLine = { label: string; amount: number };
 
 export type BanyaCalculateView = {
-  /** Итоговая стоимость (без товаров) — поле total */
+  /** Итоговая стоимость (без товаров и без доплаты за доп. гостей) — поле total */
   total: number;
   /** Сумма до скидок — поле amount */
   amountBeforeDiscount: number | null;
   basePrice: number | null;
+  /** Сумма скидки = amount − total (поле discount в API — процент) */
   discountAmount: number | null;
-  /** Доплата за каждого гостя сверх вместимости */
+  /** Процент скидки из поля discount (если есть) */
+  discountPercent: number | null;
+  /** Доплата за одного гостя сверх вместимости на дату */
   extraValueForDate: number | null;
   /** Предоплата за баню из /calculate */
   prepay: number | null;
@@ -27,6 +30,14 @@ export type HomesCalculateView = {
   nights: number;
   nightPrices: { date: string; price: number }[];
   periodMessage: string | null;
+  /** Цена до скидки из /daily-calculate */
+  originalPrice: number | null;
+  /** Текст скидки из /daily-calculate */
+  discountText: string | null;
+  /** Сумма скидки = originalPrice − totalPrice */
+  discountAmount: number | null;
+  prepay: number | null;
+  prepayIncludesProducts: boolean | null;
   raw: DailyCalculateResponse;
 };
 
@@ -35,6 +46,9 @@ export type SetupCalcMeta = {
   prepay: number | null;
   prepayIncludesProducts: boolean | null;
   extraValueForDate: number | null;
+  discountAmount: number | null;
+  discountText: string | null;
+  amountBeforeDiscount: number | null;
 };
 
 /** API иногда отдаёт числа строками — иначе total=0 и расчёт «ломается». */
@@ -61,12 +75,24 @@ function readBoolean(
   return null;
 }
 
+function readString(
+  obj: Record<string, unknown>,
+  keys: string[]
+): string | null {
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
 /**
  * /calculate:
- * - total = стоимость брони (без товаров)
+ * - total = стоимость брони (без товаров, без доплаты доп. гостей на клиенте)
  * - amount = до скидок
+ * - discount = процент (не сумма); сумма скидки = amount − total
  * - prepay = предоплата
- * - extraValueForDate = доплата за гостя сверх вместимости
+ * - extraValueForDate = доплата за одного гостя сверх вместимости
  */
 export function parseBanyaCalculateResponse(
   raw: CalculateRoomResponse
@@ -83,12 +109,21 @@ export function parseBanyaCalculateResponse(
     "roomPrice",
     "RoomPrice",
   ]);
-  const discountAmount = readNumber(o, [
-    "discountAmount",
-    "DiscountAmount",
-    "discount",
-    "Discount",
-  ]);
+  // discount в API — процент; сумму берём как amount − total
+  const discountPercent = readNumber(o, ["discount", "Discount"]);
+  let discountAmount: number | null = null;
+  if (
+    amountBeforeDiscount != null &&
+    amountBeforeDiscount > 0 &&
+    total > 0 &&
+    amountBeforeDiscount > total
+  ) {
+    discountAmount = amountBeforeDiscount - total;
+  } else {
+    // Явная сумма, если бэкенд отдал discountAmount (не путать с percent)
+    const explicit = readNumber(o, ["discountAmount", "DiscountAmount"]);
+    if (explicit != null && explicit !== 0) discountAmount = Math.abs(explicit);
+  }
   const extraValueForDate = readNumber(o, [
     "extraValueForDate",
     "ExtraValueForDate",
@@ -119,6 +154,7 @@ export function parseBanyaCalculateResponse(
     amountBeforeDiscount,
     basePrice,
     discountAmount,
+    discountPercent,
     extraValueForDate,
     prepay,
     prepayIncludesProducts,
@@ -127,6 +163,13 @@ export function parseBanyaCalculateResponse(
   };
 }
 
+/**
+ * /daily-calculate:
+ * - totalPrice = итог
+ * - originalPrice = цена до скидки
+ * - discountText = текст скидки
+ * - сумма скидки = originalPrice − totalPrice
+ */
 export function parseHomesCalculateResponse(
   raw: DailyCalculateResponse
 ): HomesCalculateView {
@@ -135,6 +178,17 @@ export function parseHomesCalculateResponse(
     readNumber(o, ["totalPrice", "TotalPrice", "total", "Total"]) ??
     raw.totalPrice ??
     0;
+  const originalPrice = readNumber(o, ["originalPrice", "OriginalPrice"]);
+  const discountText = readString(o, ["discountText", "DiscountText"]);
+  let discountAmount: number | null = null;
+  if (originalPrice != null && originalPrice > total && total > 0) {
+    discountAmount = originalPrice - total;
+  }
+  const prepay = readNumber(o, ["prepay", "Prepay", "prepayment", "Prepayment"]);
+  const prepayIncludesProducts = readBoolean(o, [
+    "prepayIncludesProducts",
+    "PrepayIncludesProducts",
+  ]);
 
   return {
     total,
@@ -146,6 +200,11 @@ export function parseHomesCalculateResponse(
         }))
       : [],
     periodMessage: raw.periodMessage ?? null,
+    originalPrice,
+    discountText,
+    discountAmount,
+    prepay,
+    prepayIncludesProducts,
     raw,
   };
 }

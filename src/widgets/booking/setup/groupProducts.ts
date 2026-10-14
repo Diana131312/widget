@@ -16,8 +16,6 @@ export type GroupWithProducts = {
 export type GroupedCatalog = {
   groups: GroupWithProducts[];
   productsById: Map<string, WidgetProduct>;
-  /** Услуга «доп. гости» (вынесена из секций), если есть для комнаты. */
-  extraGuestProduct: WidgetProduct | null;
 };
 
 function filterProductsForRoom(
@@ -38,6 +36,10 @@ function filterProductsForRoom(
   });
 }
 
+/**
+ * Каталог доп. товаров. Услуги «доп. гость» из каталога скрываем —
+ * доплата считается по pricePeriod / calculate, не через qty товара.
+ */
 export function groupProductsForRoom(
   config: WidgetGetResponse,
   categoryId: BookingCategoryId,
@@ -56,15 +58,12 @@ export function groupProductsForRoom(
 
   const productsById = new Map<string, WidgetProduct>();
   const byGroup = new Map<string, WidgetProduct[]>();
-  let extraGuestProduct: WidgetProduct | null = null;
 
   for (const p of filtered) {
-    productsById.set(p.id, p);
+    // Не показываем и не даём выбирать старые товары «доп. гость»
+    if (isExtraGuestProduct(p.name)) continue;
 
-    if (isExtraGuestProduct(p.name)) {
-      if (!extraGuestProduct) extraGuestProduct = p;
-      continue;
-    }
+    productsById.set(p.id, p);
 
     const gid = p.productGroupId ?? UNGROUPED_GROUP_ID;
     if (!byGroup.has(gid)) byGroup.set(gid, []);
@@ -86,5 +85,5 @@ export function groupProductsForRoom(
 
   groups.sort((a, b) => a.group.name.localeCompare(b.group.name, "ru"));
 
-  return { groups, productsById, extraGuestProduct };
+  return { groups, productsById };
 }
