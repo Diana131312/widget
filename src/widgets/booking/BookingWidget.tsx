@@ -1,6 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./booking.css";
 import { createWidgetApi } from "../../api";
+import { getAuthProfile } from "./checkout/authToken";
+import {
+  clearPendingBooking,
+  isSameSlot,
+  readPendingBooking,
+  savePendingBooking,
+} from "./checkout/pendingBooking";
+import { refreshStoredAuth } from "./checkout/refreshAuth";
 import { useBookingBootstrap } from "./bootstrap/useBookingBootstrap";
 import { BOOKING_ALIAS } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
@@ -28,6 +36,20 @@ function BookingWidgetInner() {
   const urlCandidate = useMemo(() => parseBookingUrl(), []);
   const api = useMemo(() => createWidgetApi({ alias: BOOKING_ALIAS }), []);
 
+  // При заходе проверяем сохранённый токен (GET /user/info); протухший удаляем
+  const [authVersion, setAuthVersion] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    void refreshStoredAuth(api).then((r) => {
+      if (alive && (r === "cleared" || r === "valid")) {
+        setAuthVersion((v) => v + 1);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [api]);
+
   const {
     stepId,
     categoryId,
@@ -54,6 +76,8 @@ function BookingWidgetInner() {
     continueFromSetup,
     continueFromCheckout,
     completeBooking,
+    completeFromCheckout,
+    restorePending,
     startOver,
     back,
     showAllObjects,
@@ -65,7 +89,7 @@ function BookingWidgetInner() {
   } = useBookingFlow({
     initial: urlCandidate,
     onPersist: (state) => {
-      // done заменяет verify в истории → браузерный «назад» сразу на checkout
+      // done заменяет verify/checkout в истории → браузерный «назад» сразу на оформление
       writeBookingUrl(state, {
         mode: state.stepId === "done" ? "replace" : "auto",
       });
@@ -91,6 +115,22 @@ function BookingWidgetInner() {
     async (candidate: BookingUrlState, opts?: { replaceUrl?: boolean }) => {
       const replaceUrl = opts?.replaceUrl ?? true;
       const cfg = configRef.current;
+
+      // Слот держит наша неоплаченная бронь → экран оплаты, а не «слот занят»
+      const pending = readPendingBooking();
+      if (
+        pending &&
+        candidate.stepId !== "category" &&
+        candidate.stepId !== "object" &&
+        isSameSlot(candidate, pending.state)
+      ) {
+        restorePending(pending);
+        const doneState = { ...pending.state, stepId: "done" as const };
+        rememberBookingUrlNavKey(doneState);
+        writeBookingUrl(doneState, { mode: "replace" });
+        setLinkIssue(null);
+        return;
+      }
 
       if (candidate.stepId === "category" || !cfg) {
         hydrate(candidate);
@@ -134,7 +174,7 @@ function BookingWidgetInner() {
       if (replaceUrl) writeBookingUrl(result.state, { mode: "replace" });
       setLinkIssue(null);
     },
-    [api, hydrate, showToast]
+    [api, hydrate, restorePending, showToast]
   );
 
   useEffect(() => {
@@ -175,6 +215,50 @@ function BookingWidgetInner() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [applyUrlCandidate, hydrate]);
 
+  // Неоплаченную бронь запоминаем во вкладке — переживёт F5
+  useEffect(() => {
+    if (stepId !== "done" || !bookingResult || !contactDraft || !categoryId) {
+      return;
+    }
+    savePendingBooking({
+      state: {
+        stepId: "done",
+        categoryId,
+        roomId,
+        checkIn,
+        checkOut,
+        banyaDate,
+        banyaTimeFrom,
+        banyaTimeTo,
+        guestCount,
+        productQuantities,
+      },
+      contact: contactDraft,
+      result: bookingResult,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- снимок на момент брони
+  }, [stepId, bookingResult, contactDraft]);
+
+  const leaveDone = useCallback(() => {
+    clearPendingBooking();
+    goToStep("checkout");
+  }, [goToStep]);
+
+  const startOverClean = useCallback(() => {
+    clearPendingBooking();
+    setLinkIssue(null);
+    startOver();
+  }, [startOver]);
+
+  // Авторизован → displayName в шапке (позже — иконка личного кабинета)
+  const authProfile = useMemo(
+    () => getAuthProfile(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- перечитать после входа/сброса
+    [authVersion, stepId, bookingResult]
+  );
+  // Только то, что знает сервер (displayName); нет — ничего не показываем
+  const userLabel = authProfile?.displayName || null;
+
   // verify/done без локальных данных (F5 / чужая ссылка) → checkout
   useEffect(() => {
     if (stepId === "verify" && !contactDraft) {
@@ -184,16 +268,16 @@ function BookingWidgetInner() {
     }
   }, [stepId, contactDraft, bookingResult, goToStep]);
 
-  const waitingUrl =
-    (!urlReady && urlCandidate.stepId !== "category" && status !== "error") ||
-    historyBusy;
-
-  const checkoutPrice =
+  const verifyBasePrice =
     basePrice != null && basePrice > 0
       ? basePrice
       : slotPrice != null && slotPrice > 0
         ? slotPrice
         : null;
+
+  const waitingUrl =
+    (!urlReady && urlCandidate.stepId !== "category" && status !== "error") ||
+    historyBusy;
 
   let body: React.ReactNode;
   if (isBlocking || waitingUrl) {
@@ -234,19 +318,10 @@ function BookingWidgetInner() {
             categoryId={categoryId}
             config={config}
             roomId={roomId}
-            checkIn={checkIn}
-            checkOut={checkOut}
-            banyaDate={banyaDate}
-            banyaTimeFrom={banyaTimeFrom}
-            banyaTimeTo={banyaTimeTo}
-            slotDuration={slotDuration}
-            slotPrice={slotPrice}
             guestCount={guestCount}
             productQuantities={productQuantities}
-            basePrice={basePrice}
             onGuestCountChange={setGuestCount}
             onSetProductQty={setProductQty}
-            onBasePriceResolved={setBasePriceResolved}
             onContinue={continueFromSetup}
           />
         )}
@@ -254,7 +329,6 @@ function BookingWidgetInner() {
           categoryId &&
           config &&
           roomId &&
-          checkoutPrice != null &&
           guestCount >= 1 && (
             <StepCheckout
               categoryId={categoryId}
@@ -266,12 +340,16 @@ function BookingWidgetInner() {
               banyaTimeFrom={banyaTimeFrom}
               banyaTimeTo={banyaTimeTo}
               slotDuration={slotDuration}
+              slotPrice={slotPrice}
               guestCount={guestCount}
               productQuantities={productQuantities}
-              basePrice={checkoutPrice}
+              basePrice={basePrice}
               calcMeta={calcMeta}
               initialContact={contactDraft}
+              onBasePriceResolved={setBasePriceResolved}
+              authVersion={authVersion}
               onContinue={continueFromCheckout}
+              onBooked={completeFromCheckout}
             />
           )}
         {stepId === "verify" &&
@@ -279,7 +357,7 @@ function BookingWidgetInner() {
           config &&
           roomId &&
           contactDraft &&
-          checkoutPrice != null &&
+          verifyBasePrice != null &&
           guestCount >= 1 && (
             <StepVerify
               categoryId={categoryId}
@@ -293,7 +371,7 @@ function BookingWidgetInner() {
               slotDuration={slotDuration}
               guestCount={guestCount}
               productQuantities={productQuantities}
-              basePrice={checkoutPrice}
+              basePrice={verifyBasePrice}
               calcMeta={calcMeta}
               contact={contactDraft}
               onComplete={completeBooking}
@@ -301,7 +379,12 @@ function BookingWidgetInner() {
             />
           )}
         {stepId === "done" && bookingResult && (
-          <StepDone result={bookingResult} onStartOver={startOver} />
+          <StepDone
+            result={bookingResult}
+            contactPhone={contactDraft?.phone ?? null}
+            onStartOver={startOverClean}
+            onBackToCart={leaveDone}
+          />
         )}
       </>
     );
@@ -313,11 +396,14 @@ function BookingWidgetInner() {
         stepId={stepId}
         title={title}
         canGoBack={canGoBack}
-        onBack={back}
+        onBack={() => {
+          setLinkIssue(null);
+          back();
+        }}
         showHome={objectFocus}
-        onHome={objectFocus ? startOver : undefined}
+        onHome={objectFocus ? startOverClean : undefined}
         hideStepLabel={objectFocus}
-        onStepClick={goToStep}
+        userLabel={userLabel}
       >
         {body}
       </BookingLayout>

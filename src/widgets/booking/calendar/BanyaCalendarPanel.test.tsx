@@ -88,12 +88,11 @@ describe("BanyaCalendarPanel", () => {
     expect(screen.queryByText("Сбросить дату")).not.toBeInTheDocument();
     expect(screen.getByText("3 ч")).toBeInTheDocument();
 
-    const nextBtn = screen.getByRole("button", { name: /Далее/ });
-    expect(nextBtn).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Далее/ })
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /12:00/ }));
-    expect(nextBtn).not.toBeDisabled();
-    await user.click(nextBtn);
 
     expect(onContinue).toHaveBeenCalledWith(
       expect.objectContaining({

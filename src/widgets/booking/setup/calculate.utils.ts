@@ -19,7 +19,7 @@ export type BanyaCalculateView = {
   extraValueForDate: number | null;
   /** Предоплата за баню из /calculate */
   prepay: number | null;
-  /** Предоплата уже включает доп. товары */
+  /** true — клиент должен прибавить доп. товары к prepay */
   prepayIncludesProducts: boolean | null;
   lines: CalcMoneyLine[];
   raw: CalculateRoomResponse;
@@ -37,6 +37,7 @@ export type HomesCalculateView = {
   /** Сумма скидки = originalPrice − totalPrice */
   discountAmount: number | null;
   prepay: number | null;
+  /** true — клиент должен прибавить доп. товары к prepay */
   prepayIncludesProducts: boolean | null;
   raw: DailyCalculateResponse;
 };
@@ -44,6 +45,7 @@ export type HomesCalculateView = {
 /** Мета расчёта, которую тащим на checkout. */
 export type SetupCalcMeta = {
   prepay: number | null;
+  /** true — клиент должен прибавить доп. товары к prepay */
   prepayIncludesProducts: boolean | null;
   extraValueForDate: number | null;
   discountAmount: number | null;

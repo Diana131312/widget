@@ -1,21 +1,53 @@
 /**
- * Временный потолок qty «доп. гость» на клиенте.
- *
- * TODO(prod): перед продом в админке выставить корректные лимиты
- * (max quantity) для товаров «доп. гость» по объектам — виджет
- * должен брать лимит из конфига/товара, а не хардкодить.
+ * Лимит доп. гостей = maxGuests − includedCapacity.
+ * Доп. гости доступны только после заполнения основных до includedCapacity.
  */
-export const EXTRA_GUEST_HARD_LIMIT = 2;
+
+export type GuestCountSplit = {
+  /** Обычные гости (в цене), 0…includedCapacity. */
+  baseGuests: number;
+  /** Доп. гости сверх includedCapacity. */
+  extraGuests: number;
+  /** Макс. обычных (= includedCapacity). */
+  maxBaseGuests: number;
+  /** Макс. доп. (= maxGuests − includedCapacity). */
+  maxExtraGuests: number;
+  /** Можно ли менять доп. гостей. */
+  extraUnlocked: boolean;
+};
+
+export function splitGuestCount(
+  guestCount: number,
+  includedCapacity: number,
+  maxGuests: number
+): GuestCountSplit {
+  const maxBase = Math.max(0, Math.floor(includedCapacity));
+  const maxTotal = Math.max(maxBase, Math.floor(maxGuests));
+  const maxExtra = Math.max(0, maxTotal - maxBase);
+  const total = Math.max(0, Math.floor(guestCount));
+  const baseGuests = Math.min(total, maxBase);
+  const extraGuests = Math.max(0, Math.min(total - maxBase, maxExtra));
+  const extraUnlocked = maxBase > 0 && baseGuests >= maxBase && maxExtra > 0;
+
+  return {
+    baseGuests,
+    extraGuests,
+    maxBaseGuests: maxBase,
+    maxExtraGuests: maxExtra,
+    extraUnlocked,
+  };
+}
 
 /**
- * Доп. гости доступны только после заполнения основных до maxGuests.
- * guestCount < maxGuests → 0; иначе EXTRA_GUEST_HARD_LIMIT (2).
+ * Сколько доп. гостей можно выбрать при текущем заполнении основных.
+ * Пока основные < includedCapacity → 0; иначе maxGuests − includedCapacity.
  */
 export function getMaxExtraGuests(
   guestCount: number,
+  includedCapacity: number,
   maxGuests: number
 ): number {
-  if (guestCount <= 0) return 0;
-  if (guestCount < maxGuests) return 0;
-  return EXTRA_GUEST_HARD_LIMIT;
+  return splitGuestCount(guestCount, includedCapacity, maxGuests).extraUnlocked
+    ? Math.max(0, Math.floor(maxGuests) - Math.max(0, Math.floor(includedCapacity)))
+    : 0;
 }

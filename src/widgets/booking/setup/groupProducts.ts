@@ -70,20 +70,34 @@ export function groupProductsForRoom(
     byGroup.get(gid)!.push(p);
   }
 
+  // Порядок групп как в API (productGroups), без сортировки по алфавиту.
   const groups: GroupWithProducts[] = [];
-  for (const [gid, products] of byGroup) {
-    if (products.length === 0) continue;
-    let group: WidgetProductGroup;
-    if (gid === UNGROUPED_GROUP_ID) {
-      group = { id: UNGROUPED_GROUP_ID, name: "Другое", image: null };
-    } else {
-      const found = groupMap.get(gid);
-      group = found ?? { id: gid, name: "Категория", image: null };
-    }
-    groups.push({ group, products });
+  const used = new Set<string>();
+
+  for (const g of config.productGroups ?? []) {
+    const products = byGroup.get(g.id);
+    if (!products || products.length === 0) continue;
+    groups.push({ group: g, products });
+    used.add(g.id);
   }
 
-  groups.sort((a, b) => a.group.name.localeCompare(b.group.name, "ru"));
+  for (const [gid, products] of byGroup) {
+    if (used.has(gid) || products.length === 0) continue;
+    if (gid === UNGROUPED_GROUP_ID) continue;
+    const found = groupMap.get(gid);
+    groups.push({
+      group: found ?? { id: gid, name: "Категория", image: null },
+      products,
+    });
+  }
+
+  const ungrouped = byGroup.get(UNGROUPED_GROUP_ID);
+  if (ungrouped && ungrouped.length > 0) {
+    groups.push({
+      group: { id: UNGROUPED_GROUP_ID, name: "Другое", image: null },
+      products: ungrouped,
+    });
+  }
 
   return { groups, productsById };
 }

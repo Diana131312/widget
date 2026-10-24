@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  withPaymentDeadline,
+  type PendingBooking,
+} from "./checkout/pendingBooking";
 import { getCategoryConfig } from "./categories";
 import {
   getStepIndex,
@@ -242,7 +246,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     !checkOut &&
     !banyaDate;
 
-  const canGoBack = stepId !== "category" && !objectFocus;
+  // done: назад только через «Отменить бронь и вернуться в корзину»
+  const canGoBack = stepId !== "category" && stepId !== "done" && !objectFocus;
 
   const selectCategory = useCallback(
     (id: BookingCategoryId) => {
@@ -347,10 +352,33 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
 
   const completeBooking = useCallback(
     (result: import("./checkout/checkoutDraft").BookingResultDraft) => {
-      setBookingResult(result);
+      setBookingResult(withPaymentDeadline(result));
       setStepId("done");
     },
     []
+  );
+
+  /** Номер уже подтверждён (сохранённый токен): checkout → done без verify. */
+  const completeFromCheckout = useCallback(
+    (
+      contact: import("./checkout/checkoutDraft").CheckoutContactDraft,
+      result: import("./checkout/checkoutDraft").BookingResultDraft
+    ) => {
+      setContactDraft(contact);
+      setBookingResult(withPaymentDeadline(result));
+      setStepId("done");
+    },
+    []
+  );
+
+  /** Неоплаченная бронь из sessionStorage (F5 / «назад») → снова экран оплаты. */
+  const restorePending = useCallback(
+    (pending: PendingBooking) => {
+      hydrate({ ...pending.state, stepId: "done" });
+      setContactDraft(pending.contact);
+      setBookingResult(pending.result);
+    },
+    [hydrate]
   );
 
   const startOver = useCallback(() => {
@@ -438,6 +466,8 @@ export function useBookingFlow({ initial, onPersist }: UseBookingFlowArgs) {
     continueFromSetup,
     continueFromCheckout,
     completeBooking,
+    completeFromCheckout,
+    restorePending,
     startOver,
     back,
     showAllObjects,

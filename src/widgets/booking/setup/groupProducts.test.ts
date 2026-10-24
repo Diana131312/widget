@@ -89,6 +89,44 @@ describe("groupProductsForRoom", () => {
     expect(other?.products.map((p) => p.id)).toEqual(["p3"]);
   });
 
+  it("keeps productGroups order from API, not alphabetical", () => {
+    const ordered = {
+      productGroups: [
+        { id: "g-z", name: "Ягоды", image: null },
+        { id: "g-a", name: "Ароматы", image: null },
+      ],
+      products: [
+        {
+          id: "pz",
+          name: "Малина",
+          description: "",
+          barcode: null,
+          image: null,
+          price: 100,
+          productGroupId: "g-z",
+          isPublic: true,
+          roomIds: ["r1"],
+          dailyRoomIds: [],
+        },
+        {
+          id: "pa",
+          name: "Мята",
+          description: "",
+          barcode: null,
+          image: null,
+          price: 200,
+          productGroupId: "g-a",
+          isPublic: true,
+          roomIds: ["r1"],
+          dailyRoomIds: [],
+        },
+      ],
+    } as unknown as WidgetGetResponse;
+
+    const result = groupProductsForRoom(ordered, "banya", "r1");
+    expect(result.groups.map((g) => g.group.id)).toEqual(["g-z", "g-a"]);
+  });
+
   it("filters homes by dailyRoomIds when array present", () => {
     const homesConfig = {
       productGroups: [{ id: "g1", name: "Допы", image: null }],

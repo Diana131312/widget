@@ -8,6 +8,8 @@ export type CheckoutContactDraft = {
   phone: string;
   comment: string;
   verifyChannel: VerifyChannel;
+  /** Выбран на оформлении; verify создаёт бронь с этим режимом. */
+  paymentMode?: PaymentMode;
 };
 
 export type BookingResultDraft = {
@@ -21,6 +23,8 @@ export type BookingResultDraft = {
   /** Итого с товарами (для fallback отображения) */
   totalFallback: number;
   paymentMode?: PaymentMode | null;
+  /** Момент автоотмены неоплаченной брони (мс) — переживает перезагрузку */
+  expiresAtMs?: number | null;
 };
 
 /** Мета /calculate, сохраняем для шага 4–5. */

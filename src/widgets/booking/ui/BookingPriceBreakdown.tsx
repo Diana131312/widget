@@ -1,6 +1,7 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import { resolveClientPrepay } from "../setup/resolveClientPrepay";
 import type { BookingCategoryId } from "../types";
 
 export type BreakdownProductLine = {
@@ -93,6 +94,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   periodMessage = null,
   heading = "Подробный расчёт",
   prepaymentAmount = null,
+  prepayIncludesProducts = null,
   discountAmount = null,
   discountText = null,
   amountBeforeDiscount = null,
@@ -103,14 +105,20 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
     .filter(Boolean)
     .join(" ");
 
+  const productsSubtotal = productLines.reduce((s, l) => s + l.lineTotal, 0);
+  const displayPrepay = resolveClientPrepay(
+    prepaymentAmount,
+    productsSubtotal,
+    prepayIncludesProducts
+  );
+
   const showExtra =
     extraGuest != null &&
     extraGuest.extraGuests > 0 &&
     extraGuest.surcharge > 0;
   const showDiscount =
     (discountAmount != null && discountAmount > 0) || Boolean(discountText);
-  const showPrepay =
-    prepaymentAmount != null && prepaymentAmount > 0;
+  const showPrepay = displayPrepay != null && displayPrepay > 0;
 
   const costLabel =
     amountBeforeDiscount != null &&
@@ -237,7 +245,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
         <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
           <span>Предоплата</span>
           <span className="booking-price-breakdown__num">
-            {prepaymentAmount!.toLocaleString("ru-RU")} ₽
+            {displayPrepay!.toLocaleString("ru-RU")} ₽
           </span>
         </div>
       ) : null}

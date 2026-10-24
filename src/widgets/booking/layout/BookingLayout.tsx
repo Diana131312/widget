@@ -11,6 +11,8 @@ type BookingLayoutProps = {
   onHome?: () => void;
   hideStepLabel?: boolean;
   onStepClick?: (stepId: BookingStepId) => void;
+  /** ФИ авторизованного клиента в шапке */
+  userLabel?: string | null;
   children: React.ReactNode;
 };
 
@@ -24,6 +26,7 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
   onHome,
   hideStepLabel,
   onStepClick,
+  userLabel,
   children,
 }) => {
   useEffect(() => {
@@ -41,6 +44,7 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
         onHome={onHome}
         hideStepLabel={hideStepLabel}
         onStepClick={onStepClick}
+        userLabel={userLabel}
       />
       <main className="booking-layout__main">{children}</main>
     </div>

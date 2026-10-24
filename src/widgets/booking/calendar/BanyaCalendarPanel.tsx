@@ -57,10 +57,6 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState(false);
   const [slotsReloadToken, setSlotsReloadToken] = useState(0);
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
-    null
-  );
-
   useEffect(() => {
     if (!enabled) {
       setIsLoading(true);
@@ -97,7 +93,6 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     setSlotsLoading(true);
     setSlotsError(false);
     setSlots([]);
-    setSelectedSlotIndex(null);
 
     loadRoomTimeSlots(api, room.id, selectedDate)
       .then((next) => {
@@ -127,14 +122,10 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     }
   }, [selectedDate]);
 
-  const selectedSlot =
-    selectedSlotIndex != null ? slots[selectedSlotIndex] ?? null : null;
-
   const handleDateClick = (date: Date) => {
     if (hasError || isLoading) return;
     const dateStr = format(date, "yyyy-MM-dd");
     setSelectedDate(dateStr);
-    setSelectedSlotIndex(null);
     setSlotsOpen(true);
   };
 
@@ -146,35 +137,28 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     setSlotsReloadToken((n) => n + 1);
   };
 
+  const handleSelectSlot = (slot: RoomTimeSlot) => {
+    if (!selectedDate || slot.isAvailable !== true) return;
+    onContinue?.({
+      room,
+      date: selectedDate,
+      timeFrom: slot.timeFrom,
+      timeTo: slot.timeTo,
+      price: slot.price,
+      duration: slot.duration,
+    });
+  };
+
   const slotsPanel = slotsOpen ? (
     <div className="booking-slots">
       <BanyaTimeSlots
         slots={slots}
         isLoading={slotsLoading}
         hasError={slotsError}
-        selectedIndex={selectedSlotIndex}
-        onSelect={(_slot, index) => setSelectedSlotIndex(index)}
+        selectedIndex={null}
+        onSelect={(slot) => handleSelectSlot(slot)}
         onRetry={handleRetrySlots}
       />
-
-      <button
-        type="button"
-        className="booking-cal__continue"
-        disabled={!selectedDate || !selectedSlot}
-        onClick={() => {
-          if (!selectedDate || !selectedSlot) return;
-          onContinue?.({
-            room,
-            date: selectedDate,
-            timeFrom: selectedSlot.timeFrom,
-            timeTo: selectedSlot.timeTo,
-            price: selectedSlot.price,
-            duration: selectedSlot.duration,
-          });
-        }}
-      >
-        Далее →
-      </button>
     </div>
   ) : null;
 

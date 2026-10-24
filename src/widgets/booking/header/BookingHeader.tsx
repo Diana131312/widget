@@ -15,6 +15,8 @@ type BookingHeaderProps = {
   hideStepLabel?: boolean;
   /** @deprecated Точки шагов убраны */
   onStepClick?: (stepId: BookingStepId) => void;
+  /** ФИ авторизованного клиента (справа) */
+  userLabel?: string | null;
 };
 
 /** Верхняя панель: назад/домой + «Шаг N из M». */
@@ -25,6 +27,7 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
   showHome = false,
   onHome,
   hideStepLabel = false,
+  userLabel = null,
 }) => {
   const index = getStepIndex(stepId);
   const total = BOOKING_STEPS.length;
@@ -59,6 +62,11 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
           </p>
         ) : null}
       </div>
+      {userLabel ? (
+        <p className="booking-header__user" title={userLabel}>
+          {userLabel}
+        </p>
+      ) : null}
     </header>
   );
 };

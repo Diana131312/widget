@@ -119,6 +119,17 @@
   min-width: 0;
 }
 
+.booking-header__user {
+  margin: 0 0 0 auto;
+  max-width: 55%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--bk-caption);
+  font-weight: 500;
+  color: var(--bk-ink-soft);
+}
+
 .booking-header__back {
   width: 34px;
   height: 34px;
@@ -1675,6 +1686,7 @@ button.booking-steps__dot:focus-visible {
 }
 
 .booking-slots__item--free.booking-slots__item--selected {
+  /* лёгкая метка выбора без смены палитры */
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
   filter: brightness(0.92);
 }
@@ -2094,10 +2106,10 @@ button.booking-steps__dot:focus-visible {
 }
 
 .booking-setup-calc {
-  padding: 14px 16px;
-  border: 1px solid var(--bk-border);
-  border-radius: var(--bk-radius);
-  background: var(--bk-muted);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-size: var(--bk-caption);
   color: var(--bk-ink-soft);
 }
@@ -2609,6 +2621,12 @@ button.booking-steps__dot:focus-visible {
   cursor: pointer;
 }
 
+.booking-checkout__consents {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .booking-checkout__privacy {
   display: flex;
   align-items: flex-start;
@@ -2621,6 +2639,55 @@ button.booking-steps__dot:focus-visible {
 
 .booking-checkout__privacy input {
   margin-top: 2px;
+}
+
+.booking-checkout__terms-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--bk-ink-dark);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.booking-checkout__terms-link:hover {
+  color: var(--bk-ink);
+}
+
+.booking-modal-overlay--offer {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(41, 51, 41, 0.55);
+}
+
+.booking-modal-card--offer {
+  width: min(640px, 100%);
+  max-height: min(88dvh, 840px);
+  padding: 20px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-offer-modal__title {
+  padding-right: 44px;
+  font-size: var(--bk-body);
+}
+
+.booking-offer-modal__body {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+  font-size: var(--bk-caption);
+  line-height: 1.5;
+  color: var(--bk-ink-soft);
+  font-family: var(--bk-cal-font);
+  white-space: pre-wrap;
 }
 
 .booking-checkout__error {
@@ -2879,6 +2946,26 @@ button.booking-steps__dot:focus-visible {
   flex-direction: column;
   gap: 10px;
   margin-top: 8px;
+}
+
+.booking-checkout--success .booking-checkout__countdown {
+  margin: 0;
+  font-size: var(--bk-body);
+  color: var(--bk-ink-soft);
+}
+
+.booking-checkout__success-divider {
+  width: 100%;
+  margin: 12px 0 0;
+  border: none;
+  border-top: 1px solid var(--bk-border);
+}
+
+.booking-checkout__success-subtitle {
+  margin: 0;
+  font-size: var(--bk-body);
+  font-weight: 600;
+  color: var(--bk-ink-dark);
 }
 
 .booking-checkout__secondary {

@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WidgetGetResponse } from "../../../api";
+import { getValidAuthToken } from "../checkout/authToken";
 import type { CheckoutContactDraft } from "../checkout/checkoutDraft";
 import { BookingToastProvider } from "../ui/ToastContext";
 import { StepVerify } from "./StepVerify";
@@ -99,6 +100,7 @@ function Harness({
 
 describe("StepVerify", () => {
   beforeEach(() => {
+    localStorage.clear();
     sendSms.mockReset();
     auth.mockReset();
     saveRoomBooking.mockReset();
@@ -131,23 +133,26 @@ describe("StepVerify", () => {
     expect(screen.getByText("Код из сообщения")).toBeInTheDocument();
   });
 
-  it("after code verify asks payment mode then saves with paymentMode", async () => {
+  it("after code verify saves token and books with chosen paymentMode", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
-    render(<Harness onComplete={onComplete} />);
+    render(
+      <Harness
+        onComplete={onComplete}
+        contact={{
+          firstName: "Иван",
+          lastName: "Петров",
+          phone: "+7 (900) 123-45-67",
+          comment: "",
+          verifyChannel: "telegram",
+          paymentMode: "full",
+        }}
+      />
+    );
 
     await waitFor(() => expect(sendSms).toHaveBeenCalled());
     await user.type(screen.getByLabelText("Код"), "1234");
     await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
-
-    await waitFor(() => {
-      expect(auth).toHaveBeenCalled();
-      expect(screen.getByText("Способ оплаты")).toBeInTheDocument();
-    });
-    expect(saveRoomBooking).not.toHaveBeenCalled();
-
-    await user.click(screen.getByLabelText(/Полная/));
-    await user.click(screen.getByRole("button", { name: "Забронировать" }));
 
     await waitFor(() => {
       expect(saveRoomBooking).toHaveBeenCalledWith({
@@ -169,6 +174,46 @@ describe("StepVerify", () => {
       });
       expect(onComplete).toHaveBeenCalled();
     });
+    expect(getValidAuthToken("+7 (900) 123-45-67")).toBe("jwt");
+  });
+
+  it("stores token returned by save", async () => {
+    auth.mockResolvedValueOnce({});
+    saveRoomBooking.mockResolvedValueOnce({
+      bookingId: "bk1",
+      amount: 3000,
+      paymentLink: null,
+      token: "jwt-from-save",
+      tokenExpiresAt: "2099-01-01T00:00:00Z",
+    });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await waitFor(() => expect(sendSms).toHaveBeenCalled());
+    await user.type(screen.getByLabelText("Код"), "1234");
+    await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
+
+    await waitFor(() => expect(saveRoomBooking).toHaveBeenCalled());
+    expect(getValidAuthToken("+7 (900) 123-45-67")).toBe("jwt-from-save");
+  });
+
+  it("keeps retry on confirmed screen when save fails", async () => {
+    saveRoomBooking.mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<Harness onComplete={onComplete} />);
+
+    await waitFor(() => expect(sendSms).toHaveBeenCalled());
+    await user.type(screen.getByLabelText("Код"), "1234");
+    await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Номер подтверждён")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Повторить" })).toBeEnabled();
+    });
+    await user.click(screen.getByRole("button", { name: "Повторить" }));
+    await waitFor(() => expect(onComplete).toHaveBeenCalled());
+    expect(saveRoomBooking).toHaveBeenCalledTimes(2);
   });
 
   it("does not send zero-uuid extra guest product in save", async () => {
@@ -178,8 +223,6 @@ describe("StepVerify", () => {
     await waitFor(() => expect(sendSms).toHaveBeenCalled());
     await user.type(screen.getByLabelText("Код"), "1234");
     await user.click(screen.getByRole("button", { name: "Подтвердить код" }));
-    await waitFor(() => expect(screen.getByText("Способ оплаты")).toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Забронировать" }));
 
     await waitFor(() => {
       expect(saveRoomBooking).toHaveBeenCalledWith(

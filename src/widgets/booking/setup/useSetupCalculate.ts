@@ -74,16 +74,15 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
 
     let cancelled = false;
     setError(null);
-    // Не чистим прошлый расчёт сразу — блок не скачет при кликах по гостям.
-    // Спиннер только если ещё не было успешного расчёта.
-    if (!hadCalcRef.current) {
-      setIsLoading(true);
-    }
+    // Сразу прячем прошлый расчёт — иначе при смене гостей видна устаревшая сумма.
+    setBanyaCalc(null);
+    setHomesCalc(null);
+    hadCalcRef.current = false;
+    setIsLoading(true);
 
     const timer = window.setTimeout(async () => {
-      if (!cancelled && !hadCalcRef.current) {
-        setIsLoading(true);
-      }
+      if (cancelled) return;
+      setIsLoading(true);
       try {
         if (input.categoryId === "homes") {
           if (!input.checkIn || !input.checkOut || !input.roomId) {

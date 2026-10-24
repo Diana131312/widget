@@ -52,6 +52,7 @@ describe("useSetupCalculate", () => {
     expect(calculateRoom).toHaveBeenCalledWith(
       expect.objectContaining({ duration: 3, personCount: 2 })
     );
+    expect(calculateRoom.mock.calls[0][0]).not.toHaveProperty("products");
   });
 
   it("falls back to slotPrice when API total is empty", async () => {
@@ -147,6 +148,41 @@ describe("useSetupCalculate", () => {
     });
 
     expect(calculateRoom).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides previous calculation while guests change", async () => {
+    const calculateRoom = vi.fn().mockResolvedValue({ total: 4500 });
+    const api = {
+      calculateRoom,
+      dailyCalculate: vi.fn(),
+    } as unknown as WidgetApiClient;
+
+    const { result, rerender } = renderHook(
+      ({ guests }: { guests: number }) =>
+        useSetupCalculate({
+          api,
+          input: { ...banyaInput, guestCount: guests },
+          onPriceResolved: vi.fn(),
+        }),
+      { initialProps: { guests: 2 } }
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasCalculation).toBe(true);
+    });
+
+    rerender({ guests: 3 });
+
+    expect(result.current.hasCalculation).toBe(false);
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.banyaCalc).toBeNull();
+
+    await waitFor(() => {
+      expect(result.current.hasCalculation).toBe(true);
+    });
+    expect(calculateRoom).toHaveBeenLastCalledWith(
+      expect.objectContaining({ personCount: 3 })
+    );
   });
 
   it("shows friendly network error copy", async () => {

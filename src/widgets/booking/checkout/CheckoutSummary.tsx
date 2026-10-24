@@ -2,6 +2,7 @@ import React from "react";
 import type { BookingCategoryId } from "../types";
 import {
   BookingPriceBreakdown,
+  type BreakdownNightLine,
   type BreakdownProductLine,
   type ExtraGuestBreakdown,
 } from "../ui/BookingPriceBreakdown";
@@ -18,6 +19,8 @@ type Props = {
   banyaTimeTo: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  nightLines?: BreakdownNightLine[];
+  periodMessage?: string | null;
   prepaymentAmount?: number | null;
   prepayIncludesProducts?: boolean | null;
   discountAmount?: number | null;

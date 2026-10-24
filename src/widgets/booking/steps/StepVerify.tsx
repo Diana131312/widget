@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createWidgetApi, type SaveBookingResponse } from "../../../api";
 import { BOOKING_ALIAS } from "../constants";
 import { pollAuthCall, startAuthCall } from "../checkout/authCall";
+import { readTokenFromResponse, saveAuthToken } from "../checkout/authToken";
 import {
   buildCheckoutProducts,
   buildSaveBodies,
@@ -41,7 +42,7 @@ type Props = {
   onBackToCheckout: () => void;
 };
 
-type Mode = "boot" | "otp" | "call" | "paymode";
+type Mode = "boot" | "otp" | "call" | "confirmed";
 
 const BOT_VERIFY_HINT =
   "Откройте бота, нажмите Старт и поделитесь контактом — бот пришлёт код";
@@ -78,7 +79,11 @@ function readSaveMeta(
   };
 }
 
-/** Шаг 5: подтверждение + выбор режима оплаты. */
+/**
+ * Шаг 5: подтверждение номера и создание брони.
+ * Режим оплаты выбран на оформлении (contact.paymentMode).
+ * Токен после подтверждения сохраняем — в следующий раз шаг пропускается.
+ */
 export const StepVerify: React.FC<Props> = ({
   categoryId,
   config,
@@ -105,7 +110,7 @@ export const StepVerify: React.FC<Props> = ({
   const [verifiedCheckCode, setVerifiedCheckCode] = useState<string | null>(
     null
   );
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("prepay");
+  const paymentMode: PaymentMode = contact.paymentMode ?? "prepay";
   const [botLink, setBotLink] = useState<string | null>(null);
   const [dialNumber, setDialNumber] = useState<string | null>(null);
   const [isBusy, setBusy] = useState(false);
@@ -153,9 +158,6 @@ export const StepVerify: React.FC<Props> = ({
     (extraGuestResolve.includedInRoomTotal
       ? 0
       : extraGuestResolve.surcharge);
-
-  const prepayHint =
-    calcMeta?.prepay != null && calcMeta.prepay > 0 ? calcMeta.prepay : null;
 
   const confirmMessage =
     (config.settings?.confirmMessage ?? "Спасибо! Ваша заявка принята.").replace(
@@ -252,29 +254,45 @@ export const StepVerify: React.FC<Props> = ({
     setBusy(true);
     setError(null);
     try {
-      await api.auth({
+      const res = await api.auth({
         phone: toApiPhone(contact.phone),
         code: otpCode.trim(),
       });
+      if (res?.token) {
+        saveAuthToken({
+          token: res.token,
+          expiresAt: res.expiresAt,
+          phone: contact.phone,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          displayName: res.contact?.displayName ?? null,
+        });
+      }
       setVerifiedCheckCode(otpCode.trim());
-      setPaymentMode("prepay");
-      setMode("paymode");
+      setMode("confirmed");
     } catch (err) {
       setError(getAuthErrorCopy(err).detail);
-    } finally {
       setBusy(false);
+      return;
     }
+    await submitBooking(otpCode.trim());
   };
 
-  const handleCreateWithPayment = async () => {
-    if (isBusy) return;
+  const submitBooking = async (checkCode: string | undefined) => {
     setBusy(true);
     setError(null);
     try {
-      const res = await createBooking(
-        verifiedCheckCode ?? undefined,
-        paymentMode
-      );
+      const res = await createBooking(checkCode, paymentMode);
+      const issued = readTokenFromResponse(res);
+      if (issued) {
+        api.setToken(issued.token);
+        saveAuthToken({
+          ...issued,
+          phone: contact.phone,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+        });
+      }
       onComplete(readSaveMeta(res, total, confirmMessage, paymentMode));
     } catch (err) {
       setError(getWidgetApiErrorDetail(err));
@@ -304,10 +322,19 @@ export const StepVerify: React.FC<Props> = ({
         try {
           const poll = await pollAuthCall(toApiPhone(contact.phone));
           if (poll.confirmed) {
+            const issued = readTokenFromResponse(poll.raw);
+            if (issued) {
+              api.setToken(issued.token);
+              saveAuthToken({
+                ...issued,
+                phone: contact.phone,
+                firstName: contact.firstName,
+                lastName: contact.lastName,
+              });
+            }
             setVerifiedCheckCode(null);
-            setPaymentMode("prepay");
-            setMode("paymode");
-            setBusy(false);
+            setMode("confirmed");
+            await submitBooking(undefined);
             return;
           }
         } catch (err) {
@@ -334,46 +361,14 @@ export const StepVerify: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
-  if (mode === "paymode") {
+  if (mode === "confirmed") {
     return (
       <div className="booking-checkout">
         <div className="booking-checkout__main">
-          <p className="booking-checkout__otp-title">Способ оплаты</p>
+          <p className="booking-checkout__otp-title">Номер подтверждён</p>
           <p className="booking-checkout__otp-hint">
-            Выберите, какую сумму оплатить по ссылке
+            {error ? "Не удалось создать бронь" : "Создаём бронь…"}
           </p>
-          <fieldset className="booking-checkout__messenger">
-            <legend className="booking-checkout__label">Оплата</legend>
-            <div className="booking-checkout__radio-group">
-              <label className="booking-checkout__radio">
-                <input
-                  type="radio"
-                  name="bk-payment-mode"
-                  checked={paymentMode === "prepay"}
-                  onChange={() => setPaymentMode("prepay")}
-                  disabled={isBusy}
-                />
-                <span>
-                  Частичная
-                  {prepayHint != null
-                    ? ` — ${prepayHint.toLocaleString("ru-RU")} ₽`
-                    : " (предоплата)"}
-                </span>
-              </label>
-              <label className="booking-checkout__radio">
-                <input
-                  type="radio"
-                  name="bk-payment-mode"
-                  checked={paymentMode === "full"}
-                  onChange={() => setPaymentMode("full")}
-                  disabled={isBusy}
-                />
-                <span>
-                  Полная — {total.toLocaleString("ru-RU")} ₽
-                </span>
-              </label>
-            </div>
-          </fieldset>
           {error ? (
             <p className="booking-checkout__hint" role="alert">
               {error}
@@ -385,9 +380,9 @@ export const StepVerify: React.FC<Props> = ({
             type="button"
             className="booking-checkout__submit"
             disabled={isBusy}
-            onClick={() => void handleCreateWithPayment()}
+            onClick={() => void submitBooking(verifiedCheckCode ?? undefined)}
           >
-            {isBusy ? "Создаём бронь…" : "Забронировать"}
+            {isBusy ? "Создаём бронь…" : "Повторить"}
           </button>
           <button
             type="button"
