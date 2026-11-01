@@ -10,7 +10,7 @@ import {
 } from "./checkout/pendingBooking";
 import { refreshStoredAuth } from "./checkout/refreshAuth";
 import { useBookingBootstrap } from "./bootstrap/useBookingBootstrap";
-import { BOOKING_ALIAS } from "./constants";
+import { BOOKING_ALIAS, BOOKING_UNIFIED_ROBOTO_FONT } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
 import { StepCategory } from "./steps/StepCategory";
 import { StepCheckout } from "./steps/StepCheckout";
@@ -250,14 +250,16 @@ function BookingWidgetInner() {
     startOver();
   }, [startOver]);
 
-  // Авторизован → displayName в шапке (позже — иконка личного кабинета)
+  // Авторизован → «Фамилия Имя» из /user/info в шапке (позже — личный кабинет)
   const authProfile = useMemo(
     () => getAuthProfile(),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- перечитать после входа/сброса
     [authVersion, stepId, bookingResult]
   );
-  // Только то, что знает сервер (displayName); нет — ничего не показываем
-  const userLabel = authProfile?.displayName || null;
+  const userLabel =
+    [authProfile?.lastName, authProfile?.firstName]
+      .filter(Boolean)
+      .join(" ") || null;
 
   // verify/done без локальных данных (F5 / чужая ссылка) → checkout
   useEffect(() => {
@@ -318,10 +320,20 @@ function BookingWidgetInner() {
             categoryId={categoryId}
             config={config}
             roomId={roomId}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            banyaDate={banyaDate}
+            banyaTimeFrom={banyaTimeFrom}
+            banyaTimeTo={banyaTimeTo}
+            slotDuration={slotDuration}
+            slotPrice={slotPrice}
+            basePrice={basePrice}
+            calcMeta={calcMeta}
             guestCount={guestCount}
             productQuantities={productQuantities}
             onGuestCountChange={setGuestCount}
             onSetProductQty={setProductQty}
+            onBasePriceResolved={setBasePriceResolved}
             onContinue={continueFromSetup}
           />
         )}
@@ -391,7 +403,11 @@ function BookingWidgetInner() {
   }
 
   return (
-    <div className="bk-widget">
+    <div
+      className={
+        BOOKING_UNIFIED_ROBOTO_FONT ? "bk-widget bk-widget--font-roboto" : "bk-widget"
+      }
+    >
       <BookingLayout
         stepId={stepId}
         title={title}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { WidgetGetResponse } from "../../../api";
@@ -65,6 +65,17 @@ const config = {
   ],
 } as unknown as WidgetGetResponse;
 
+const calculateRoom = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ total: 4000, basePrice: 4000, prepay: 2000 })
+);
+
+vi.mock("../../../api", () => ({
+  createWidgetApi: () => ({
+    calculateRoom,
+    dailyCalculate: vi.fn().mockResolvedValue({ total: 10000 }),
+  }),
+}));
+
 type HarnessProps = {
   categoryId?: "banya" | "homes";
   guestCount?: number;
@@ -88,6 +99,12 @@ function Harness({
       categoryId={categoryId}
       config={config}
       roomId={categoryId === "homes" ? "d1" : "b1"}
+      banyaDate="2026-10-26"
+      banyaTimeFrom="16:00"
+      banyaTimeTo="19:00"
+      slotDuration={3}
+      checkIn="2026-10-26"
+      checkOut="2026-10-27"
       guestCount={guests}
       productQuantities={qty}
       onGuestCountChange={setGuests}
@@ -198,5 +215,70 @@ describe("StepSetup", () => {
     expect(screen.getByText("2/2")).toBeInTheDocument();
     expect(extra).not.toHaveClass("booking-setup__extra-guest--disabled");
     expect(screen.getByRole("button", { name: /Далее/ })).not.toBeDisabled();
+  });
+
+  it("repeats the chosen slot and highlights 0 guests", () => {
+    render(<Harness />);
+    expect(screen.getByText("Кедровая")).toBeInTheDocument();
+    expect(screen.getByText("26.10.2026, 16:00–19:00")).toBeInTheDocument();
+    expect(
+      document.querySelector(".booking-setup__guests-main--error")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Укажите хотя бы одного гостя")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows detailed price breakdown once guests are set", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(
+      screen.getByRole("button", { name: "Увеличить количество гостей" })
+    );
+    expect(
+      document.querySelector(".booking-setup__guests-main--error")
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Подробный расчёт")).toBeInTheDocument()
+    );
+    expect(calculateRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ roomId: "b1", personCount: 1, duration: 3 })
+    );
+  });
+
+  it("extra guests show the equipment hint with a details modal", async () => {
+    const user = userEvent.setup();
+    render(<Harness guestCount={6} />);
+    expect(
+      screen.queryByText(/без дополнительной комплектации/)
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Увеличить количество дополнительных гостей",
+      })
+    );
+    expect(
+      screen.getByText(/Доп. гости без дополнительной комплектации/)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Подробнее" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Доплата за гостей! Важная информация"
+    );
+    await user.click(screen.getByRole("button", { name: "Закрыть" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("homes: shows check-in / check-out with times", () => {
+    const homesConfig = config.dailyRooms![0] as unknown as Record<
+      string,
+      unknown
+    >;
+    homesConfig.checkInTime = "16:00";
+    homesConfig.checkOutTime = "13:00";
+    render(<Harness categoryId="homes" />);
+    expect(screen.getByText(/26\.10\.2026 16:00/)).toBeInTheDocument();
+    expect(screen.getByText(/27\.10\.2026 13:00/)).toBeInTheDocument();
   });
 });

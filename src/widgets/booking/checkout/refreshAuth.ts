@@ -1,8 +1,8 @@
 import type { WidgetApiClient } from "../../../api";
 import {
+  applyUserInfo,
   clearAuthToken,
   readValidAuthToken,
-  saveAuthDisplayName,
 } from "./authToken";
 
 export type AuthRefreshResult = "none" | "valid" | "cleared" | "unknown";
@@ -26,9 +26,8 @@ export async function refreshStoredAuth(
   api.setToken(stored.token);
   try {
     const info = await api.getUserInfo();
-    saveAuthDisplayName(
-      typeof info?.displayName === "string" ? info.displayName : null
-    );
+    // телефон и ФИО — только в память, не в localStorage
+    applyUserInfo(info);
     return "valid";
   } catch (err) {
     const status = statusOf(err);

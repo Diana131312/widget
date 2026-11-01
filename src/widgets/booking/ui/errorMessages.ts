@@ -47,8 +47,13 @@ export function getApiBodyMessage(error: unknown): string | null {
   // не показываем сырой JSON-объект
   if (text.startsWith("{") || text.startsWith("[")) return null;
   if (text.length > 280) return null;
+  // внутренние исключения .NET («Sequence contains no elements» и т.п.) — не для клиента
+  if (TECHNICAL_MESSAGE_RE.test(text)) return null;
   return text;
 }
+
+const TECHNICAL_MESSAGE_RE =
+  /sequence contains|object reference|nullreference|exception|stack trace|value cannot be null|index was outside/i;
 
 /**
  * Ошибки API с приоритетом текста из ответа (например «Время уже занято»).

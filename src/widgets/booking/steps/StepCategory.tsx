@@ -1,5 +1,5 @@
 import React from "react";
-import { BOOKING_CATEGORIES } from "../categories";
+import { VISIBLE_BOOKING_CATEGORIES } from "../categories";
 import type { BookingCategoryId } from "../types";
 
 type StepCategoryProps = {
@@ -10,7 +10,7 @@ export const StepCategory: React.FC<StepCategoryProps> = ({ onSelect }) => {
   return (
     <section className="booking-home" aria-label="Выбор категории">
       <div className="booking-home__grid">
-        {BOOKING_CATEGORIES.map(({ id, caption, Icon }) => (
+        {VISIBLE_BOOKING_CATEGORIES.map(({ id, caption, Icon }) => (
           <button
             key={id}
             type="button"

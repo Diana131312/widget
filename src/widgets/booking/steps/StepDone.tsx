@@ -3,7 +3,7 @@ import { createWidgetApi } from "../../../api";
 import { getValidAuthToken } from "../checkout/authToken";
 import type { BookingResultDraft } from "../checkout/checkoutDraft";
 import { BOOKING_ALIAS } from "../constants";
-import { getWidgetApiErrorDetail } from "../ui/errorMessages";
+import { getApiBodyMessage } from "../ui/errorMessages";
 
 type Props = {
   result: BookingResultDraft;
@@ -92,7 +92,11 @@ export const StepDone: React.FC<Props> = ({
       }
       onBackToCart();
     } catch (err) {
-      setCancelError(getWidgetApiErrorDetail(err));
+      // Внятный текст с бэка показываем; техническое исключение — нет
+      setCancelError(
+        getApiBodyMessage(err) ??
+          "Не удалось отменить бронь. Если её не оплатить, она отменится автоматически, когда истечёт время."
+      );
       setCancelling(false);
     }
   };

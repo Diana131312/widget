@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  applyUserInfo,
   BOOKING_AUTH_STORAGE_KEY,
   clearAuthToken,
   getAuthProfile,
@@ -12,6 +13,8 @@ const NOW = Date.parse("2026-10-24T12:00:00Z");
 
 describe("authToken", () => {
   beforeEach(() => {
+    // профиль владельца токена живёт в памяти модуля — сбрасываем как после F5
+    clearAuthToken(localStorage);
     localStorage.clear();
   });
 
@@ -67,10 +70,71 @@ describe("authToken", () => {
       phone: "+79001234567",
       firstName: "Иван",
       lastName: "Петров",
-      displayName: "",
     });
     const day = 24 * 60 * 60 * 1000;
     expect(getAuthProfile(localStorage, NOW + 2 * day)).toBeNull();
+  });
+
+  it("stores only token and expiry in localStorage", () => {
+    saveAuthToken(
+      {
+        token: "jwt",
+        expiresAt: "2026-10-29T12:00:00Z",
+        phone: "+79001234567",
+        firstName: "Иван",
+        lastName: "Петров",
+      },
+      localStorage,
+      NOW
+    );
+    expect(
+      JSON.parse(localStorage.getItem(BOOKING_AUTH_STORAGE_KEY)!)
+    ).toEqual({ token: "jwt", expiresAt: "2026-10-29T12:00:00.000Z" });
+  });
+
+  it("strips personal data left by the old storage format", () => {
+    localStorage.setItem(
+      BOOKING_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        token: "jwt",
+        expiresAt: "2026-10-29T12:00:00Z",
+        phone: "+79001234567",
+        firstName: "Иван",
+        displayName: "Иван",
+      })
+    );
+    // номер владельца неизвестен до /user/info → токен не используем
+    expect(getValidAuthToken("+79001234567", localStorage, NOW)).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem(BOOKING_AUTH_STORAGE_KEY)!)
+    ).toEqual({ token: "jwt", expiresAt: "2026-10-29T12:00:00Z" });
+  });
+
+  it("takes phone, name and lastName from /user/info", () => {
+    localStorage.setItem(
+      BOOKING_AUTH_STORAGE_KEY,
+      JSON.stringify({ token: "jwt2", expiresAt: "2026-10-29T12:00:00Z" })
+    );
+    applyUserInfo(
+      {
+        displayName: "Диана",
+        name: "Диана",
+        lastName: "Гарбуз",
+        phone: "+79992014525",
+      },
+      localStorage
+    );
+    expect(getAuthProfile(localStorage, NOW)).toEqual({
+      phone: "+79992014525",
+      firstName: "Диана",
+      lastName: "Гарбуз",
+    });
+    expect(getValidAuthToken("+7 (999) 201-45-25", localStorage, NOW)).toBe(
+      "jwt2"
+    );
+    expect(localStorage.getItem(BOOKING_AUTH_STORAGE_KEY)).not.toContain(
+      "Гарбуз"
+    );
   });
 
   it("reads token from save response", () => {

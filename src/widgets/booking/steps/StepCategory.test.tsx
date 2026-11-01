@@ -3,6 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { StepCategory } from "../steps/StepCategory";
 
+// Дома временно скрыты в проде — здесь проверяем рендер всех карточек.
+vi.mock("../categories", async () => {
+  const actual =
+    await vi.importActual<typeof import("../categories")>("../categories");
+  return {
+    ...actual,
+    VISIBLE_BOOKING_CATEGORIES: [...actual.BOOKING_CATEGORIES],
+  };
+});
+
 describe("StepCategory", () => {
   it("renders both category cards", () => {
     render(<StepCategory onSelect={vi.fn()} />);

@@ -2,6 +2,7 @@ import React from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { resolveClientPrepay } from "../setup/resolveClientPrepay";
+import { formatStayDateTime } from "./formatStay";
 import type { BookingCategoryId } from "../types";
 
 export type BreakdownProductLine = {
@@ -43,6 +44,9 @@ type Props = {
   banyaTimeTo: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  /** Время заезда/выезда дома (HH:mm) */
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   /** Опционально: разбивка ночей для домов */
   nightLines?: BreakdownNightLine[];
   periodMessage?: string | null;
@@ -65,6 +69,26 @@ function formatDate(dateStr: string): string {
   } catch {
     return dateStr;
   }
+}
+
+export type DiscountPart = { name: string; percent: string | null };
+
+/**
+ * «От 2-х дней проживания (-10%) + Для двоих (-10%)» →
+ * [{ name: "От 2-х дней проживания", percent: "−10%" }, …]
+ */
+export function splitDiscountText(text: string | null | undefined): DiscountPart[] {
+  if (!text?.trim()) return [];
+  return text
+    .split(/\s+\+\s+/)
+    .map((raw) => raw.trim())
+    .filter(Boolean)
+    .map((raw) => {
+      const m = raw.match(/^(.*?)\s*\(\s*([-−–]?\s*\d+(?:[.,]\d+)?\s*%)\s*\)$/);
+      if (!m) return { name: raw, percent: null };
+      const pct = m[2].replace(/\s+/g, "").replace(/^[-–]/, "−");
+      return { name: m[1], percent: pct.startsWith("−") ? pct : `−${pct}` };
+    });
 }
 
 function formatNightDate(dateStr: string): string {
@@ -90,6 +114,8 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   banyaTimeTo,
   checkIn,
   checkOut,
+  checkInTime = null,
+  checkOutTime = null,
   nightLines = [],
   periodMessage = null,
   heading = "Подробный расчёт",
@@ -119,6 +145,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   const showDiscount =
     (discountAmount != null && discountAmount > 0) || Boolean(discountText);
   const showPrepay = displayPrepay != null && displayPrepay > 0;
+  const discountParts = splitDiscountText(discountText);
 
   const costLabel =
     amountBeforeDiscount != null &&
@@ -154,12 +181,20 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
           </li>
         ) : null}
         {categoryId === "homes" && checkIn && checkOut ? (
-          <li className="booking-price-breakdown__row">
-            <span>Даты</span>
-            <span className="booking-price-breakdown__num">
-              {formatDate(checkIn)} → {formatDate(checkOut)}
-            </span>
-          </li>
+          <>
+            <li className="booking-price-breakdown__row">
+              <span>Заезд</span>
+              <span className="booking-price-breakdown__num">
+                {formatStayDateTime(checkIn, checkInTime)}
+              </span>
+            </li>
+            <li className="booking-price-breakdown__row">
+              <span>Выезд</span>
+              <span className="booking-price-breakdown__num">
+                {formatStayDateTime(checkOut, checkOutTime)}
+              </span>
+            </li>
+          </>
         ) : null}
         <li className="booking-price-breakdown__row">
           <span>Гостей</span>
@@ -183,16 +218,32 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
           </span>
         </li>
         {showDiscount ? (
-          <li className="booking-price-breakdown__row">
-            <span>
-              Скидка
-              {discountText ? ` (${discountText})` : ""}
-            </span>
-            <span className="booking-price-breakdown__num">
-              {discountAmount != null && discountAmount > 0
-                ? `−${discountAmount.toLocaleString("ru-RU")} ₽`
-                : "—"}
-            </span>
+          <li className="booking-price-breakdown__discount">
+            <div className="booking-price-breakdown__row">
+              <span>Скидка</span>
+              <span className="booking-price-breakdown__num">
+                {discountAmount != null && discountAmount > 0
+                  ? `−${discountAmount.toLocaleString("ru-RU")} ₽`
+                  : "—"}
+              </span>
+            </div>
+            {discountParts.length > 0 ? (
+              <ul className="booking-price-breakdown__discount-list">
+                {discountParts.map((part, i) => (
+                  <li
+                    key={`${part.name}-${i}`}
+                    className="booking-price-breakdown__discount-item"
+                  >
+                    <span>{part.name}</span>
+                    {part.percent ? (
+                      <span className="booking-price-breakdown__discount-badge">
+                        {part.percent}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </li>
         ) : null}
         {showExtra ? (

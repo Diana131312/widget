@@ -6,6 +6,13 @@ import {
   validateBookingUrl,
 } from "./validateBookingUrl";
 
+// Дома временно скрыты в проде — в тестах проверяем валидацию домов как есть.
+vi.mock("../categories", async () => {
+  const actual =
+    await vi.importActual<typeof import("../categories")>("../categories");
+  return { ...actual, isCategoryHidden: () => false };
+});
+
 vi.mock("../calendar/services", async () => {
   const actual = await vi.importActual<typeof import("../calendar/services")>(
     "../calendar/services"

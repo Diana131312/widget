@@ -4,6 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingWidget } from "./BookingWidget";
 import { resetBookingUrlNavKey } from "./url/bookingUrl";
 
+// Дома временно скрыты в проде — в тестах флоу домов остаётся включённым.
+vi.mock("./categories", async () => {
+  const actual =
+    await vi.importActual<typeof import("./categories")>("./categories");
+  return {
+    ...actual,
+    VISIBLE_BOOKING_CATEGORIES: actual.BOOKING_CATEGORIES,
+    isCategoryHidden: () => false,
+  };
+});
+
 const getConfig = vi.fn(async () => ({
   settings: { tenantId: "11111111-1111-1111-1111-111111111111" },
   rooms: [

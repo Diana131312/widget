@@ -265,7 +265,6 @@ export const StepVerify: React.FC<Props> = ({
           phone: contact.phone,
           firstName: contact.firstName,
           lastName: contact.lastName,
-          displayName: res.contact?.displayName ?? null,
         });
       }
       setVerifiedCheckCode(otpCode.trim());

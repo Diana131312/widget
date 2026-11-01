@@ -26,8 +26,8 @@
   --bk-text-muted: #6b7280;
 
   /* Полоски занятости календаря + слоты */
-  --bk-cal-free: rgb(0, 136, 0);
-  --bk-cal-busy: rgb(212, 0, 0);
+  --bk-cal-free: #065208;
+  --bk-cal-busy: #d40000;
 
   --bk-radius: 12px;
   --bk-radius-lg: 16px;
@@ -61,6 +61,11 @@
   line-height: 1.45;
 }
 
+/* Эксперимент «единый шрифт»: флаг BOOKING_UNIFIED_ROBOTO_FONT в constants.ts */
+.bk-widget--font-roboto {
+  --bk-font: var(--bk-cal-font);
+}
+
 .bk-widget *,
 .bk-widget *::before,
 .bk-widget *::after {
@@ -79,6 +84,8 @@
   border-radius: var(--bk-radius-lg);
   box-shadow: 0 1px 2px rgba(41, 51, 41, 0.06);
   overflow: hidden;
+  /* clip режет углы, но не создаёт scroll-контейнер → sticky-шапка работает */
+  overflow: clip;
 }
 
 .booking-layout__main {
@@ -93,15 +100,19 @@
 }
 
 /* ——— Header / stepper ——— */
+/* Шапка закреплена: при прокрутке списка шаг и «назад» остаются видны */
 .booking-header {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
   min-height: 0;
   padding: 16px 16px 10px;
-  background: transparent;
+  background: var(--bk-surface);
+  box-shadow: 0 1px 0 var(--bk-border);
 }
 
 @media (min-width: 768px) {
@@ -1754,6 +1765,35 @@ button.booking-steps__dot:focus-visible {
   min-width: 1ch;
 }
 
+/* Акция: зачёркнутая цена без скидки над итоговой */
+.booking-slots__price--promo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.booking-slots__price-old {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  opacity: 0.7;
+  text-decoration-thickness: 1px;
+}
+
+.booking-slots__price-new {
+  font-weight: 700;
+}
+
+.booking-slots__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .booking-slots__item--busy .booking-slots__price {
   font-weight: 500;
 }
@@ -2016,6 +2056,19 @@ button.booking-steps__dot:focus-visible {
   font-variant-numeric: tabular-nums;
   color: var(--bk-ink);
   white-space: nowrap;
+}
+
+/* Мобильный: две строки — сначала цена, под ней название */
+@media (max-width: 767px) {
+  .booking-product-card__meta {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .booking-product-card__price {
+    order: -1;
+    padding-top: 0;
+  }
 }
 
 .booking-product-card__add {
@@ -2424,6 +2477,74 @@ button.booking-steps__dot:focus-visible {
   box-shadow: none;
 }
 
+/* Шаг 3: что выбрано (баня/дом + время) */
+.booking-setup__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius);
+  background: var(--bk-muted);
+}
+
+.booking-setup__slot-name {
+  margin: 0;
+  font-size: var(--bk-body);
+  font-weight: 700;
+  color: var(--bk-ink);
+}
+
+.booking-setup__slot-line {
+  margin: 0;
+  font-family: var(--bk-cal-font);
+  font-size: var(--bk-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--bk-ink-dark);
+}
+
+.booking-setup__slot-label {
+  color: var(--bk-text-muted);
+}
+
+.booking-setup__guests-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booking-setup__guests-main--error .booking-setup__guests-label {
+  color: var(--bk-cal-busy);
+}
+
+.booking-setup__guests-main--error .booking-qty__value {
+  color: var(--bk-cal-busy);
+}
+
+.booking-setup__guests-main--error .booking-qty {
+  padding: 2px;
+  border: 1px solid var(--bk-cal-busy);
+  border-radius: 10px;
+  background: rgba(212, 0, 0, 0.05);
+}
+
+/* Оформление — как подсказка про Telegram на шаге 4 (.booking-checkout__channel-note) */
+.booking-setup__extra-hint {
+  margin: 0;
+}
+
+.booking-setup__extra-hint-more {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 .booking-setup__guests {
   display: flex;
   flex-wrap: wrap;
@@ -2741,6 +2862,39 @@ button.booking-steps__dot:focus-visible {
   margin-top: 4px;
   font-weight: 600;
   color: var(--bk-ink);
+}
+
+/* Скидка: сумма строкой, под ней — из чего она сложилась (бейджи %) */
+.booking-price-breakdown__discount-list {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--bk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.booking-price-breakdown__discount-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--bk-small);
+  color: var(--bk-text-muted);
+  line-height: 1.35;
+}
+
+.booking-price-breakdown__discount-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(6, 82, 8, 0.1);
+  color: var(--bk-cal-free);
+  font-family: var(--bk-cal-font);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .booking-checkout__otp-title {

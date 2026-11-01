@@ -85,6 +85,8 @@ export const HomeCalendarPanel: React.FC<Props> = ({
           minNights: room.minNights,
           maxNights: room.maxNights,
         }}
+        checkInTime={room.checkInTime}
+        checkOutTime={room.checkOutTime}
         onMonthChange={handleMonthChange}
         onRangeChange={setSelectedRange}
         onRetry={handleRetry}

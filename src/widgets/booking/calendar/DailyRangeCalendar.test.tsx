@@ -17,8 +17,8 @@ describe("DailyRangeCalendar UI", () => {
     render(
       <DailyRangeCalendar occupiedNights={new Set()} onRangeChange={vi.fn()} />
     );
-    expect(screen.getByText("Начало")).toBeInTheDocument();
-    expect(screen.getByText("Окончание")).toBeInTheDocument();
+    expect(screen.getByText("Заезд")).toBeInTheDocument();
+    expect(screen.getByText("Выезд")).toBeInTheDocument();
   });
 
   it("selects a range and updates summary + callback", async () => {
@@ -35,6 +35,8 @@ describe("DailyRangeCalendar UI", () => {
     render(
       <DailyRangeCalendar
         occupiedNights={new Set()}
+        checkInTime="16:00"
+        checkOutTime="13:00"
         onRangeChange={onRangeChange}
       />
     );
@@ -49,8 +51,12 @@ describe("DailyRangeCalendar UI", () => {
       checkOut: format(end, "yyyy-MM-dd"),
       nights: 2,
     });
-    expect(screen.getByText(startLabel)).toBeInTheDocument();
-    expect(screen.getByText(endLabel)).toBeInTheDocument();
+    expect(
+      screen.getByText(`${format(start, "dd.MM.yyyy")} 16:00`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`${format(end, "dd.MM.yyyy")} 13:00`)
+    ).toBeInTheDocument();
   });
 
   it("disables past day buttons when visible", () => {

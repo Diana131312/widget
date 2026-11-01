@@ -13,6 +13,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { ru } from "date-fns/locale";
+import { formatStayDateTime } from "../ui/formatStay";
 import type { DailyDateRange } from "./dailyTypes";
 import { applyRangeDayClick, draftToSelectedRange } from "./rangeLogic";
 import type { RangeLimits } from "./rangeLogic";
@@ -22,6 +23,9 @@ export type DailyRangeCalendarProps = {
   isLoading?: boolean;
   hasError?: boolean;
   limits?: RangeLimits | null;
+  /** Время заезда/выезда дома (HH:mm) — к датам в подписи */
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   onMonthChange?: (monthStart: Date) => void;
   onRangeChange?: (range: DailyDateRange | null) => void;
   onRetry?: () => void;
@@ -47,6 +51,8 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
   isLoading = false,
   hasError = false,
   limits = null,
+  checkInTime = null,
+  checkOutTime = null,
   onMonthChange,
   onRangeChange,
   onRetry,
@@ -269,7 +275,7 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
       </div>
 
       <p className="booking-cal__range-meta" aria-live="polite">
-        <span className="booking-cal__range-label">Начало</span>
+        <span className="booking-cal__range-label">Заезд</span>
         <span
           className={[
             "booking-cal__range-value",
@@ -278,12 +284,12 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
             .filter(Boolean)
             .join(" ")}
         >
-          {rangeStart ? formatDayLabel(rangeStart) : "—"}
+          {rangeStart ? formatStayDateTime(rangeStart, checkInTime) : "—"}
         </span>
         <span className="booking-cal__range-sep" aria-hidden>
           ·
         </span>
-        <span className="booking-cal__range-label">Окончание</span>
+        <span className="booking-cal__range-label">Выезд</span>
         <span
           className={[
             "booking-cal__range-value",
@@ -292,7 +298,7 @@ export const DailyRangeCalendar: React.FC<DailyRangeCalendarProps> = ({
             .filter(Boolean)
             .join(" ")}
         >
-          {rangeEnd ? formatDayLabel(rangeEnd) : "—"}
+          {rangeEnd ? formatStayDateTime(rangeEnd, checkOutTime) : "—"}
         </span>
       </p>
     </div>

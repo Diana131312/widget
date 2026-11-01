@@ -19,6 +19,8 @@ type Props = {
   banyaTimeTo: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   nightLines?: BreakdownNightLine[];
   periodMessage?: string | null;
   prepaymentAmount?: number | null;

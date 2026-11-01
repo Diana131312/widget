@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   createWidgetApi,
   type SaveBookingResponse,
@@ -19,28 +19,17 @@ import {
   readTokenFromResponse,
   saveAuthToken,
 } from "../checkout/authToken";
-import { CheckoutSummary } from "../checkout/CheckoutSummary";
 import { ContactFields } from "../checkout/ContactFields";
 import {
   formatRuPhoneMask,
   isRuPhoneComplete,
 } from "../checkout/phone";
-import {
-  buildCheckoutProducts,
-  buildSaveBodies,
-} from "../checkout/buildSavePayload";
+import { buildSaveBodies } from "../checkout/buildSavePayload";
 import { ServiceOfferModal } from "../checkout/ServiceOfferModal";
-import {
-  computeDurationHours,
-  type SetupCalcMeta,
-} from "../setup/calculate.utils";
+import type { SetupCalcMeta } from "../setup/calculate.utils";
+import { QuoteBreakdown } from "../setup/QuoteBreakdown";
 import { resolveClientPrepay } from "../setup/resolveClientPrepay";
-import {
-  getRoomGuestLimits,
-  nightPriceWithoutExtraGuests,
-  resolveExtraGuestSurcharge,
-} from "../setup/roomGuestPricing";
-import { useSetupCalculate } from "../setup/useSetupCalculate";
+import { useBookingQuote } from "../setup/useBookingQuote";
 import type { BookingCategoryId } from "../types";
 import { getWidgetApiErrorDetail } from "../ui/errorMessages";
 import { useBookingToast } from "../ui/ToastContext";
@@ -140,10 +129,20 @@ export const StepCheckout: React.FC<Props> = ({
 }) => {
   const { showToast } = useBookingToast();
   const api = useMemo(() => createWidgetApi({ alias: BOOKING_ALIAS }), []);
-  // Авторизован (есть токен) → подставляем телефон и ФИО; черновик формы важнее
+  // Авторизован → телефон и ФИО из /user/info (только память); черновик формы важнее
   const [authProfile] = useState(() =>
     initialContact ? null : getAuthProfile()
   );
+  // /user/info ответил позже, чем открылся шаг → дозаполняем пустые поля
+  useEffect(() => {
+    if (initialContact) return;
+    const profile = getAuthProfile();
+    if (!profile) return;
+    setLastName((v) => v || profile.lastName);
+    setFirstName((v) => v || profile.firstName);
+    setPhone((v) => v || formatRuPhoneMask(profile.phone));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- только при смене авторизации
+  }, [authVersion]);
   const [firstName, setFirstName] = useState(
     initialContact?.firstName ?? authProfile?.firstName ?? ""
   );
@@ -166,46 +165,34 @@ export const StepCheckout: React.FC<Props> = ({
   const [isBusy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const calcInput = useMemo(
-    () => ({
-      categoryId,
-      roomId,
-      guestCount,
-      checkIn,
-      checkOut,
-      banyaDate,
-      banyaTimeFrom,
-      banyaTimeTo,
-      slotDuration,
-      slotPrice,
-    }),
-    [
-      categoryId,
-      roomId,
-      guestCount,
-      checkIn,
-      checkOut,
-      banyaDate,
-      banyaTimeFrom,
-      banyaTimeTo,
-      slotDuration,
-      slotPrice,
-    ]
-  );
-
-  const { isLoading, error, banyaCalc, homesCalc, hasCalculation, retry } =
-    useSetupCalculate({
-      api,
-      input: calcInput,
-      onPriceResolved: onBasePriceResolved,
-    });
-
-  const roomName = useMemo(() => {
-    if (categoryId === "homes") {
-      return config.dailyRooms?.find((r) => r.id === roomId)?.name ?? "Дом";
-    }
-    return config.rooms?.find((r) => r.id === roomId)?.name ?? "Баня";
-  }, [categoryId, config, roomId]);
+  const quote = useBookingQuote({
+    api,
+    categoryId,
+    config,
+    roomId,
+    checkIn,
+    checkOut,
+    banyaDate,
+    banyaTimeFrom,
+    banyaTimeTo,
+    slotDuration,
+    slotPrice,
+    guestCount,
+    productQuantities,
+    basePrice,
+    calcMeta,
+    onBasePriceResolved,
+  });
+  const {
+    isLoading,
+    error,
+    hasCalculation,
+    products,
+    productsSubtotal,
+    effectiveMeta,
+    resolvedBase,
+    total,
+  } = quote;
 
   const telegramBotHref = useMemo(() => {
     const raw = config.company?.telegram?.trim();
@@ -222,104 +209,6 @@ export const StepCheckout: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tokenRevision: перечитать после сброса
     [phone, tokenRevision, authVersion]
   );
-
-  const products = useMemo(
-    () => buildCheckoutProducts(config, productQuantities),
-    [config, productQuantities]
-  );
-  const productLines = products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    qty: p.count,
-    unitPrice: p.price,
-    lineTotal: p.price * p.count,
-  }));
-  const productsSubtotal = productLines.reduce((s, l) => s + l.lineTotal, 0);
-
-  const effectiveMeta: BookingCalcMeta | null = calcMeta
-    ? calcMeta
-    : banyaCalc
-      ? {
-          prepay: banyaCalc.prepay,
-          prepayIncludesProducts: banyaCalc.prepayIncludesProducts,
-          extraValueForDate: banyaCalc.extraValueForDate,
-          discountAmount: banyaCalc.discountAmount,
-          discountText: null,
-          amountBeforeDiscount: banyaCalc.amountBeforeDiscount,
-        }
-      : homesCalc
-        ? {
-            prepay: homesCalc.prepay,
-            prepayIncludesProducts: homesCalc.prepayIncludesProducts,
-            extraValueForDate: null,
-            discountAmount: homesCalc.discountAmount,
-            discountText: homesCalc.discountText,
-            amountBeforeDiscount: homesCalc.originalPrice,
-          }
-        : null;
-
-  const resolvedBase =
-    basePrice != null && basePrice > 0
-      ? basePrice
-      : banyaCalc?.total ??
-        homesCalc?.total ??
-        (slotPrice != null && slotPrice > 0 ? slotPrice : 0);
-
-  const extraGuest = useMemo(() => {
-    const result = resolveExtraGuestSurcharge({
-      config,
-      categoryId,
-      roomId,
-      guestCount,
-      calcMeta: effectiveMeta,
-      slotDuration,
-      banyaTimeFrom,
-      banyaTimeTo,
-      checkIn,
-      checkOut,
-      nightDates: homesCalc?.nightPrices.map((n) => n.date) ?? null,
-    });
-    if (result.surcharge <= 0) return null;
-    const limits = getRoomGuestLimits(config, categoryId, roomId);
-    const durationHours =
-      slotDuration != null && slotDuration > 0
-        ? slotDuration
-        : banyaTimeFrom && banyaTimeTo
-          ? computeDurationHours(banyaTimeFrom, banyaTimeTo)
-          : 1;
-    return {
-      extraGuests: result.extraGuests,
-      unitPrice: result.unitPrice,
-      surcharge: result.surcharge,
-      perHour: limits.extraType === 1,
-      durationHours,
-      nights: result.nights > 0 ? result.nights : undefined,
-      ratesEqual: result.ratesEqual,
-      includedInRoomTotal: result.includedInRoomTotal,
-    };
-  }, [
-    config,
-    categoryId,
-    roomId,
-    guestCount,
-    effectiveMeta,
-    slotDuration,
-    banyaTimeFrom,
-    banyaTimeTo,
-    checkIn,
-    checkOut,
-    homesCalc,
-  ]);
-
-  const extraSurcharge = extraGuest?.surcharge ?? 0;
-  const total =
-    resolvedBase +
-    productsSubtotal +
-    (extraGuest?.includedInRoomTotal ? 0 : extraSurcharge);
-  const displayRoomBase =
-    extraGuest?.includedInRoomTotal && extraSurcharge > 0
-      ? Math.max(0, resolvedBase - extraSurcharge)
-      : resolvedBase;
 
   const prepayHint = resolveClientPrepay(
     effectiveMeta?.prepay,
@@ -340,25 +229,6 @@ export const StepCheckout: React.FC<Props> = ({
     resolvedBase > 0 &&
     !isLoading &&
     !error;
-
-  const summaryHomesCalc =
-    homesCalc && extraGuest && extraGuest.extraGuests > 0
-      ? {
-          ...homesCalc,
-          nightPrices: homesCalc.nightPrices.map((n) => {
-            const room = config.dailyRooms?.find((r) => r.id === roomId);
-            return {
-              date: n.date,
-              price: nightPriceWithoutExtraGuests(
-                n.price,
-                n.date,
-                extraGuest.extraGuests,
-                room?.pricePeriod
-              ),
-            };
-          }),
-        }
-      : homesCalc;
 
   const handleSubmit = async () => {
     if (!formValid || isBusy) return;
@@ -439,65 +309,16 @@ export const StepCheckout: React.FC<Props> = ({
   return (
     <div className="booking-checkout">
       <div className="booking-checkout__main">
-        {isLoading || (!hasCalculation && !error) ? (
-          <div
-            className="booking-setup-calc booking-setup-calc--loading"
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <div className="booking-setup-calc__spinner" aria-hidden />
-            <div className="booking-setup-calc__state-copy">
-              <p className="booking-setup-calc__state-title">Считаем стоимость</p>
-              <p className="booking-setup-calc__state-detail">
-                Это займёт пару секунд
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div
-            className="booking-setup-calc booking-setup-calc--error"
-            role="alert"
-          >
-            <div className="booking-setup-calc__state-copy">
-              <p className="booking-setup-calc__state-title">
-                Не удалось рассчитать стоимость
-              </p>
-              <p className="booking-setup-calc__state-detail">{error}</p>
-            </div>
-            <button
-              type="button"
-              className="booking-setup-calc__retry"
-              onClick={retry}
-            >
-              Повторить
-            </button>
-          </div>
-        ) : (
-          <CheckoutSummary
-            categoryId={categoryId}
-            roomName={roomName}
-            guestCount={guestCount}
-            basePrice={displayRoomBase}
-            productLines={productLines}
-            total={total}
-            banyaDate={banyaDate}
-            banyaTimeFrom={banyaTimeFrom}
-            banyaTimeTo={banyaTimeTo}
-            checkIn={checkIn}
-            checkOut={checkOut}
-            nightLines={summaryHomesCalc?.nightPrices ?? []}
-            periodMessage={summaryHomesCalc?.periodMessage ?? null}
-            prepaymentAmount={effectiveMeta?.prepay ?? null}
-            prepayIncludesProducts={
-              effectiveMeta?.prepayIncludesProducts ?? null
-            }
-            discountAmount={effectiveMeta?.discountAmount ?? null}
-            discountText={effectiveMeta?.discountText ?? null}
-            amountBeforeDiscount={effectiveMeta?.amountBeforeDiscount ?? null}
-            extraGuest={extraGuest}
-          />
-        )}
+        <QuoteBreakdown
+          quote={quote}
+          categoryId={categoryId}
+          guestCount={guestCount}
+          banyaDate={banyaDate}
+          banyaTimeFrom={banyaTimeFrom}
+          banyaTimeTo={banyaTimeTo}
+          checkIn={checkIn}
+          checkOut={checkOut}
+        />
 
         <ContactFields
           firstName={firstName}

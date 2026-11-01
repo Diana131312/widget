@@ -9,6 +9,8 @@ export type BookingCategoryConfig = {
   /** Заголовок шапки после выбора */
   title: string;
   Icon: LucideIcon;
+  /** Временно скрыта из выбора и deep-link */
+  hidden?: boolean;
 };
 
 export const BOOKING_CATEGORIES: BookingCategoryConfig[] = [
@@ -17,6 +19,8 @@ export const BOOKING_CATEGORIES: BookingCategoryConfig[] = [
     caption: "Коттеджи",
     title: "Дома",
     Icon: Home,
+    // TODO: вернуть, когда бронирование домов снова откроется
+    hidden: true,
   },
   {
     id: "banya",
@@ -30,4 +34,12 @@ export function getCategoryConfig(
   id: BookingCategoryId
 ): BookingCategoryConfig | undefined {
   return BOOKING_CATEGORIES.find((c) => c.id === id);
+}
+
+export const VISIBLE_BOOKING_CATEGORIES = BOOKING_CATEGORIES.filter(
+  (c) => !c.hidden
+);
+
+export function isCategoryHidden(id: BookingCategoryId): boolean {
+  return Boolean(getCategoryConfig(id)?.hidden);
 }

@@ -11,6 +11,7 @@ import {
   loadRoomTimeSlots,
   rangeHasOccupiedNights,
 } from "../calendar/services";
+import { isCategoryHidden } from "../categories";
 import { parseHomesCalculateResponse } from "../setup/calculate.utils";
 import { groupProductsForRoom } from "../setup/groupProducts";
 import {
@@ -132,6 +133,15 @@ export async function validateBookingUrl(
       ok: false,
       state: homeState(),
       reason: "В ссылке нет категории",
+      code: "other",
+    };
+  }
+
+  if (isCategoryHidden(categoryId)) {
+    return {
+      ok: false,
+      state: homeState(),
+      reason: "Бронирование этой категории временно недоступно",
       code: "other",
     };
   }

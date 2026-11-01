@@ -5,6 +5,7 @@ import {
   splitPromoHourGiftSlots,
   type SlotGroupItem,
 } from "./banyaSlotVariants";
+import { estimateSlotPriceBeforeDiscount } from "./slotPricing";
 
 function formatTimeEnd(timeTo: string): string {
   if (timeTo === "23:59") return "24:00";
@@ -32,6 +33,7 @@ function SlotItemButton({
   onSelect: (slot: RoomTimeSlot, index: number) => void;
 }) {
   const available = slot.isAvailable === true;
+  const oldPrice = estimateSlotPriceBeforeDiscount(slot);
   return (
     <button
       type="button"
@@ -58,7 +60,17 @@ function SlotItemButton({
           {formatDuration(slot.duration)}
         </span>
       </span>
-      {slot.price > 0 ? (
+      {slot.price > 0 && oldPrice != null && oldPrice > slot.price ? (
+        <span className="booking-slots__price booking-slots__price--promo">
+          <s className="booking-slots__price-old">
+            <span className="booking-slots__sr">Без скидки </span>
+            {formatRub(oldPrice)} ₽
+          </s>
+          <span className="booking-slots__price-new">
+            {formatRub(slot.price)} ₽
+          </span>
+        </span>
+      ) : slot.price > 0 ? (
         <span className="booking-slots__price">{formatRub(slot.price)} ₽</span>
       ) : (
         <span className="booking-slots__price booking-slots__price--empty" />
