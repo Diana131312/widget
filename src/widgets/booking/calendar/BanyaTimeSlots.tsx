@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { RoomTimeSlot } from "../../../api";
-import {
-  groupItemsByComment,
-  splitPromoHourGiftSlots,
-  type SlotGroupItem,
-} from "./banyaSlotVariants";
+import { groupSlotsByComment, type SlotGroupItem } from "./banyaSlotVariants";
 import { estimateSlotPriceBeforeDiscount } from "./slotPricing";
 
 function formatTimeEnd(timeTo: string): string {
@@ -122,10 +118,8 @@ export const BanyaTimeSlots: React.FC<Props> = ({
   onRetry,
 }) => {
   const [showOthers, setShowOthers] = useState(false);
+  const groups = useMemo(() => groupSlotsByComment(slots), [slots]);
 
-  const promoSplit = useMemo(() => splitPromoHourGiftSlots(slots), [slots]);
-
-  // Сброс «показать другие» при смене набора слотов (другая дата).
   const slotsKey = useMemo(
     () => slots.map((s) => `${s.timeFrom}-${s.timeTo}-${s.comment}`).join("|"),
     [slots]
@@ -192,28 +186,22 @@ export const BanyaTimeSlots: React.FC<Props> = ({
     );
   }
 
-  const hasPromo = promoSplit.promo.length > 0;
-  const hasOthers = promoSplit.others.length > 0;
-  const primary = hasPromo ? promoSplit.promo : promoSplit.others;
-  const primaryTitle = hasPromo
-    ? 'Акция "ЧАС В ПОДАРОК"'
-    : "Другие слоты";
-  const otherGroups = hasPromo
-    ? groupItemsByComment(promoSplit.others)
-    : [];
+  const [primary, ...rest] = groups;
 
   return (
     <div className="booking-slots__groups" aria-label="Слоты времени">
-      <section className="booking-slots__group booking-slots__group--static">
-        <h5 className="booking-slots__group-title">{primaryTitle}</h5>
-        <SlotList
-          items={primary}
-          selectedIndex={selectedIndex}
-          onSelect={onSelect}
-        />
-      </section>
+      {primary ? (
+        <section className="booking-slots__group booking-slots__group--static">
+          <h5 className="booking-slots__group-title">{primary.title}</h5>
+          <SlotList
+            items={primary.items}
+            selectedIndex={selectedIndex}
+            onSelect={onSelect}
+          />
+        </section>
+      ) : null}
 
-      {hasPromo && hasOthers && !showOthers ? (
+      {rest.length > 0 && !showOthers ? (
         <button
           type="button"
           className="booking-slots__more"
@@ -223,8 +211,8 @@ export const BanyaTimeSlots: React.FC<Props> = ({
         </button>
       ) : null}
 
-      {hasPromo && hasOthers && showOthers
-        ? otherGroups.map((group) => (
+      {showOthers
+        ? rest.map((group) => (
             <section
               key={group.title}
               className="booking-slots__group booking-slots__group--static"

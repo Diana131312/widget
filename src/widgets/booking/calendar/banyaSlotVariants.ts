@@ -22,7 +22,7 @@ function sortByDurationAsc(items: SlotGroupItem[]): SlotGroupItem[] {
   });
 }
 
-/** Группы по comment с сервера (порядок первого появления). */
+/** Группы по названию акции (comment с сервера, порядок первого появления). */
 export function groupSlotsByComment(slots: RoomTimeSlot[]): SlotGroup[] {
   const map = new Map<string, SlotGroup>();
   slots.forEach((slot, index) => {
@@ -34,7 +34,10 @@ export function groupSlotsByComment(slots: RoomTimeSlot[]): SlotGroup[] {
       map.set(title, { title, items: [{ slot, index }] });
     }
   });
-  return Array.from(map.values());
+  return Array.from(map.values()).map((group) => ({
+    ...group,
+    items: sortByDurationAsc(group.items),
+  }));
 }
 
 export type PromoSplit = {

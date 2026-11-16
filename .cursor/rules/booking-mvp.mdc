@@ -1,9 +1,11 @@
 ---
-description: MVP booking widget — protect old stepper, work only in booking/
+description: Booking MVP isolation — work only in src/widgets/booking, protect the old stepper
 alwaysApply: true
 ---
 
 # Booking MVP isolation
+
+MVP booking widget — protect old stepper, work only in `src/widgets/booking/`.
 
 ## Response ritual
 
@@ -31,7 +33,7 @@ Build a clean MVP widget under `src/widgets/booking/`, then eventually replace `
 - `src/styles.css`
 - `src/widgets/stepper/stepper.css`
 
-Do not edit, refactor, delete, or “improve” these paths. If a shared UI/lib piece is needed, copy or reimplement it inside `src/widgets/booking/`.
+Do not edit, refactor, delete, or "improve" these paths. If a shared UI/lib piece is needed, copy or reimplement it inside `src/widgets/booking/`.
 
 ## Migration practice
 
@@ -48,6 +50,6 @@ Do not edit, refactor, delete, or “improve” these paths. If a shared UI/lib 
 ❌ Patch stepper.css
 ✅ Add src/widgets/booking/booking.css
 
-❌ “Quick fix” in StepperWidget.tsx
+❌ "Quick fix" in StepperWidget.tsx
 ✅ Change only BookingWidget under src/widgets/booking/
 ```

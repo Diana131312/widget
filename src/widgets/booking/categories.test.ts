@@ -22,9 +22,12 @@ describe("BOOKING_CATEGORIES", () => {
     });
   });
 
-  it("temporarily hides homes", () => {
-    expect(isCategoryHidden("homes")).toBe(true);
+  it("shows homes and banya", () => {
+    expect(isCategoryHidden("homes")).toBe(false);
     expect(isCategoryHidden("banya")).toBe(false);
-    expect(VISIBLE_BOOKING_CATEGORIES.map((c) => c.id)).toEqual(["banya"]);
+    expect(VISIBLE_BOOKING_CATEGORIES.map((c) => c.id)).toEqual([
+      "homes",
+      "banya",
+    ]);
   });
 });

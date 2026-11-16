@@ -14,6 +14,7 @@ import {
 } from "date-fns";
 import { ru } from "date-fns/locale";
 import { formatStayDateTime } from "../ui/formatStay";
+import { OccupancyLegend } from "./OccupancyLegend";
 import type { DailyDateRange } from "./dailyTypes";
 import { applyRangeDayClick, draftToSelectedRange } from "./rangeLogic";
 import type { RangeLimits } from "./rangeLogic";

@@ -13,6 +13,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { ru } from "date-fns/locale";
+import { OccupancyLegend } from "./OccupancyLegend";
 import type { MonthlyOccupancyData } from "./services";
 import { OccupancyBar } from "./OccupancyBar";
 
@@ -220,6 +221,7 @@ export const MonthlyCalendar: React.FC<Props> = ({
           </div>
         ))}
       </div>
+      <OccupancyLegend />
     </div>
   );
 };

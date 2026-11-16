@@ -19,8 +19,6 @@ export const BOOKING_CATEGORIES: BookingCategoryConfig[] = [
     caption: "Коттеджи",
     title: "Дома",
     Icon: Home,
-    // TODO: вернуть, когда бронирование домов снова откроется
-    hidden: true,
   },
   {
     id: "banya",

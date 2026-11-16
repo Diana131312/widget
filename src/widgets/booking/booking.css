@@ -25,9 +25,18 @@
   --bk-border: #e5e7eb;
   --bk-text-muted: #6b7280;
 
-  /* Полоски занятости календаря + слоты */
+  /* Полоски занятости календаря */
   --bk-cal-free: #065208;
   --bk-cal-busy: #d40000;
+  /* Слоты: свободный зелёный, занятый полупрозрачный серый */
+  --bk-slot-free: #5c9472;
+  --bk-slot-free-ink: #fff;
+  --bk-slot-free-border: #4d8062;
+  --bk-slot-free-selected: #4e8264;
+  --bk-slot-free-ring: rgba(255, 255, 255, 0.85);
+  --bk-slot-busy: rgba(110, 116, 112, 0.22);
+  --bk-slot-busy-ink: #5a625e;
+  --bk-slot-busy-border: rgba(110, 116, 112, 0.38);
 
   --bk-radius: 12px;
   --bk-radius-lg: 16px;
@@ -1159,38 +1168,38 @@ button.booking-steps__dot:focus-visible {
   background-color: var(--bk-cal-busy);
 }
 
-.booking-cal__bar-skeleton {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-  background-size: 200% 100%;
-  animation: booking-shimmer 1.2s ease infinite;
-}
-
-.booking-cal__bar-error {
-  font-size: var(--bk-cal-meta);
-  color: #b91c1c;
-  line-height: 1;
-}
-
-.booking-cal__status {
-  font-size: var(--bk-cal-weekday);
-  padding: 6px 8px;
-  border-radius: 6px;
-  margin-bottom: 6px;
-  background: var(--bk-muted);
+.booking-cal__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--bk-cal-font);
+  font-size: 12px;
+  line-height: 1.2;
   color: var(--bk-text-muted);
 }
 
-.booking-cal__status--error {
-  background: #fef2f2;
-  color: #b91c1c;
-  display: flex;
+.booking-cal__legend li {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.booking-cal__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.booking-cal__legend-dot--free {
+  background: var(--bk-cal-free);
+}
+
+.booking-cal__legend-dot--busy {
+  background: var(--bk-cal-busy);
 }
 
 .booking-cal__retry {
@@ -1690,27 +1699,6 @@ button.booking-steps__dot:focus-visible {
   filter: brightness(0.95);
 }
 
-.booking-slots__item--free {
-  border-color: var(--bk-cal-free);
-  background: var(--bk-cal-free);
-  color: #fff;
-}
-
-.booking-slots__item--free.booking-slots__item--selected {
-  /* лёгкая метка выбора без смены палитры */
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
-  filter: brightness(0.92);
-}
-
-.booking-slots__item--busy {
-  border-color: var(--bk-cal-busy);
-  background: var(--bk-cal-busy);
-  color: #fff;
-  cursor: not-allowed;
-  opacity: 1;
-  text-decoration: none;
-}
-
 .booking-slots__item-main {
   display: flex;
   flex-direction: row;
@@ -1743,11 +1731,32 @@ button.booking-steps__dot:focus-visible {
   white-space: nowrap;
 }
 
+.booking-slots__item--free {
+  border-color: var(--bk-slot-free-border);
+  background: var(--bk-slot-free);
+  color: var(--bk-slot-free-ink);
+}
+
+.booking-slots__item--free.booking-slots__item--selected {
+  box-shadow: inset 0 0 0 2px var(--bk-slot-free-ring);
+  filter: none;
+  background: var(--bk-slot-free-selected);
+}
+
+.booking-slots__item--busy {
+  border-color: var(--bk-slot-busy-border);
+  background: var(--bk-slot-busy);
+  color: var(--bk-slot-busy-ink);
+  cursor: not-allowed;
+  opacity: 1;
+  text-decoration: none;
+}
+
 .booking-slots__item--free .booking-slots__duration,
 .booking-slots__item--busy .booking-slots__duration,
 .booking-slots__item--free .booking-slots__price,
 .booking-slots__item--busy .booking-slots__price {
-  color: #fff;
+  color: inherit;
 }
 
 .booking-slots__price {
