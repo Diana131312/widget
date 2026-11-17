@@ -13,6 +13,15 @@ import { useBookingBootstrap } from "./bootstrap/useBookingBootstrap";
 import { BOOKING_ALIAS, BOOKING_UNIFIED_ROBOTO_FONT } from "./constants";
 import { BookingLayout } from "./layout/BookingLayout";
 import { StepCategory } from "./steps/StepCategory";
+import { CertificateFlow } from "./certificate/CertificateFlow";
+import {
+  EMPTY_CERTIFICATE_URL,
+  parseCertificateUrl,
+  rememberCertificateUrlKey,
+  writeCertificateUrl,
+  type CertificateUrlState,
+} from "./certificate/certificateUrl";
+import { parseSaleCertificates } from "./certificate/parseCertificates";
 import { StepCheckout } from "./steps/StepCheckout";
 import { StepDone } from "./steps/StepDone";
 import { StepObject } from "./steps/StepObject";
@@ -106,7 +115,23 @@ function BookingWidgetInner() {
     message: string;
     actionLabel: string;
   } | null>(null);
+  const [certificate, setCertificate] = useState<CertificateUrlState>(() => {
+    const parsed = parseCertificateUrl();
+    rememberCertificateUrlKey(parsed);
+    return parsed;
+  });
+  const [certificateRestoreKey, setCertificateRestoreKey] = useState(0);
+  const certificatePhase =
+    stepId === "category" ? certificate.phase : null;
   const [historyBusy, setHistoryBusy] = useState(false);
+  const saleCertificates = useMemo(
+    () => parseSaleCertificates(config?.certificates),
+    [config]
+  );
+  const tenantId = config?.settings?.tenantId ?? null;
+  const patchCertificate = useCallback((patch: Partial<CertificateUrlState>) => {
+    setCertificate((prev) => ({ ...prev, ...patch }));
+  }, []);
   const validatedRef = useRef(false);
   const configRef = useRef(config);
   configRef.current = config;
@@ -202,6 +227,10 @@ function BookingWidgetInner() {
   // Браузерные Назад / Вперёд
   useEffect(() => {
     const onPopState = () => {
+      const nextCertificate = parseCertificateUrl();
+      rememberCertificateUrlKey(nextCertificate);
+      setCertificate(nextCertificate);
+      setCertificateRestoreKey((key) => key + 1);
       const candidate = parseBookingUrl();
       setHistoryBusy(true);
       void applyUrlCandidate(candidate, { replaceUrl: false })
@@ -214,6 +243,12 @@ function BookingWidgetInner() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [applyUrlCandidate, hydrate]);
+
+  // Сертификат живёт в query рядом с шагом категории и переживает перезагрузку.
+  useEffect(() => {
+    if (stepId !== "category") return;
+    writeCertificateUrl(certificate);
+  }, [certificate, stepId]);
 
   // Неоплаченную бронь запоминаем во вкладке — переживёт F5
   useEffect(() => {
@@ -297,7 +332,27 @@ function BookingWidgetInner() {
   } else {
     body = (
       <>
-        {stepId === "category" && <StepCategory onSelect={selectCategory} />}
+        {stepId === "category" && !certificatePhase && (
+          <StepCategory
+            onSelect={selectCategory}
+            onSelectCertificate={() =>
+              setCertificate((prev) => ({ ...prev, phase: "pick" }))
+            }
+          />
+        )}
+        {stepId === "category" && certificatePhase && (
+          <CertificateFlow
+            state={certificate}
+            restoreKey={certificateRestoreKey}
+            certificates={saleCertificates}
+            catalogStatus={status}
+            catalogError={error}
+            tenantId={tenantId}
+            onRetryCatalog={reload}
+            onChange={patchCertificate}
+            onPickContinue={() => patchCertificate({ phase: "buyer" })}
+          />
+        )}
         {stepId === "object" && categoryId && config && (
           <StepObject
             categoryId={categoryId}
@@ -410,9 +465,21 @@ function BookingWidgetInner() {
     >
       <BookingLayout
         stepId={stepId}
+        stepNumber={
+          certificatePhase === "pick" ? 2 : certificatePhase === "buyer" ? 3 : undefined
+        }
+        stepTotal={certificatePhase ? 3 : undefined}
         title={title}
-        canGoBack={canGoBack}
+        canGoBack={canGoBack || certificatePhase != null}
         onBack={() => {
+          if (certificatePhase === "buyer") {
+            patchCertificate({ phase: "pick" });
+            return;
+          }
+          if (certificatePhase === "pick") {
+            setCertificate(EMPTY_CERTIFICATE_URL);
+            return;
+          }
           setLinkIssue(null);
           back();
         }}

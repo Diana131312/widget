@@ -10,6 +10,10 @@ type BookingLayoutProps = {
   showHome?: boolean;
   onHome?: () => void;
   hideStepLabel?: boolean;
+  /** Номер в подписи «Шаг N из M», если сценарий идёт своим порядком */
+  stepNumber?: number;
+  /** Знаменатель «из M», если сценарий короче брони */
+  stepTotal?: number;
   onStepClick?: (stepId: BookingStepId) => void;
   /** ФИ авторизованного клиента в шапке */
   userLabel?: string | null;
@@ -25,13 +29,15 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
   showHome,
   onHome,
   hideStepLabel,
+  stepNumber,
+  stepTotal,
   onStepClick,
   userLabel,
   children,
 }) => {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [stepId]);
+  }, [stepId, stepNumber, stepTotal]);
 
   return (
     <div className="booking-layout">
@@ -43,6 +49,8 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
         showHome={showHome}
         onHome={onHome}
         hideStepLabel={hideStepLabel}
+        stepNumber={stepNumber}
+        stepTotal={stepTotal}
         onStepClick={onStepClick}
         userLabel={userLabel}
       />

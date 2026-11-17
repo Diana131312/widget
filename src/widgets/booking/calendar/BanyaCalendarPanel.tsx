@@ -149,6 +149,12 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
     });
   };
 
+  const roomTone = /рябин/i.test(roomName)
+    ? "booking-banya-stage--rowan"
+    : /берез/i.test(roomName)
+      ? "booking-banya-stage--birch"
+      : null;
+
   const slotsPanel = slotsOpen ? (
     <div className="booking-slots">
       <BanyaTimeSlots
@@ -167,6 +173,7 @@ export const BanyaCalendarPanel: React.FC<Props> = ({
       className={[
         "booking-banya-stage",
         "booking-banya-stage--below",
+        roomTone,
         slotsOpen && "booking-banya-stage--slots",
       ]
         .filter(Boolean)

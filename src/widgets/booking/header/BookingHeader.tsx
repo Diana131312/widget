@@ -13,6 +13,10 @@ type BookingHeaderProps = {
   onHome?: () => void;
   /** Скрыть «Шаг N из M» (фокус на одну карточку) */
   hideStepLabel?: boolean;
+  /** Номер шага в текущем сценарии, если он не совпадает с индексом брони */
+  stepNumber?: number;
+  /** Сколько шагов в подписи «Шаг N из M», если сценарий короче брони */
+  stepTotal?: number;
   /** @deprecated Точки шагов убраны */
   onStepClick?: (stepId: BookingStepId) => void;
   /** ФИ авторизованного клиента (справа) */
@@ -27,11 +31,13 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
   showHome = false,
   onHome,
   hideStepLabel = false,
+  stepNumber,
+  stepTotal,
   userLabel = null,
 }) => {
   const index = getStepIndex(stepId);
-  const total = BOOKING_STEPS.length;
-  const stepNum = index + 1;
+  const total = stepTotal ?? BOOKING_STEPS.length;
+  const stepNum = stepNumber ?? index + 1;
 
   return (
     <header className="booking-header">
