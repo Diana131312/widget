@@ -487,9 +487,17 @@ function BookingWidgetInner() {
       <BookingLayout
         stepId={stepId}
         stepNumber={
-          certificatePhase === "pick" ? 2 : certificatePhase === "buyer" ? 3 : undefined
+          certificatePhase === "pick"
+            ? certificateOnly
+              ? 1
+              : 2
+            : certificatePhase === "buyer"
+              ? certificateOnly
+                ? 2
+                : 3
+              : undefined
         }
-        stepTotal={certificatePhase ? 3 : undefined}
+        stepTotal={certificatePhase ? (certificateOnly ? 2 : 3) : undefined}
         title={title}
         canGoBack={
           certificateOnly

@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { ensureFreshBuild } from "./widgets/booking/freshBuild";
 import "./theme-figma.css";
 import "./styles.css";
 
@@ -16,6 +17,7 @@ const rootEl = document.getElementById("root")!;
 const widget = import.meta.env.VITE_WIDGET ?? "booking";
 
 void (async () => {
+  await ensureFreshBuild();
   const { App } =
     widget === "stepper"
       ? await import("./App.stepper")

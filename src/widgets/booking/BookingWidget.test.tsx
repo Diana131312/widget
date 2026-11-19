@@ -74,6 +74,13 @@ describe("BookingWidget", () => {
     window.history.replaceState({}, "", "/");
   });
 
+  it("counts the certificate-only link as step 1 of 2", () => {
+    window.history.replaceState({}, "", "/?cert_only");
+    render(<BookingWidget />);
+    expect(screen.getByText("Шаг 1 из 2")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
+  });
+
   it("starts on category step without back", () => {
     render(<BookingWidget />);
 
