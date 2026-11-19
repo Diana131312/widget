@@ -3,6 +3,10 @@ import { resolveBookingImageUrl } from "../media/imageCache";
 import { formatCertificateAmount } from "./amounts";
 import { isCertificateEmail } from "./certificateApi";
 import {
+  matchesCertificateFormat,
+  type CertificateFormat,
+} from "./certificateFormat";
+import {
   MAX_CERTIFICATE_COUNT,
   clampCertificateCount,
   formatDurationMonths,
@@ -14,7 +18,6 @@ export type CertificateDraft = {
   count: number;
   recipientName: string;
   promoCode: string;
-  email: string;
 };
 
 export type CertificatePickValues = {
@@ -22,13 +25,15 @@ export type CertificatePickValues = {
   count: number;
   recipientName: string;
   promoCode: string;
+  format: CertificateFormat | null;
   email: string;
 };
 
 type StepCertificateProps = {
   certificates: SaleCertificate[];
   tenantId: string | null;
-  initial?: CertificatePickValues | null;
+  initial?: (Partial<CertificatePickValues> &
+    Pick<CertificatePickValues, "certificateId" | "count" | "recipientName" | "promoCode">) | null;
   promoMessage?: string | null;
   /** Скидка, если текущий код уже проверен и подошёл. */
   promoDiscount?: number | null;
@@ -60,30 +65,140 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
     initial?.recipientName ?? ""
   );
   const [promoCode, setPromoCode] = useState(initial?.promoCode ?? "");
+  const [format, setFormat] = useState<CertificateFormat>(
+    initial?.format ?? "electronic"
+  );
   const [email, setEmail] = useState(initial?.email ?? "");
   const selected = certificates.find((item) => item.id === certificateId) ?? null;
+  const visibleCertificates = certificates.filter((item) =>
+    matchesCertificateFormat(item.name, format)
+  );
   const promo = promoCode.trim();
   const emailOk = isCertificateEmail(email);
   const promoOk = promoDiscount != null && promoDiscount > 0 && !promoMessage;
   const promoBad = Boolean(promo) && Boolean(promoMessage);
-  const canCheck = selected != null && promo.length > 0 && !busy && !promoOk && !promoBad;
-  const canContinue = selected != null && emailOk && !busy;
+  const selectedVisible =
+    selected != null &&
+    visibleCertificates.some((item) => item.id === selected.id);
+  const canCheck = selectedVisible && promo.length > 0 && !busy && !promoOk && !promoBad;
+  const showDetails = format != null;
+  const needsEmail = format === "electronic";
+  const canContinue = selectedVisible && (!needsEmail || emailOk) && !busy;
 
   const publish = (patch: Partial<CertificatePickValues>) => {
+    const nextFormat = patch.format === undefined ? format : patch.format;
+    const nextRecipient =
+      nextFormat === "paper"
+        ? ""
+        : patch.recipientName === undefined
+          ? recipientName
+          : patch.recipientName;
+    const nextEmail =
+      nextFormat === "paper"
+        ? ""
+        : patch.email === undefined
+          ? email
+          : patch.email;
     onValuesChange?.({
       certificateId,
       count,
-      recipientName,
       promoCode,
-      email,
       ...patch,
+      recipientName: nextRecipient,
+      email: nextEmail,
+      format: nextFormat,
+    });
+  };
+
+  const chooseFormat = (next: CertificateFormat) => {
+    const keep =
+      selected != null && matchesCertificateFormat(selected.name, next)
+        ? selected.id
+        : null;
+    setFormat(next);
+    if (!keep) {
+      setCertificateId(null);
+      setCount(1);
+    }
+    if (next === "paper") {
+      setRecipientName("");
+      setEmail("");
+    }
+    publish({
+      format: next,
+      certificateId: keep,
+      count: keep ? count : 1,
+      recipientName: next === "paper" ? "" : recipientName,
+      email: next === "paper" ? "" : email,
     });
   };
 
   return (
     <section className="booking-certificate" aria-label="Подарочные сертификаты">
+      <div className="booking-certificate__kind">
+      <div className="booking-certificate__tabs" role="tablist" aria-label="Вид сертификата">
+        <button
+          type="button"
+          role="tab"
+          id="bk-cert-tab-electronic"
+          aria-selected={format === "electronic"}
+          aria-controls="bk-cert-format-panel"
+          className="booking-certificate__tab"
+          onClick={() => chooseFormat("electronic")}
+        >
+          Электронный
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="bk-cert-tab-paper"
+          aria-selected={format === "paper"}
+          aria-controls="bk-cert-format-panel"
+          className="booking-certificate__tab"
+          onClick={() => chooseFormat("paper")}
+        >
+          Бумажный
+        </button>
+      </div>
+
+      <div
+        role="tabpanel"
+        id="bk-cert-format-panel"
+        aria-labelledby={
+          format === "paper" ? "bk-cert-tab-paper" : "bk-cert-tab-electronic"
+        }
+        className="booking-certificate__points"
+      >
+        <ul>
+          {(format === "electronic"
+            ? [
+                { text: "Придёт на почту после оплаты", limit: false },
+                { text: "Можно оплатить часть суммы", limit: false },
+              ]
+            : [
+                { text: "Можно вручить лично", limit: false },
+                { text: "Крафтовый конверт", limit: false },
+                { text: "Самовывоз или Яндекс Доставка", limit: false },
+                { text: "Частичная оплата недоступна", limit: true },
+              ]
+          ).map((point) => (
+            <li key={point.text} className={point.limit ? "is-limit" : undefined}>
+              <span aria-hidden="true">{point.limit ? "−" : "+"}</span>
+              {point.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+      </div>
+
+      {format && visibleCertificates.length === 0 ? (
+        <p className="booking-certificate__empty">
+          Таких сертификатов сейчас нет в продаже.
+        </p>
+      ) : null}
+
       <div className="booking-product-grid">
-        {certificates.map((certificate) => {
+        {visibleCertificates.map((certificate) => {
           const isSelected = certificate.id === certificateId;
           const logo = resolveBookingImageUrl(certificate.logo, tenantId, 400);
           const priceLabel = `${formatCertificateAmount(certificate.price)} ₽`;
@@ -176,22 +291,60 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
         })}
       </div>
 
-      <label className="booking-checkout__field">
-        <span className="booking-checkout__label">Имя получателя</span>
-        <input
-          className="booking-checkout__input"
-          name="certificate-recipient"
-          autoComplete="off"
-          placeholder="На сертификате, можно не указывать"
-          value={recipientName}
-          onChange={(event) => {
-            const next = event.target.value;
-            setRecipientName(next);
-            publish({ certificateId, count, recipientName: next, promoCode });
-          }}
-        />
-      </label>
+      {showDetails && format === "electronic" ? (
+        <label className="booking-checkout__field">
+          <span className="booking-checkout__label">Имя получателя</span>
+          <input
+            className="booking-checkout__input"
+            name="certificate-recipient"
+            autoComplete="off"
+            placeholder="На сертификате, можно не указывать"
+            value={recipientName}
+            onChange={(event) => {
+              const next = event.target.value;
+              setRecipientName(next);
+              publish({ certificateId, count, recipientName: next, promoCode });
+            }}
+          />
+        </label>
+      ) : null}
 
+      {needsEmail ? (
+        <div className="booking-checkout__field">
+          <label className="booking-checkout__label" htmlFor="bk-cert-email">
+            Email
+            <span className="booking-certificate__required" aria-hidden="true">
+              *
+            </span>
+          </label>
+          <p className="booking-certificate__email-note">
+            На эту почту придёт сертификат
+          </p>
+          <input
+            id="bk-cert-email"
+            className="booking-checkout__input"
+            type="email"
+            inputMode="email"
+            required
+            name="certificate-email"
+            autoComplete="email"
+            placeholder="ivan@mail.ru"
+            aria-required="true"
+            value={email}
+            onChange={(event) => {
+              const next = event.target.value;
+              setEmail(next);
+              publish({ email: next });
+            }}
+          />
+          {email.length > 0 && !emailOk ? (
+            <p className="booking-checkout__hint">Укажите почту полностью</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showDetails ? (
+      <>
       <div className="booking-checkout__field">
         <label className="booking-checkout__label" htmlFor="bk-cert-promo">
           Промокод
@@ -257,38 +410,6 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
         </p>
       ) : null}
 
-      <div className="booking-checkout__field">
-        <label className="booking-checkout__label" htmlFor="bk-cert-email">
-          Email
-          <span className="booking-certificate__required" aria-hidden="true">
-            *
-          </span>
-        </label>
-        <p className="booking-certificate__email-note">
-          На эту почту придёт сертификат
-        </p>
-        <input
-          id="bk-cert-email"
-          className="booking-checkout__input"
-          type="email"
-          inputMode="email"
-          required
-          name="certificate-email"
-          autoComplete="email"
-          placeholder="ivan@mail.ru"
-          aria-required="true"
-          value={email}
-          onChange={(event) => {
-            const next = event.target.value;
-            setEmail(next);
-            publish({ email: next });
-          }}
-        />
-        {email.length > 0 && !emailOk ? (
-          <p className="booking-checkout__hint">Укажите почту полностью</p>
-        ) : null}
-      </div>
-
       <button
         type="button"
         className="booking-setup__continue"
@@ -298,14 +419,15 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
           onContinue?.({
             certificateId: selected.id,
             count,
-            recipientName: recipientName.trim(),
+            recipientName: format === "paper" ? "" : recipientName.trim(),
             promoCode: promoCode.trim(),
-            email: email.trim(),
           });
         }}
       >
         {checking === "continue" ? "Проверяем промокод…" : "Далее"}
       </button>
+      </>
+      ) : null}
     </section>
   );
 };

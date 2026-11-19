@@ -10,6 +10,10 @@ export type CheckoutContactDraft = {
   verifyChannel: VerifyChannel;
   /** Выбран на оформлении; verify создаёт бронь с этим режимом. */
   paymentMode?: PaymentMode;
+  /** Проверенный промокод. Пусто — в бронь не отправляем. */
+  promoCode?: string;
+  /** Проверенный номер. Списание идёт после создания брони. */
+  certificateNumber?: string;
 };
 
 export type BookingResultDraft = {
@@ -25,6 +29,8 @@ export type BookingResultDraft = {
   paymentMode?: PaymentMode | null;
   /** Момент автоотмены неоплаченной брони (мс) — переживает перезагрузку */
   expiresAtMs?: number | null;
+  /** Предоплата списана сертификатом (полностью или частично). */
+  paidByCertificate?: boolean;
 };
 
 /** Мета /calculate, сохраняем для шага 4–5. */

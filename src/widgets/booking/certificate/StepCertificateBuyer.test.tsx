@@ -25,7 +25,6 @@ describe("StepCertificateBuyer", () => {
           count: 1,
           recipientName: "Анна",
           promoCode: "",
-          email: "",
         }}
         discountPercent={0}
         onPay={onPay}
@@ -38,8 +37,10 @@ describe("StepCertificateBuyer", () => {
     expect(screen.getByText("Срок сертификата")).toBeInTheDocument();
     expect(screen.getByText(/1 шт/)).toBeInTheDocument();
     expect(screen.queryByText("Номинал")).not.toBeInTheDocument();
-    expect(screen.getByText("Как с вами связаться")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.getByText("Как подтвердить номер")).toBeInTheDocument();
+    expect(screen.queryByText("Как с вами связаться")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Telegram" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "По телефону" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Фамилия покупателя"), "Петров");
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
@@ -47,7 +48,7 @@ describe("StepCertificateBuyer", () => {
     await user.click(screen.getByRole("checkbox"));
     expect(pay).toBeDisabled();
 
-    await user.click(screen.getByRole("radio", { name: "Telegram" }));
+    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     expect(pay).toBeEnabled();
 
     await user.click(pay);
@@ -55,6 +56,7 @@ describe("StepCertificateBuyer", () => {
       expect.objectContaining({
         firstName: "Иван",
         lastName: "Петров",
+        email: "ivan@mail.ru",
         messenger: "telegram",
       })
     );

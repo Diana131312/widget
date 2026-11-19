@@ -146,6 +146,48 @@ describe("buildSaveBodies", () => {
     }
   });
 
+  it("sends a checked promo code and omits an empty one", () => {
+    const result = buildSaveBodies(
+      {
+        categoryId: "banya",
+        roomId: "b1",
+        guestCount: 2,
+        productQuantities: {},
+        total: 3000,
+        checkIn: null,
+        checkOut: null,
+        banyaDate: "2026-10-05",
+        banyaTimeFrom: "12:00",
+        banyaTimeTo: "15:00",
+        slotDuration: 3,
+      },
+      { ...contact, promoCode: "PROMO10" },
+      []
+    );
+    expect(result.kind).toBe("banya");
+    if (result.kind === "banya") expect(result.body.promoCode).toBe("PROMO10");
+
+    const homes = buildSaveBodies(
+      {
+        categoryId: "homes",
+        roomId: "h1",
+        guestCount: 2,
+        productQuantities: {},
+        total: 8000,
+        checkIn: "2026-10-05",
+        checkOut: "2026-10-07",
+        banyaDate: null,
+        banyaTimeFrom: null,
+        banyaTimeTo: null,
+        slotDuration: null,
+      },
+      { ...contact, promoCode: "HOME" },
+      []
+    );
+    expect(homes.kind).toBe("homes");
+    if (homes.kind === "homes") expect(homes.body.promoCode).toBe("HOME");
+  });
+
   it("rejects incomplete banya draft", () => {
     const result = buildSaveBodies(
       {

@@ -16,6 +16,7 @@ import { StepCategory } from "./steps/StepCategory";
 import { CertificateFlow } from "./certificate/CertificateFlow";
 import {
   EMPTY_CERTIFICATE_URL,
+  isCertificateStandalone,
   parseCertificateUrl,
   rememberCertificateUrlKey,
   writeCertificateUrl,
@@ -98,6 +99,8 @@ function BookingWidgetInner() {
   } = useBookingFlow({
     initial: urlCandidate,
     onPersist: (state) => {
+      // Прямая ссылка сертификатов остаётся ?cert_only, без шага категории.
+      if (state.stepId === "category" && isCertificateStandalone()) return;
       // done заменяет verify/checkout в истории → браузерный «назад» сразу на оформление
       writeBookingUrl(state, {
         mode: state.stepId === "done" ? "replace" : "auto",
@@ -121,6 +124,9 @@ function BookingWidgetInner() {
     return parsed;
   });
   const [certificateRestoreKey, setCertificateRestoreKey] = useState(0);
+  const [certificateOnly, setCertificateOnly] = useState(() =>
+    isCertificateStandalone()
+  );
   const certificatePhase =
     stepId === "category" ? certificate.phase : null;
   const [historyBusy, setHistoryBusy] = useState(false);
@@ -129,6 +135,13 @@ function BookingWidgetInner() {
     [config]
   );
   const tenantId = config?.settings?.tenantId ?? null;
+  const telegramBotHref = useMemo(() => {
+    const raw = config?.company?.telegram?.trim();
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw) || raw.startsWith("tg://")) return raw;
+    const user = raw.replace(/^@/, "");
+    return user ? `https://t.me/${user}` : null;
+  }, [config?.company?.telegram]);
   const patchCertificate = useCallback((patch: Partial<CertificateUrlState>) => {
     setCertificate((prev) => ({ ...prev, ...patch }));
   }, []);
@@ -207,7 +220,9 @@ function BookingWidgetInner() {
     if (urlCandidate.stepId === "category") {
       validatedRef.current = true;
       setUrlReady(true);
-      writeBookingUrl(urlCandidate, { mode: "replace" });
+      if (!isCertificateStandalone()) {
+        writeBookingUrl(urlCandidate, { mode: "replace" });
+      }
       return;
     }
     if (status !== "ready" || !config) return;
@@ -230,6 +245,7 @@ function BookingWidgetInner() {
       const nextCertificate = parseCertificateUrl();
       rememberCertificateUrlKey(nextCertificate);
       setCertificate(nextCertificate);
+      setCertificateOnly(isCertificateStandalone());
       setCertificateRestoreKey((key) => key + 1);
       const candidate = parseBookingUrl();
       setHistoryBusy(true);
@@ -336,7 +352,11 @@ function BookingWidgetInner() {
           <StepCategory
             onSelect={selectCategory}
             onSelectCertificate={() =>
-              setCertificate((prev) => ({ ...prev, phase: "pick" }))
+              setCertificate((prev) => ({
+                ...prev,
+                phase: "pick",
+                format: prev.format ?? "electronic",
+              }))
             }
           />
         )}
@@ -348,6 +368,7 @@ function BookingWidgetInner() {
             catalogStatus={status}
             catalogError={error}
             tenantId={tenantId}
+            telegramBotHref={telegramBotHref}
             onRetryCatalog={reload}
             onChange={patchCertificate}
             onPickContinue={() => patchCertificate({ phase: "buyer" })}
@@ -470,14 +491,18 @@ function BookingWidgetInner() {
         }
         stepTotal={certificatePhase ? 3 : undefined}
         title={title}
-        canGoBack={canGoBack || certificatePhase != null}
+        canGoBack={
+          certificateOnly
+            ? certificatePhase === "buyer"
+            : canGoBack || certificatePhase != null
+        }
         onBack={() => {
           if (certificatePhase === "buyer") {
             patchCertificate({ phase: "pick" });
             return;
           }
           if (certificatePhase === "pick") {
-            setCertificate(EMPTY_CERTIFICATE_URL);
+            if (!certificateOnly) setCertificate(EMPTY_CERTIFICATE_URL);
             return;
           }
           setLinkIssue(null);

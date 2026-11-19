@@ -114,7 +114,11 @@ export const StepDone: React.FC<Props> = ({
   if (!isTemporary) {
     return (
       <div className="booking-checkout booking-checkout--success">
-        <p className="booking-checkout__success-title">Бронь создана</p>
+        <p className="booking-checkout__success-title">
+          {result.paidByCertificate
+            ? "Предоплата списана с сертификата"
+            : "Бронь создана"}
+        </p>
         <div className="booking-checkout__success-actions">
           <button
             type="button"

@@ -1,3 +1,4 @@
+import type { CertificateFormat } from "./certificateFormat";
 import { clampCertificateCount } from "./certificatePricing";
 
 const PREFIX = "bk_";
@@ -17,11 +18,12 @@ const CERT_KEYS = [
   "cchannel",
   "cmsg",
   "cterms",
+  "cformat",
 ] as const;
 
 export type CertificatePhase = "pick" | "buyer";
 
-export type CertificateMessenger = "whatsapp" | "telegram" | "max";
+export type CertificateMessenger = "telegram" | "max" | "call";
 
 export type CertificateUrlState = {
   phase: CertificatePhase | null;
@@ -35,6 +37,7 @@ export type CertificateUrlState = {
   email: string;
   messenger: CertificateMessenger | "";
   termsAccepted: boolean;
+  format: CertificateFormat | null;
 };
 
 export const EMPTY_CERTIFICATE_URL: CertificateUrlState = {
@@ -49,14 +52,26 @@ export const EMPTY_CERTIFICATE_URL: CertificateUrlState = {
   email: "",
   messenger: "",
   termsAccepted: false,
+  format: null,
 };
 
 const PHASES = new Set<CertificatePhase>(["pick", "buyer"]);
-const MESSENGERS = new Set<CertificateMessenger>([
-  "whatsapp",
-  "telegram",
-  "max",
-]);
+const MESSENGERS = new Set<CertificateMessenger>(["telegram", "max", "call"]);
+
+const FORMATS = new Set<CertificateFormat>(["paper", "electronic"]);
+
+/** Прямая ссылка только на сертификаты: ?cert_only */
+export function isCertificateStandalone(
+  search: string = typeof window !== "undefined" ? window.location.search : ""
+): boolean {
+  const params = new URLSearchParams(
+    search.startsWith("?") ? search.slice(1) : search
+  );
+  return (
+    params.has("cert_only") ||
+    params.get(`${PREFIX}certonly`) === "1"
+  );
+}
 
 function readParam(params: URLSearchParams, key: string): string | null {
   const value = params.get(`${PREFIX}${key}`);
@@ -90,9 +105,17 @@ export function parseCertificateUrl(
     phaseRaw && PHASES.has(phaseRaw as CertificatePhase)
       ? (phaseRaw as CertificatePhase)
       : null;
+  if (!phase && isCertificateStandalone(search)) phase = "pick";
 
   const certificateId = readParam(params, "cid");
   if (phase === "buyer" && !certificateId) phase = "pick";
+
+  const formatRaw = readParam(params, "cformat");
+  let format: CertificateFormat | null =
+    formatRaw && FORMATS.has(formatRaw as CertificateFormat)
+      ? (formatRaw as CertificateFormat)
+      : null;
+  if (!format && phase) format = "electronic";
 
   const messengerRaw = readParam(params, "cmsg");
   const messenger: CertificateMessenger | "" =
@@ -114,6 +137,7 @@ export function parseCertificateUrl(
     email: readParam(params, "cemail") ?? "",
     messenger,
     termsAccepted: readParam(params, "cterms") === "1",
+    format,
   };
 }
 
@@ -137,7 +161,21 @@ export function writeCertificateUrl(
   const url = new URL(window.location.href);
   clearCertificateParams(url);
 
-  if (state.phase) {
+  const bareStandalonePick =
+    isCertificateStandalone(url.search) &&
+    state.phase === "pick" &&
+    !state.certificateId &&
+    !state.format &&
+    !state.recipientName.trim() &&
+    !state.promoCode.trim() &&
+    !state.email.trim() &&
+    !state.lastName.trim() &&
+    !state.firstName.trim() &&
+    !state.phone.trim() &&
+    !state.messenger &&
+    !state.termsAccepted;
+
+  if (state.phase && !bareStandalonePick) {
     url.searchParams.set(`${PREFIX}cert`, state.phase);
     if (state.certificateId) {
       url.searchParams.set(`${PREFIX}cid`, state.certificateId);
@@ -169,6 +207,9 @@ export function writeCertificateUrl(
     }
     if (state.termsAccepted) {
       url.searchParams.set(`${PREFIX}cterms`, "1");
+    }
+    if (state.format) {
+      url.searchParams.set(`${PREFIX}cformat`, state.format);
     }
   }
 

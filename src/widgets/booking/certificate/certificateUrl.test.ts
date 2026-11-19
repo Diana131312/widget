@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  isCertificateStandalone,
   parseCertificateUrl,
   resetCertificateUrlKey,
   writeCertificateUrl,
@@ -18,6 +19,7 @@ const base: CertificateUrlState = {
   email: "",
   messenger: "",
   termsAccepted: false,
+  format: null,
 };
 
 beforeEach(() => {
@@ -43,6 +45,15 @@ describe("parseCertificateUrl", () => {
       email: "ivan@mail.ru",
       messenger: "telegram",
       termsAccepted: true,
+    });
+  });
+
+  it("opens the certificate step from the standalone link", () => {
+    expect(isCertificateStandalone("?cert_only")).toBe(true);
+    expect(parseCertificateUrl("?cert_only")).toMatchObject({
+      phase: "pick",
+      certificateId: null,
+      format: "electronic",
     });
   });
 
@@ -74,7 +85,7 @@ describe("writeCertificateUrl", () => {
       firstName: "Иван",
       phone: "+7 (900) 123-45-67",
       email: "ivan@mail.ru",
-      messenger: "whatsapp",
+      messenger: "max",
       termsAccepted: true,
     });
 
@@ -83,7 +94,7 @@ describe("writeCertificateUrl", () => {
     expect(window.location.search).toContain("bk_cert=buyer");
     expect(window.location.search).toContain("bk_cid=cert-1");
     expect(window.location.search).toContain("bk_ccount=2");
-    expect(window.location.search).toContain("bk_cmsg=whatsapp");
+    expect(window.location.search).toContain("bk_cmsg=max");
     expect(window.location.search).toContain("bk_cterms=1");
     expect(parseCertificateUrl().recipientName).toBe("Анна");
     expect(parseCertificateUrl().email).toBe("ivan@mail.ru");

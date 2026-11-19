@@ -11,6 +11,7 @@ import {
 } from "./certificateApi";
 import type { CertificateBuyerValues } from "./StepCertificateBuyer";
 import type { CertificateUrlState } from "./certificateUrl";
+import { PAPER_CERTIFICATE_EMAIL } from "./certificateFormat";
 import { clampCertificateCount } from "./certificatePricing";
 import type { SaleCertificate } from "./parseCertificates";
 import { StepCertificate } from "./StepCertificate";
@@ -44,6 +45,7 @@ type CertificateFlowProps = {
   catalogStatus: "idle" | "loading" | "ready" | "error";
   catalogError?: unknown;
   tenantId: string | null;
+  telegramBotHref?: string | null;
   onRetryCatalog?: () => void;
   onChange: (patch: Partial<CertificateUrlState>) => void;
   onPickContinue: () => void;
@@ -57,6 +59,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   catalogStatus,
   catalogError = null,
   tenantId,
+  telegramBotHref = null,
   onRetryCatalog,
   onChange,
   onPickContinue,
@@ -152,7 +155,6 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       count: number;
       recipientName: string;
       promoCode: string;
-      email: string;
     }) => {
       setPayError(null);
       const code = draft.promoCode.trim();
@@ -181,7 +183,6 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
         count: draft.count,
         recipientName: draft.recipientName,
         promoCode: code,
-        email: draft.email.trim(),
       });
       onPickContinue();
     },
@@ -200,12 +201,17 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
             ? code
             : undefined;
 
+        const paper = state.format === "paper";
         const response = await saveCertificatePurchase({
           name: `${buyer.firstName} ${buyer.lastName}`.trim(),
           phone: toApiPhone(buyer.phone),
-          email: state.email.trim(),
-          recipientName: state.recipientName.trim(),
-          messenger: buyer.messenger || null,
+          email: paper
+            ? PAPER_CERTIFICATE_EMAIL
+            : state.format === "electronic"
+              ? state.email.trim()
+              : buyer.email.trim(),
+          recipientName: paper ? "" : state.recipientName.trim(),
+          messenger: buyer.messenger === "call" ? "sms" : buyer.messenger,
           promoCode: accepted,
           certificates: [
             {
@@ -229,7 +235,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
         setSubmitting(false);
       }
     },
-    [selected, state.count, state.email, state.promoCode, state.recipientName, verdict]
+    [selected, state.count, state.email, state.format, state.promoCode, state.recipientName, verdict]
   );
 
   if (state.phase === "buyer" && selected) {
@@ -242,14 +248,16 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
           count: clampCertificateCount(state.count),
           recipientName: state.recipientName,
           promoCode: state.promoCode.trim(),
-          email: state.email,
         }}
         discountPercent={state.promoCode.trim() ? discount : 0}
         initialBuyer={state}
+        showEmail={state.format == null}
+        paperDelivery={state.format === "paper"}
         promoMessage={promoMessage}
         payError={payError}
         busy={checking != null}
         submitting={submitting}
+        telegramBotHref={telegramBotHref}
         onBuyerChange={onChange}
         onPay={(buyer) => {
           void pay(buyer);

@@ -25,6 +25,7 @@ export type CheckoutContact = {
   phone: string;
   comment: string;
   verifyChannel: VerifyChannel;
+  promoCode?: string;
 };
 
 export type SaveProductLine = {
@@ -75,7 +76,7 @@ export type BanyaSaveBody = {
   phone: string;
   messenger: "telegram" | "max" | null;
   comment: string;
-  promoCode: null;
+  promoCode: string | null;
   discounts: number[];
   products: SaveProductLine[];
   paymentMode: PaymentMode;
@@ -95,6 +96,7 @@ export type HomesSaveBody = {
   products: SaveProductLine[];
   paymentMode: PaymentMode;
   checkCode?: string;
+  promoCode?: string;
 };
 
 /** Тела /save и /daily-save строго по widget API (без alias — добавит клиент). */
@@ -115,6 +117,7 @@ export function buildSaveBodies(
   const comment = contact.comment.trim();
   const checkCode = options?.checkCode;
   const paymentMode: PaymentMode = options?.paymentMode ?? "prepay";
+  const promoCode = contact.promoCode?.trim() || "";
 
   if (!name || !lastName) {
     return { kind: "invalid", reason: "Укажите имя и фамилию" };
@@ -139,6 +142,7 @@ export function buildSaveBodies(
         products: productList,
         paymentMode,
         ...(checkCode ? { checkCode } : {}),
+        ...(promoCode ? { promoCode } : {}),
       },
     };
   }
@@ -165,7 +169,7 @@ export function buildSaveBodies(
       phone,
       messenger,
       comment,
-      promoCode: null,
+      promoCode: promoCode || null,
       discounts: [],
       products: productList,
       paymentMode,

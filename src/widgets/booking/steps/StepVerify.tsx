@@ -8,6 +8,7 @@ import {
   buildSaveBodies,
   toApiMessenger,
 } from "../checkout/buildSavePayload";
+import { applyCertificatePayment } from "../checkout/bookingPay";
 import type {
   BookingCalcMeta,
   BookingResultDraft,
@@ -292,7 +293,19 @@ export const StepVerify: React.FC<Props> = ({
           lastName: contact.lastName,
         });
       }
-      onComplete(readSaveMeta(res, total, confirmMessage, paymentMode));
+      const meta = readSaveMeta(res, total, confirmMessage, paymentMode);
+      const certificateNumber = contact.certificateNumber?.trim();
+      if (certificateNumber) {
+        try {
+          onComplete(await applyCertificatePayment(meta, certificateNumber));
+        } catch (payError) {
+          const detail = getWidgetApiErrorDetail(payError);
+          showToast(detail);
+          onComplete(meta);
+        }
+        return;
+      }
+      onComplete(meta);
     } catch (err) {
       setError(getWidgetApiErrorDetail(err));
     } finally {

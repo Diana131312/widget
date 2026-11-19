@@ -4,7 +4,9 @@ import {
   formatRuPhoneMask,
   isRuPhoneComplete,
 } from "../checkout/phone";
+import { getValidAuthToken } from "../checkout/authToken";
 import { formatCertificateAmount } from "./amounts";
+import { isCertificateEmail } from "./certificateApi";
 import type { CertificateMessenger } from "./certificateUrl";
 import {
   certificatePayAmount,
@@ -19,8 +21,12 @@ export type CertificateBuyerValues = {
   firstName: string;
   phone: string;
   email: string;
-  messenger: CertificateMessenger | "";
+  messenger: CertificateMessenger;
   termsAccepted: boolean;
+};
+
+type CertificateBuyerSeed = Omit<CertificateBuyerValues, "messenger"> & {
+  messenger: CertificateMessenger | "";
 };
 
 type StepCertificateBuyerProps = {
@@ -28,13 +34,17 @@ type StepCertificateBuyerProps = {
   draft: CertificateDraft;
   /** null — промокод ещё проверяется */
   discountPercent: number | null;
-  initialBuyer?: CertificateBuyerValues | null;
+  initialBuyer?: CertificateBuyerSeed | null;
   promoMessage?: string | null;
   payError?: string | null;
   /** Повторная проверка промокода */
   busy?: boolean;
   /** Уходит запрос на создание покупки */
   submitting?: boolean;
+  telegramBotHref?: string | null;
+  /** false — почта уже задана на предыдущем шаге или подставляется для бумаги */
+  showEmail?: boolean;
+  paperDelivery?: boolean;
   onBuyerChange?: (buyer: Partial<CertificateBuyerValues>) => void;
   onPay?: (buyer: CertificateBuyerValues) => void;
 };
@@ -48,14 +58,20 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
   payError = null,
   busy = false,
   submitting = false,
+  telegramBotHref = null,
+  showEmail = true,
+  paperDelivery = false,
   onBuyerChange,
   onPay,
 }) => {
   const [lastName, setLastName] = useState(initialBuyer?.lastName ?? "");
   const [firstName, setFirstName] = useState(initialBuyer?.firstName ?? "");
   const [phone, setPhone] = useState(initialBuyer?.phone ?? "");
-  const [messenger, setMessenger] = useState<CertificateMessenger | "">(
-    initialBuyer?.messenger ?? ""
+  const [email, setEmail] = useState(initialBuyer?.email ?? "");
+  const [messenger, setMessenger] = useState<CertificateMessenger>(
+    initialBuyer?.messenger === "max" || initialBuyer?.messenger === "call"
+      ? initialBuyer.messenger
+      : "telegram"
   );
   const [termsAccepted, setTermsAccepted] = useState(
     initialBuyer?.termsAccepted ?? false
@@ -73,11 +89,13 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
   const payLabel =
     payAmount == null ? "…" : `${formatCertificateAmount(payAmount)} ₽`;
   const phoneOk = isRuPhoneComplete(phone);
+  const emailOk = isCertificateEmail(email);
+  const phoneConfirmed = phoneOk && getValidAuthToken(phone) != null;
   const formValid =
     lastName.trim().length >= 1 &&
     firstName.trim().length >= 1 &&
     phoneOk &&
-    messenger !== "" &&
+    (!showEmail || emailOk) &&
     termsAccepted;
   const promoPending = Boolean(draft.promoCode) && discountPercent == null;
   const canPay = formValid && !promoPending && !busy && !submitting;
@@ -101,12 +119,14 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
                 {formatCertificateTerm(certificate.durationMonths)}
               </span>
             </li>
-            <li className="booking-price-breakdown__row">
-              <span>Получатель</span>
-              <span className="booking-price-breakdown__num">
-                {draft.recipientName || "Не указано"}
-              </span>
-            </li>
+            {paperDelivery ? null : (
+              <li className="booking-price-breakdown__row">
+                <span>Получатель</span>
+                <span className="booking-price-breakdown__num">
+                  {draft.recipientName || "Не указано"}
+                </span>
+              </li>
+            )}
             {promoApplied ? (
               <>
                 <li className="booking-price-breakdown__row">
@@ -191,33 +211,95 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
               <p className="booking-checkout__hint">Укажите полный номер</p>
             ) : null}
           </div>
+          {showEmail ? (
+          <div className="booking-checkout__field">
+            <label className="booking-checkout__label" htmlFor="bk-cert-email">
+              Email
+              <span className="booking-certificate__required" aria-hidden="true">
+                *
+              </span>
+            </label>
+            <p className="booking-certificate__email-note">
+              На эту почту придёт сертификат
+            </p>
+            <input
+              id="bk-cert-email"
+              className="booking-checkout__input"
+              type="email"
+              inputMode="email"
+              required
+              name="certificate-email"
+              autoComplete="email"
+              placeholder="ivan@mail.ru"
+              aria-required="true"
+              value={email}
+              onChange={(event) => {
+                const next = event.target.value;
+                setEmail(next);
+                publish({ email: next });
+              }}
+            />
+            {email.length > 0 && !emailOk ? (
+              <p className="booking-checkout__hint">Укажите почту полностью</p>
+            ) : null}
+          </div>
+          ) : null}
         </div>
 
-        <fieldset className="booking-checkout__messenger">
-          <legend className="booking-checkout__label">Как с вами связаться</legend>
-          <div className="booking-checkout__radio-group">
-            {(
-              [
-                ["whatsapp", "WhatsApp"],
-                ["telegram", "Telegram"],
-                ["max", "MAX"],
-              ] as const
-            ).map(([value, label]) => (
-              <label key={value} className="booking-checkout__radio">
-                <input
-                  type="radio"
-                  name="bk-cert-messenger"
-                  checked={messenger === value}
-                  onChange={() => {
-                    setMessenger(value);
-                    publish({ messenger: value });
-                  }}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {phoneConfirmed ? (
+          <p className="booking-checkout__channel-note">
+            Номер уже подтверждён — повторное подтверждение не нужно
+          </p>
+        ) : (
+          <fieldset className="booking-checkout__messenger">
+            <legend className="booking-checkout__label">
+              Как подтвердить номер
+            </legend>
+            <div className="booking-checkout__radio-group">
+              {(
+                [
+                  ["telegram", "Telegram"],
+                  ["max", "MAX"],
+                  ["call", "По телефону"],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className="booking-checkout__radio">
+                  <input
+                    type="radio"
+                    name="bk-cert-verify"
+                    checked={messenger === value}
+                    onChange={() => {
+                      setMessenger(value);
+                      publish({ messenger: value });
+                    }}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            {messenger === "telegram" ? (
+              <p className="booking-checkout__channel-note">
+                Внимание! Важно, чтобы бот
+                {telegramBotHref ? (
+                  <>
+                    {" "}
+                    (
+                    <a
+                      className="booking-checkout__channel-note-link"
+                      href={telegramBotHref}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      ссылка на бота
+                    </a>
+                    )
+                  </>
+                ) : null}{" "}
+                был не заблокирован
+              </p>
+            ) : null}
+          </fieldset>
+        )}
 
         <div className="booking-checkout__consents">
           <label className="booking-checkout__privacy">
@@ -265,7 +347,7 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
               lastName: lastName.trim(),
               firstName: firstName.trim(),
               phone,
-              email: initialBuyer?.email ?? "",
+              email: email.trim(),
               messenger,
               termsAccepted,
             });

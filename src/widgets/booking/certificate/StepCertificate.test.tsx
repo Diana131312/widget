@@ -6,7 +6,7 @@ import { StepCertificate } from "./StepCertificate";
 
 const certificate: SaleCertificate = {
   id: "cert-1",
-  name: "На отдых",
+  name: "Подарочный сертификат",
   description: "Любые услуги",
   price: 3000,
   durationMonths: null,
@@ -25,13 +25,11 @@ describe("StepCertificate", () => {
       />
     );
 
+    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
     const next = screen.getByRole("button", { name: "Далее" });
     expect(next).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: /На отдых/ }));
-    expect(next).toBeDisabled();
-
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
+    await user.click(screen.getByRole("button", { name: /Подарочный сертификат/ }));
     expect(next).toBeEnabled();
 
     await user.click(next);
@@ -40,7 +38,6 @@ describe("StepCertificate", () => {
       count: 1,
       recipientName: "",
       promoCode: "",
-      email: "ivan@mail.ru",
     });
   });
 
@@ -55,10 +52,10 @@ describe("StepCertificate", () => {
       />
     );
 
+    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
+    await user.click(screen.getByRole("button", { name: /Подарочный сертификат/ }));
     const check = screen.getByRole("button", { name: "Проверить" });
     expect(check).toBeDisabled();
-
-    await user.click(screen.getByRole("button", { name: /На отдых/ }));
     await user.type(screen.getByRole("textbox", { name: "Промокод" }), "SALE10");
     expect(check).toBeEnabled();
 
@@ -76,7 +73,7 @@ describe("StepCertificate", () => {
           count: 1,
           recipientName: "",
           promoCode: "SALE10",
-          email: "",
+          format: "paper",
         }}
         promoDiscount={10}
       />
@@ -96,7 +93,7 @@ describe("StepCertificate", () => {
           count: 1,
           recipientName: "",
           promoCode: "NOPE",
-          email: "",
+          format: "paper",
         }}
         promoMessage="Такого промокода нет или он выключен"
       />
@@ -105,5 +102,52 @@ describe("StepCertificate", () => {
     expect(screen.queryByRole("button", { name: "Проверить" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Промокод не подошёл")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Такого промокода нет");
+  });
+
+  it("filters certificates by the chosen tab and shows its terms", async () => {
+    const user = userEvent.setup();
+    render(
+      <StepCertificate
+        tenantId={null}
+        certificates={[
+          { ...certificate, id: "other", name: "На отдых" },
+          certificate,
+          {
+            ...certificate,
+            id: "mail",
+            name: "Электронный сертификат",
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "Электронный" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(
+      screen.getByRole("button", { name: "Добавить Электронный сертификат" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Придёт на почту после оплаты")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
+    expect(screen.getByText("Частичная оплата недоступна")).toBeInTheDocument();
+    expect(screen.queryByText(/свяжется администратор/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Добавить Подарочный сертификат" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Добавить Электронный сертификат" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Имя получателя")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Электронный" }));
+    expect(screen.getByText("Можно оплатить часть суммы")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Добавить Электронный сертификат" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Имя получателя")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
   });
 });
