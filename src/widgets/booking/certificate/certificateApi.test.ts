@@ -3,6 +3,7 @@ import {
   certificatePromoMessage,
   checkCertificatePromo,
   parseCertificatePromo,
+  certificatePurchaseOutcome,
   saveCertificatePurchase,
 } from "./certificateApi";
 
@@ -73,6 +74,37 @@ describe("checkCertificatePromo", () => {
       promoCode: "SALE10",
       certificateTypeIds: ["cert-1"],
     });
+  });
+});
+
+describe("certificatePurchaseOutcome", () => {
+  it("treats a paid order without a link as already paid", () => {
+    expect(
+      certificatePurchaseOutcome({
+        amount: 0,
+        paymentLink: null,
+        paid: true,
+      })
+    ).toBe("paid");
+  });
+
+  it("still asks for a link when the order is not paid", () => {
+    expect(
+      certificatePurchaseOutcome({ amount: 1000, paymentLink: null, paid: false })
+    ).toBe("missing-link");
+    expect(certificatePurchaseOutcome({ amount: 1000, paymentLink: "" })).toBe(
+      "missing-link"
+    );
+  });
+
+  it("follows the payment link when the order still needs payment", () => {
+    expect(
+      certificatePurchaseOutcome({
+        amount: 4500,
+        paymentLink: " https://pay.example/cert ",
+        paid: false,
+      })
+    ).toBe("redirect");
   });
 });
 

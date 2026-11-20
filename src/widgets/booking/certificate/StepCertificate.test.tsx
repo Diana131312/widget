@@ -21,16 +21,24 @@ describe("StepCertificate", () => {
       <StepCertificate
         certificates={[certificate]}
         tenantId={null}
+        format="paper"
         onContinue={onContinue}
       />
     );
 
-    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
     const next = screen.getByRole("button", { name: "Далее" });
-    expect(next).toBeDisabled();
-
-    await user.click(screen.getByRole("button", { name: /Подарочный сертификат/ }));
     expect(next).toBeEnabled();
+
+    await user.click(next);
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(document.querySelector(".booking-certificate__nominals")).toHaveClass(
+      "is-invalid"
+    );
+
+    await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
+    expect(document.querySelector(".booking-certificate__nominals")).not.toHaveClass(
+      "is-invalid"
+    );
 
     await user.click(next);
     expect(onContinue).toHaveBeenCalledWith({
@@ -38,7 +46,38 @@ describe("StepCertificate", () => {
       count: 1,
       recipientName: "",
       promoCode: "",
+      lines: [{ id: "cert-1", count: 1 }],
     });
+  });
+
+  it("keeps a separate quantity for each nominal", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    render(
+      <StepCertificate
+        certificates={[
+          certificate,
+          { ...certificate, id: "cert-2", price: 10000 },
+        ]}
+        tenantId={null}
+        format="paper"
+        onContinue={onContinue}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
+    await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
+    await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
+    await user.click(screen.getByRole("button", { name: "Далее" }));
+
+    expect(onContinue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          { id: "cert-1", count: 2 },
+          { id: "cert-2", count: 1 },
+        ],
+      })
+    );
   });
 
   it("checks a promo code from the button next to the field", async () => {
@@ -48,19 +87,19 @@ describe("StepCertificate", () => {
       <StepCertificate
         certificates={[certificate]}
         tenantId={null}
+        format="paper"
         onCheckPromo={onCheckPromo}
       />
     );
 
-    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
-    await user.click(screen.getByRole("button", { name: /Подарочный сертификат/ }));
-    const check = screen.getByRole("button", { name: "Проверить" });
+    await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
+    const check = screen.getByRole("button", { name: "проверить" });
     expect(check).toBeDisabled();
     await user.type(screen.getByRole("textbox", { name: "Промокод" }), "SALE10");
     expect(check).toBeEnabled();
 
     await user.click(check);
-    expect(onCheckPromo).toHaveBeenCalledWith("SALE10", "cert-1");
+    expect(onCheckPromo).toHaveBeenCalledWith("SALE10", ["cert-1"]);
   });
 
   it("shows the discount instead of the check button after a successful promo", () => {
@@ -68,6 +107,7 @@ describe("StepCertificate", () => {
       <StepCertificate
         certificates={[certificate]}
         tenantId={null}
+        format="paper"
         initial={{
           certificateId: certificate.id,
           count: 1,
@@ -88,6 +128,7 @@ describe("StepCertificate", () => {
       <StepCertificate
         certificates={[certificate]}
         tenantId={null}
+        format="paper"
         initial={{
           certificateId: certificate.id,
           count: 1,
@@ -104,50 +145,70 @@ describe("StepCertificate", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Такого промокода нет");
   });
 
-  it("filters certificates by the chosen tab and shows its terms", async () => {
-    const user = userEvent.setup();
+  it("shows only the certificates of the chosen format", () => {
     render(
       <StepCertificate
         tenantId={null}
+        format="electronic"
         certificates={[
-          { ...certificate, id: "other", name: "На отдых" },
           certificate,
           {
             ...certificate,
             id: "mail",
             name: "Электронный сертификат",
+            price: 10000,
           },
         ]}
       />
     );
 
-    expect(screen.getByRole("tab", { name: "Электронный" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
-    expect(
-      screen.getByRole("button", { name: "Добавить Электронный сертификат" })
-    ).toBeInTheDocument();
-    expect(screen.getByText("Придёт на почту после оплаты")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Бумажный" }));
-    expect(screen.getByText("Частичная оплата недоступна")).toBeInTheDocument();
-    expect(screen.queryByText(/свяжется администратор/)).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Добавить Подарочный сертификат" })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Добавить Электронный сертификат" })
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(/10\s000\s₽/)).toBeInTheDocument();
+    expect(screen.queryByText(/3\s000\s₽/)).not.toBeInTheDocument();
     expect(screen.queryByText("Имя получателя")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Электронный" }));
-    expect(screen.getByText("Можно оплатить часть суммы")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Добавить Электронный сертификат" })
-    ).toBeInTheDocument();
-    expect(screen.getByText("Имя получателя")).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+  });
+
+  it("asks for email only on an electronic certificate", () => {
+    render(
+      <StepCertificate
+        tenantId={null}
+        format="paper"
+        certificates={[certificate]}
+      />
+    );
+    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+  });
+
+  it("leaves next enabled without an email and marks the empty field", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    const electronic = {
+      ...certificate,
+      id: "mail",
+      name: "Электронный сертификат",
+    };
+    render(
+      <StepCertificate
+        certificates={[electronic]}
+        tenantId={null}
+        format="electronic"
+        onContinue={onContinue}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
+    const next = screen.getByRole("button", { name: "Далее" });
+    const email = screen.getByLabelText(/Email/);
+    expect(next).toBeEnabled();
+    expect(email).not.toHaveClass("booking-checkout__input--invalid");
+
+    await user.click(next);
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(email).toHaveClass("booking-checkout__input--invalid");
+
+    await user.type(email, "ivan@mail.ru");
+    expect(email).not.toHaveClass("booking-checkout__input--invalid");
+    await user.click(next);
+    expect(onContinue).toHaveBeenCalled();
   });
 });

@@ -35,12 +35,12 @@ describe("StepCertificateBuyer", () => {
     expect(pay).toBeDisabled();
 
     expect(screen.getByText("Срок сертификата")).toBeInTheDocument();
+    expect(screen.getByText("не ограничен")).toBeInTheDocument();
     expect(screen.getByText(/1 шт/)).toBeInTheDocument();
     expect(screen.queryByText("Номинал")).not.toBeInTheDocument();
-    expect(screen.getByText("Как подтвердить номер")).toBeInTheDocument();
+    expect(screen.queryByText("Как подтвердить номер")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Telegram" })).not.toBeInTheDocument();
     expect(screen.queryByText("Как с вами связаться")).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Telegram" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "По телефону" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Фамилия покупателя"), "Петров");
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");

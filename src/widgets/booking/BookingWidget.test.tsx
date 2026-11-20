@@ -89,37 +89,13 @@ describe("BookingWidget", () => {
       screen.queryByRole("heading", { name: "Бронирование" })
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
-  });
-
-  it("goes to object step for homes and returns back", async () => {
-    const user = userEvent.setup();
-    render(<BookingWidget />);
-
-    await user.click(screen.getByRole("button", { name: "Коттеджи" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Мята")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Назад" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Назад" }));
-
-    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
-  });
-
-  it("goes to object step for banya", async () => {
-    const user = userEvent.setup();
-    render(<BookingWidget />);
-
-    await user.click(screen.getByRole("button", { name: "Бани на дровах" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Кедровая")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Подарочные сертификаты" })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Коттеджи" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Бани на дровах" })
+    ).not.toBeInTheDocument();
   });
 
   it("restores step from URL deep link", async () => {
@@ -143,7 +119,9 @@ describe("BookingWidget", () => {
     render(<BookingWidget />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Подарочные сертификаты" })
+      ).toBeInTheDocument();
     });
     expect(window.location.search).toContain("bk_step=category");
     expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();

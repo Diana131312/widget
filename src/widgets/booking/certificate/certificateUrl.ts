@@ -19,7 +19,10 @@ const CERT_KEYS = [
   "cmsg",
   "cterms",
   "cformat",
+  "cq",
 ] as const;
+
+export type CertificateLine = { id: string; count: number };
 
 export type CertificatePhase = "pick" | "buyer";
 
@@ -38,6 +41,8 @@ export type CertificateUrlState = {
   messenger: CertificateMessenger | "";
   termsAccepted: boolean;
   format: CertificateFormat | null;
+  /** Несколько номиналов: id и количество. Пусто — берём cid/ccount. */
+  lines?: CertificateLine[];
 };
 
 export const EMPTY_CERTIFICATE_URL: CertificateUrlState = {
@@ -71,6 +76,35 @@ export function isCertificateStandalone(
     params.has("cert_only") ||
     params.get(`${PREFIX}certonly`) === "1"
   );
+}
+
+export function parseCertificateLines(raw: string | null): CertificateLine[] {
+  if (!raw) return [];
+  const lines: CertificateLine[] = [];
+  for (const part of raw.split(",")) {
+    const sep = part.lastIndexOf(":");
+    if (sep <= 0) continue;
+    let id = part.slice(0, sep);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      continue;
+    }
+    const count = clampCertificateCount(Number(part.slice(sep + 1)));
+    if (!id) continue;
+    lines.push({ id, count });
+  }
+  return lines;
+}
+
+export function formatCertificateLines(lines: CertificateLine[]): string {
+  return lines
+    .filter((line) => line.id && line.count >= 1)
+    .map(
+      (line) =>
+        `${encodeURIComponent(line.id)}:${clampCertificateCount(line.count)}`
+    )
+    .join(",");
 }
 
 function readParam(params: URLSearchParams, key: string): string | null {
@@ -107,8 +141,7 @@ export function parseCertificateUrl(
       : null;
   if (!phase && isCertificateStandalone(search)) phase = "pick";
 
-  const certificateId = readParam(params, "cid");
-  if (phase === "buyer" && !certificateId) phase = "pick";
+  let certificateId = readParam(params, "cid");
 
   const formatRaw = readParam(params, "cformat");
   let format: CertificateFormat | null =
@@ -125,10 +158,17 @@ export function parseCertificateUrl(
 
   if (!phase) return { ...EMPTY_CERTIFICATE_URL };
 
+  const lines = parseCertificateLines(readParam(params, "cq"));
+  const count = lines[0]
+    ? lines[0].count
+    : clampCertificateCount(Number.parseInt(readParam(params, "ccount") ?? "1", 10));
+  if (lines[0]) certificateId = lines[0].id;
+  if (phase === "buyer" && !certificateId) phase = "pick";
+
   return {
     phase,
     certificateId,
-    count: clampCertificateCount(Number.parseInt(readParam(params, "ccount") ?? "1", 10)),
+    count,
     recipientName: readParam(params, "cto") ?? "",
     promoCode: readParam(params, "cpromo") ?? "",
     lastName: readParam(params, "clast") ?? "",
@@ -138,7 +178,13 @@ export function parseCertificateUrl(
     messenger,
     termsAccepted: readParam(params, "cterms") === "1",
     format,
+    lines,
   };
+}
+
+/** URLSearchParams пишет пустой флаг как `cert_only=`. Голый ключ нужно сохранить. */
+function bareSearch(search: string): string {
+  return search.replace(/(^|[?&])([^=&]+)=(?=&|$)/g, "$1$2");
 }
 
 function clearCertificateParams(url: URL): void {
@@ -165,6 +211,7 @@ export function writeCertificateUrl(
     isCertificateStandalone(url.search) &&
     state.phase === "pick" &&
     !state.certificateId &&
+    !(state.lines && state.lines.length > 0) &&
     !state.format &&
     !state.recipientName.trim() &&
     !state.promoCode.trim() &&
@@ -211,9 +258,13 @@ export function writeCertificateUrl(
     if (state.format) {
       url.searchParams.set(`${PREFIX}cformat`, state.format);
     }
+    const packed = formatCertificateLines(state.lines ?? []);
+    if (packed) {
+      url.searchParams.set(`${PREFIX}cq`, packed);
+    }
   }
 
-  const next = `${url.pathname}${url.search}${url.hash}`;
+  const next = `${url.pathname}${bareSearch(url.search)}${url.hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   const navKey = certificateNavigationKey(state);
   const mode = options?.mode ?? "auto";

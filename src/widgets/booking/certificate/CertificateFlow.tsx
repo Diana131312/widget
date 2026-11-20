@@ -7,6 +7,8 @@ import {
   checkCertificatePromo,
   promoAppliesTo,
   rejectPromoMessage,
+  certificatePurchaseOutcome,
+  openCertificatePayment,
   saveCertificatePurchase,
 } from "./certificateApi";
 import type { CertificateBuyerValues } from "./StepCertificateBuyer";
@@ -23,6 +25,18 @@ type PromoVerdict = {
   discount: number;
   message: string | null;
 };
+
+function selectionKey(ids: string[]): string {
+  return [...new Set(ids)].sort().join(",");
+}
+
+function selectedIds(state: CertificateUrlState): string[] {
+  const fromLines = (state.lines ?? [])
+    .filter((line) => line.id && line.count >= 1)
+    .map((line) => line.id);
+  if (fromLines.length > 0) return fromLines;
+  return state.certificateId ? [state.certificateId] : [];
+}
 
 function samePromo(
   verdict: PromoVerdict | null,
@@ -45,7 +59,6 @@ type CertificateFlowProps = {
   catalogStatus: "idle" | "loading" | "ready" | "error";
   catalogError?: unknown;
   tenantId: string | null;
-  telegramBotHref?: string | null;
   onRetryCatalog?: () => void;
   onChange: (patch: Partial<CertificateUrlState>) => void;
   onPickContinue: () => void;
@@ -59,7 +72,6 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   catalogStatus,
   catalogError = null,
   tenantId,
-  telegramBotHref = null,
   onRetryCatalog,
   onChange,
   onPickContinue,
@@ -68,6 +80,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<PromoVerdict | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [orderPaid, setOrderPaid] = useState(false);
   const [checking, setChecking] = useState<"promo" | "continue" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -81,12 +94,14 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
     onChange({ phase: "pick" });
   }, [catalogStatus, onChange, selected, state.phase]);
 
-  const applyPromo = useCallback(async (code: string, certificateId: string) => {
+  const applyPromo = useCallback(async (code: string, certificateIds: string[]) => {
+    const certificateId = selectionKey(certificateIds);
     const result = await checkCertificatePromo({
       promoCode: code,
-      certificateTypeIds: [certificateId],
+      certificateTypeIds: certificateIds,
     });
-    const next: PromoVerdict = promoAppliesTo(result, certificateId)
+    const covered = certificateIds.some((id) => promoAppliesTo(result, id));
+    const next: PromoVerdict = covered
       ? {
           code,
           certificateId,
@@ -97,7 +112,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
           code,
           certificateId,
           discount: 0,
-          message: rejectPromoMessage(result, certificateId),
+          message: rejectPromoMessage(result, certificateIds[0] ?? ""),
         };
     setVerdict(next);
     setDiscount(next.discount);
@@ -106,21 +121,22 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   }, []);
 
   useEffect(() => {
-    if (state.phase !== "buyer" || !state.certificateId) return;
+    const ids = selectedIds(state);
+    if (state.phase !== "buyer" || ids.length === 0) return;
     const code = state.promoCode.trim();
     if (!code) {
       setDiscount(0);
       setPromoMessage(null);
       return;
     }
-    if (samePromo(verdict, code, state.certificateId)) {
+    if (samePromo(verdict, code, selectionKey(ids))) {
       setDiscount(verdict.discount);
       setPromoMessage(verdict.message);
       return;
     }
 
     let cancelled = false;
-    void applyPromo(code, state.certificateId)
+    void applyPromo(code, ids)
       .catch((error: unknown) => {
         if (cancelled) return;
         setDiscount(0);
@@ -130,14 +146,14 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [applyPromo, state.certificateId, state.phase, state.promoCode, verdict]);
+  }, [applyPromo, state, verdict]);
 
   const checkPromo = useCallback(
-    async (code: string, certificateId: string) => {
+    async (code: string, certificateIds: string[]) => {
       setChecking("promo");
       setPayError(null);
       try {
-        await applyPromo(code, certificateId);
+        await applyPromo(code, certificateIds);
       } catch (error) {
         setVerdict(null);
         setDiscount(0);
@@ -155,17 +171,19 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       count: number;
       recipientName: string;
       promoCode: string;
+      lines: { id: string; count: number }[];
     }) => {
       setPayError(null);
       const code = draft.promoCode.trim();
+      const ids = draft.lines.map((line) => line.id);
       if (code) {
-        const known = samePromo(verdict, code, draft.certificateId)
+        const known = samePromo(verdict, code, selectionKey(ids))
           ? verdict
           : null;
         if (!known) {
           setChecking("continue");
           try {
-            await applyPromo(code, draft.certificateId);
+            await applyPromo(code, ids);
           } catch (error) {
             setPromoMessage(getWidgetApiErrorDetail(error));
             return;
@@ -181,6 +199,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       onChange({
         certificateId: draft.certificateId,
         count: draft.count,
+        lines: draft.lines,
         recipientName: draft.recipientName,
         promoCode: code,
       });
@@ -196,8 +215,9 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       setPayError(null);
       try {
         const code = state.promoCode.trim();
+        const ids = selectedIds(state);
         const accepted =
-          samePromo(verdict, code, selected.id) && verdict.message == null
+          samePromo(verdict, code, selectionKey(ids)) && verdict.message == null
             ? code
             : undefined;
 
@@ -210,54 +230,78 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
             : state.format === "electronic"
               ? state.email.trim()
               : buyer.email.trim(),
-          recipientName: paper ? "" : state.recipientName.trim(),
-          messenger: buyer.messenger === "call" ? "sms" : buyer.messenger,
+          recipientName: "",
+          messenger: "telegram",
           promoCode: accepted,
-          certificates: [
-            {
-              id: selected.id,
-              count: clampCertificateCount(state.count),
-            },
-          ],
+          certificates: (state.lines && state.lines.length > 0
+            ? state.lines
+            : [{ id: selected.id, count: state.count }]
+          ).map((line) => ({
+            id: line.id,
+            count: clampCertificateCount(line.count),
+          })),
         });
+        const outcome = certificatePurchaseOutcome(response);
+        if (outcome === "paid") {
+          setOrderPaid(true);
+          return;
+        }
         const link =
           typeof response.paymentLink === "string"
             ? response.paymentLink.trim()
             : "";
-        if (!link) {
+        if (outcome === "missing-link" || !link) {
           setPayError("Не получили ссылку на оплату");
           return;
         }
-        window.location.assign(link);
+        openCertificatePayment(link);
       } catch (error) {
         setPayError(getWidgetApiErrorDetail(error));
       } finally {
         setSubmitting(false);
       }
     },
-    [selected, state.count, state.email, state.format, state.promoCode, state.recipientName, verdict]
+    [selected, state, verdict]
   );
+
+  if (orderPaid && state.phase === "buyer") {
+    return (
+      <div className="booking-checkout booking-checkout--success">
+        <p className="booking-checkout__success-title">Заказ оплачен</p>
+      </div>
+    );
+  }
 
   if (state.phase === "buyer" && selected) {
     return (
       <StepCertificateBuyer
         key={restoreKey}
         certificate={selected}
+        items={selectedIds(state)
+          .map((id) => {
+            const item = certificates.find((certificate) => certificate.id === id);
+            const count =
+              state.lines?.find((line) => line.id === id)?.count ?? state.count;
+            return item ? { certificate: item, count: clampCertificateCount(count) } : null;
+          })
+          .filter((row): row is { certificate: SaleCertificate; count: number } => row != null)}
         draft={{
           certificateId: selected.id,
           count: clampCertificateCount(state.count),
           recipientName: state.recipientName,
           promoCode: state.promoCode.trim(),
+          lines:
+            state.lines && state.lines.length > 0
+              ? state.lines
+              : [{ id: selected.id, count: clampCertificateCount(state.count) }],
         }}
         discountPercent={state.promoCode.trim() ? discount : 0}
         initialBuyer={state}
         showEmail={state.format == null}
-        paperDelivery={state.format === "paper"}
         promoMessage={promoMessage}
         payError={payError}
         busy={checking != null}
         submitting={submitting}
-        telegramBotHref={telegramBotHref}
         onBuyerChange={onChange}
         onPay={(buyer) => {
           void pay(buyer);

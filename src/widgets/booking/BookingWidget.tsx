@@ -135,13 +135,6 @@ function BookingWidgetInner() {
     [config]
   );
   const tenantId = config?.settings?.tenantId ?? null;
-  const telegramBotHref = useMemo(() => {
-    const raw = config?.company?.telegram?.trim();
-    if (!raw) return null;
-    if (/^https?:\/\//i.test(raw) || raw.startsWith("tg://")) return raw;
-    const user = raw.replace(/^@/, "");
-    return user ? `https://t.me/${user}` : null;
-  }, [config?.company?.telegram]);
   const patchCertificate = useCallback((patch: Partial<CertificateUrlState>) => {
     setCertificate((prev) => ({ ...prev, ...patch }));
   }, []);
@@ -368,7 +361,6 @@ function BookingWidgetInner() {
             catalogStatus={status}
             catalogError={error}
             tenantId={tenantId}
-            telegramBotHref={telegramBotHref}
             onRetryCatalog={reload}
             onChange={patchCertificate}
             onPickContinue={() => patchCertificate({ phase: "buyer" })}

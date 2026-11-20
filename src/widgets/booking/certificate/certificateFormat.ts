@@ -1,4 +1,4 @@
-export const PAPER_CERTIFICATE_EMAIL = "GDI.1999@yandex.ru";
+export const PAPER_CERTIFICATE_EMAIL = "les174.com@yandex.ru";
 
 export type CertificateFormat = "paper" | "electronic";
 

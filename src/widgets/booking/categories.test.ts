@@ -22,12 +22,9 @@ describe("BOOKING_CATEGORIES", () => {
     });
   });
 
-  it("shows homes and banya", () => {
+  it("hides homes and banya on the home screen until those purchases are ready", () => {
     expect(isCategoryHidden("homes")).toBe(false);
     expect(isCategoryHidden("banya")).toBe(false);
-    expect(VISIBLE_BOOKING_CATEGORIES.map((c) => c.id)).toEqual([
-      "homes",
-      "banya",
-    ]);
+    expect(VISIBLE_BOOKING_CATEGORIES).toEqual([]);
   });
 });

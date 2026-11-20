@@ -57,15 +57,31 @@ describe("parseCertificateUrl", () => {
     });
   });
 
-  it("keeps the pick step when the buyer link has no certificate", () => {
+  it("opens the pick step when the buyer link has no certificate", () => {
     expect(parseCertificateUrl("?bk_cert=buyer")).toMatchObject({
       phase: "pick",
       certificateId: null,
+      format: "electronic",
     });
   });
 });
 
 describe("writeCertificateUrl", () => {
+  it("keeps the standalone flag without an equals sign", () => {
+    window.history.replaceState({}, "", "/?cert_only");
+    writeCertificateUrl({
+      ...base,
+      phase: "pick",
+      certificateId: null,
+      recipientName: "",
+      format: "electronic",
+    });
+
+    expect(window.location.search).toContain("cert_only");
+    expect(window.location.search).not.toContain("cert_only=");
+    expect(isCertificateStandalone()).toBe(true);
+  });
+
   it("pushes a new entry when the certificate screen changes and keeps booking params", () => {
     writeCertificateUrl(base);
 

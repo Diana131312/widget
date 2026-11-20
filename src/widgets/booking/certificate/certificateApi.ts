@@ -130,6 +130,27 @@ export type SaveCertificatePurchaseArgs = {
   fetcher?: typeof fetch;
 };
 
+export type CertificatePurchaseResult = {
+  amount?: number;
+  paymentLink?: string | null;
+  paid?: boolean;
+};
+
+/** Куда вести после /save-certificates. */
+export function certificatePurchaseOutcome(
+  response: CertificatePurchaseResult
+): "redirect" | "paid" | "missing-link" {
+  const link =
+    typeof response.paymentLink === "string" ? response.paymentLink.trim() : "";
+  if (link) return "redirect";
+  if (response.paid === true) return "paid";
+  return "missing-link";
+}
+
+export function openCertificatePayment(link: string): void {
+  window.location.assign(link);
+}
+
 /** POST /save-certificates. Промокод передаём только если проверка его приняла. */
 export async function saveCertificatePurchase(args: SaveCertificatePurchaseArgs) {
   const api = createWidgetApi({

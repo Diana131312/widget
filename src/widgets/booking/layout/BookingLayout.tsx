@@ -14,6 +14,8 @@ type BookingLayoutProps = {
   stepNumber?: number;
   /** Знаменатель «из M», если сценарий короче брони */
   stepTotal?: number;
+  /** Короткая подпись справа от «Шаг N из M» */
+  stepNote?: string | null;
   onStepClick?: (stepId: BookingStepId) => void;
   /** ФИ авторизованного клиента в шапке */
   userLabel?: string | null;
@@ -31,6 +33,7 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
   hideStepLabel,
   stepNumber,
   stepTotal,
+  stepNote,
   onStepClick,
   userLabel,
   children,
@@ -51,6 +54,7 @@ export const BookingLayout: React.FC<BookingLayoutProps> = ({
         hideStepLabel={hideStepLabel}
         stepNumber={stepNumber}
         stepTotal={stepTotal}
+        stepNote={stepNote}
         onStepClick={onStepClick}
         userLabel={userLabel}
       />

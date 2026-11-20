@@ -1,0 +1,33 @@
+---
+description: Text edits in the booking widget must leave the certificate screens runnable
+globs: src/widgets/booking/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Booking copy must not break the flow
+
+A wording change is still a code change. Vite builds without checking that every name exists, so a missing import or ref ships and crashes only when that screen renders.
+
+## When editing visible text
+
+- Change the string only. Leave imports, hooks, refs, and the surrounding JSX in place.
+- Do not drop an import while a call to that function remains.
+- Do not remove `useRef` / `useState` while the component still uses that binding.
+
+```tsx
+// ❌ wording edit also deleted the import
+<span>{formatCertificateTerm(months)}</span>
+
+// ✅ same sentence, call still wired
+<span>не ограничен</span>
+```
+
+## Before a production build
+
+Run the certificate screen tests and stop if they fail:
+
+```
+pnpm exec vitest run src/widgets/booking/certificate
+```
+
+Those tests open the pick step and the buyer summary for both electronic and paper certificates. A `ReferenceError` there means the main flow is broken.

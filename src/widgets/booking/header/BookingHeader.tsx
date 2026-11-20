@@ -17,6 +17,8 @@ type BookingHeaderProps = {
   stepNumber?: number;
   /** Сколько шагов в подписи «Шаг N из M», если сценарий короче брони */
   stepTotal?: number;
+  /** Короткая подпись справа от счётчика, например вид сертификата */
+  stepNote?: string | null;
   /** @deprecated Точки шагов убраны */
   onStepClick?: (stepId: BookingStepId) => void;
   /** ФИ авторизованного клиента (справа) */
@@ -33,6 +35,7 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
   hideStepLabel = false,
   stepNumber,
   stepTotal,
+  stepNote = null,
   userLabel = null,
 }) => {
   const index = getStepIndex(stepId);
@@ -65,6 +68,9 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
         {!hideStepLabel ? (
           <p className="booking-header__step">
             Шаг {stepNum} из {total}
+            {stepNote ? (
+              <span className="booking-header__step-note">{stepNote}</span>
+            ) : null}
           </p>
         ) : null}
       </div>
