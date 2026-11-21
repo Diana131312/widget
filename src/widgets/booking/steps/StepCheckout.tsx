@@ -24,16 +24,7 @@ import {
   formatRuPhoneMask,
   isRuPhoneComplete,
 } from "../checkout/phone";
-import {
-  applyCertificatePayment,
-  checkBookingCertificate,
-  checkBookingPromo,
-} from "../checkout/bookingPay";
 import { buildSaveBodies } from "../checkout/buildSavePayload";
-import {
-  CheckoutCodes,
-  type CodeMark,
-} from "../checkout/CheckoutCodes";
 import { ServiceOfferModal } from "../checkout/ServiceOfferModal";
 import type { SetupCalcMeta } from "../setup/calculate.utils";
 import { QuoteBreakdown } from "../setup/QuoteBreakdown";
@@ -169,27 +160,9 @@ export const StepCheckout: React.FC<Props> = ({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(
     initialContact?.paymentMode ?? "prepay"
   );
-  const [promoCode, setPromoCode] = useState(initialContact?.promoCode ?? "");
-  const [promoMark, setPromoMark] = useState<CodeMark>(
-    initialContact?.promoCode ? "ok" : "idle"
-  );
-  const [promoPercent, setPromoPercent] = useState<number | null>(null);
-  const [promoError, setPromoError] = useState<string | null>(null);
-  const [certificateNumber, setCertificateNumber] = useState(
-    initialContact?.certificateNumber ?? ""
-  );
-  const [certificateMark, setCertificateMark] = useState<CodeMark>(
-    initialContact?.certificateNumber ? "ok" : "idle"
-  );
-  const [certificateInfo, setCertificateInfo] = useState<{
-    name: string;
-    balance: number;
-  } | null>(null);
-  const [certificateError, setCertificateError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(Boolean(initialContact));
   const [offerOpen, setOfferOpen] = useState(false);
   const [isBusy, setBusy] = useState(false);
-  const [isChecking, setChecking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const quote = useBookingQuote({
@@ -257,99 +230,10 @@ export const StepCheckout: React.FC<Props> = ({
     !isLoading &&
     !error;
 
-  const handleCheckPromo = async () => {
-    const code = promoCode.trim();
-    if (!code || isBusy || isChecking) return;
-    setChecking(true);
-    setPromoError(null);
-    try {
-      const percent = await checkBookingPromo(code);
-      if (percent > 0) {
-        setPromoMark("ok");
-        setPromoPercent(percent);
-      } else {
-        setPromoMark("bad");
-        setPromoPercent(null);
-        setPromoError("Промокод не подошёл");
-      }
-    } catch (err) {
-      setPromoMark("bad");
-      setPromoPercent(null);
-      setPromoError(getWidgetApiErrorDetail(err));
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const handleCheckCertificate = async () => {
-    const number = certificateNumber.trim();
-    if (!number || isBusy || isChecking) return;
-    setChecking(true);
-    setCertificateError(null);
-    try {
-      const info = await checkBookingCertificate(number);
-      setCertificateInfo(info);
-      setCertificateMark("ok");
-    } catch (err) {
-      setCertificateInfo(null);
-      setCertificateMark("bad");
-      setCertificateError(getWidgetApiErrorDetail(err));
-    } finally {
-      setChecking(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!formValid || isBusy || isChecking) return;
+    if (!formValid || isBusy) return;
     setBusy(true);
     setSubmitError(null);
-
-    const promo = promoCode.trim();
-    let promoForSave: string | undefined;
-    if (promo) {
-      if (promoMark === "ok") {
-        promoForSave = promo;
-      } else if (promoMark !== "bad") {
-        try {
-          const percent = await checkBookingPromo(promo);
-          if (percent > 0) {
-            setPromoMark("ok");
-            setPromoPercent(percent);
-            promoForSave = promo;
-          } else {
-            setPromoMark("bad");
-            setPromoPercent(null);
-            setPromoError("Промокод не подошёл");
-            setBusy(false);
-            return;
-          }
-        } catch (err) {
-          setPromoError(getWidgetApiErrorDetail(err));
-          setBusy(false);
-          return;
-        }
-      }
-    }
-
-    const certificate = certificateNumber.trim();
-    let certificateForPay: string | undefined;
-    if (certificate) {
-      if (certificateMark === "ok") {
-        certificateForPay = certificate;
-      } else if (certificateMark !== "bad") {
-        try {
-          const info = await checkBookingCertificate(certificate);
-          setCertificateInfo(info);
-          setCertificateMark("ok");
-          certificateForPay = certificate;
-        } catch (err) {
-          setCertificateMark("bad");
-          setCertificateError(getWidgetApiErrorDetail(err));
-          setBusy(false);
-          return;
-        }
-      }
-    }
 
     const contact: CheckoutContactDraft = {
       firstName: firstName.trim(),
@@ -358,8 +242,6 @@ export const StepCheckout: React.FC<Props> = ({
       comment,
       verifyChannel,
       paymentMode,
-      ...(promoForSave ? { promoCode: promoForSave } : {}),
-      ...(certificateForPay ? { certificateNumber: certificateForPay } : {}),
     };
 
     if (!savedToken) {
@@ -407,18 +289,7 @@ export const StepCheckout: React.FC<Props> = ({
       });
 
       const meta = readSaveMeta(res, total, confirmMessage, paymentMode);
-      if (certificateForPay) {
-        try {
-          onBooked(contact, await applyCertificatePayment(meta, certificateForPay));
-        } catch (payError) {
-          const detail = getWidgetApiErrorDetail(payError);
-          setSubmitError(detail);
-          showToast(detail);
-          onBooked(contact, meta);
-        }
-      } else {
-        onBooked(contact, meta);
-      }
+      onBooked(contact, meta);
     } catch (err) {
       if (isAuthRejected(err)) {
         // токен отозван/протух на сервере → подтверждаем номер заново
@@ -554,32 +425,6 @@ export const StepCheckout: React.FC<Props> = ({
           </div>
         </fieldset>
 
-        <CheckoutCodes
-          promoCode={promoCode}
-          promoMark={promoMark}
-          promoPercent={promoPercent}
-          promoError={promoError}
-          certificateNumber={certificateNumber}
-          certificateMark={certificateMark}
-          certificateInfo={certificateInfo}
-          certificateError={certificateError}
-          busy={isBusy || isChecking}
-          onPromoChange={(value) => {
-            setPromoCode(value);
-            setPromoMark("idle");
-            setPromoPercent(null);
-            setPromoError(null);
-          }}
-          onCertificateChange={(value) => {
-            setCertificateNumber(value);
-            setCertificateMark("idle");
-            setCertificateInfo(null);
-            setCertificateError(null);
-          }}
-          onCheckPromo={() => void handleCheckPromo()}
-          onCheckCertificate={() => void handleCheckCertificate()}
-        />
-
         <div className="booking-checkout__consents">
           <label className="booking-checkout__privacy">
             <input
@@ -616,7 +461,7 @@ export const StepCheckout: React.FC<Props> = ({
         <button
           type="button"
           className="booking-checkout__submit"
-          disabled={!formValid || isBusy || isChecking}
+          disabled={!formValid || isBusy}
           onClick={() => void handleSubmit()}
         >
           {isBusy

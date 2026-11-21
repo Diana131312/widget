@@ -67,7 +67,8 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
         ) : null}
         {!hideStepLabel ? (
           <p className="booking-header__step">
-            Шаг {stepNum} из {total}
+            Шаг {stepNum}
+            {stepNum > 1 ? ` из ${total}` : null}
             {stepNote ? (
               <span className="booking-header__step-note">{stepNote}</span>
             ) : null}

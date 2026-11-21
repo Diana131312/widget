@@ -2244,14 +2244,8 @@ button.booking-steps__dot:focus-visible {
   text-decoration: none;
 }
 
-/* Временное сравнение: рябиновая — красный текст серых слотов. */
-.booking-banya-stage--rowan .booking-slots__item--busy {
-  color: #d40000;
-}
-
-/* Временное сравнение: березовая — серый индикатор занятости вместо красного. */
-.booking-banya-stage--birch .booking-cal__bar-busy,
-.booking-banya-stage--birch .booking-cal__legend-dot--busy {
+.booking-banya-stage .booking-cal__bar-busy,
+.booking-banya-stage .booking-cal__legend-dot--busy {
   background: #8a908c;
   background-color: #8a908c;
 }

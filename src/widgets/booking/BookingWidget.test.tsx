@@ -77,25 +77,27 @@ describe("BookingWidget", () => {
   it("counts the certificate-only link as step 1 of 2", () => {
     window.history.replaceState({}, "", "/?cert_only");
     render(<BookingWidget />);
-    expect(screen.getByText("Шаг 1 из 2")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
   });
 
   it("starts on category step without back", () => {
     render(<BookingWidget />);
 
-    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Бронирование" })
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Коттеджи" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Бани на дровах" })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Подарочные сертификаты" })
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Коттеджи" })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Бани на дровах" })
-    ).not.toBeInTheDocument();
   });
 
   it("restores step from URL deep link", async () => {
@@ -124,7 +126,8 @@ describe("BookingWidget", () => {
       ).toBeInTheDocument();
     });
     expect(window.location.search).toContain("bk_step=category");
-    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
   });
 
   it("shows occupied slot issue with choose-another-time action", async () => {

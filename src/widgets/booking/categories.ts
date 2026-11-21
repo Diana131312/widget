@@ -28,9 +28,6 @@ export const BOOKING_CATEGORIES: BookingCategoryConfig[] = [
   },
 ];
 
-/** На главной виджета эти покупки скрыты, пока сценарий не доделан. */
-const PAUSED_HOME_CATEGORIES = new Set<BookingCategoryId>(["homes", "banya"]);
-
 export function getCategoryConfig(
   id: BookingCategoryId
 ): BookingCategoryConfig | undefined {
@@ -38,7 +35,7 @@ export function getCategoryConfig(
 }
 
 export const VISIBLE_BOOKING_CATEGORIES = BOOKING_CATEGORIES.filter(
-  (c) => !c.hidden && !PAUSED_HOME_CATEGORIES.has(c.id)
+  (c) => !c.hidden
 );
 
 export function isCategoryHidden(id: BookingCategoryId): boolean {

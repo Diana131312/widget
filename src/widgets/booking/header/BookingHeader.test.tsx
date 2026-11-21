@@ -14,7 +14,8 @@ describe("BookingHeader", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
-    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Бронирование" })
     ).not.toBeInTheDocument();

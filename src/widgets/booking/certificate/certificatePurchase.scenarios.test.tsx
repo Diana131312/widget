@@ -101,7 +101,8 @@ describe("certificate purchase scenarios", () => {
   it("opens only certificates on the standalone link and keeps that link after refresh", async () => {
     const view = await openCertificateOnly();
 
-    expect(screen.getByText("Шаг 1 из 2")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Электронный" })).toHaveAttribute(
       "aria-selected",
       "true"
@@ -139,7 +140,8 @@ describe("certificate purchase scenarios", () => {
     resetCertificateUrlKey();
     render(<BookingWidget />);
 
-    expect(await screen.findByText("Шаг 1 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("tab", { name: "Электронный" })[0]).toHaveAttribute(
       "aria-selected",
       "true"
@@ -163,7 +165,8 @@ describe("certificate purchase scenarios", () => {
     expect(
       await screen.findByRole("button", { name: "Подарочные сертификаты" })
     ).toBeInTheDocument();
-    expect(screen.getByText("Шаг 1 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 1")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
     expect(window.location.search).not.toContain("bk_cert=");
   });
 

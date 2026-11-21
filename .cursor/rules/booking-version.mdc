@@ -1,0 +1,33 @@
+---
+description: Bump the booking widget version on each commit and on a release build
+alwaysApply: true
+---
+
+# Booking version
+
+The version lives in `package.json`, `CHANGELOG.md`, and a git tag `vX.Y.Z`. `v1.0.0` is the certificate purchase widget.
+
+## On every commit
+
+Bump the patch number before committing. `v1.0.0` becomes `v1.0.1`.
+
+- Set `package.json` `version` to the new number.
+- Add a `CHANGELOG.md` section for that version with what changed.
+- Tag the commit `vX.Y.Z` and push the tag with the commit.
+
+Do not bump the minor or major number for an ordinary commit.
+
+## On a release build
+
+When the user asks to build a release, bump the major number first. `v1.4.2` becomes `v2.0.0`. Reset minor and patch to 0.
+
+- Update `package.json`, `CHANGELOG.md`, and the git tag the same way as a commit.
+- Then run `pnpm build`.
+
+```text
+❌ commit stays on v1.0.0
+✅ commit moves v1.0.0 → v1.0.1, changelog and tag included
+
+❌ release build stays on v1.0.3 or only bumps the patch
+✅ release build moves v1.0.3 → v2.0.0, then pnpm build
+```
