@@ -1,6 +1,6 @@
 {
   "name": "booking-widget",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Обособленный виджет бронирования на React",
   "main": "dist/index.js",
@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:booking": "node ./src/widgets/booking/test/run-tests.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

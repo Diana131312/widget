@@ -4,9 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Booking Widget</title>
-    <script type="module" crossorigin src="/assets/index-CsCfgzPx.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Df79dxTK.css">
-      <meta name="bk-build" content="2026-11-21T08:05:59.398Z" />
+    <meta name="bk-build" content="2026-11-24T22:13:38.202Z" />
+<script>(function () {
+  /* bk-fresh-check */
+  function showBootError(text) {
+    var root = document.getElementById("root");
+    if (!root || root.firstElementChild) return;
+    root.setAttribute("data-boot-error", "1");
+    root.textContent = text;
+    root.style.cssText = "white-space:pre-wrap;padding:16px;color:#1c1c1c;background:#fff;font:16px/1.45 -apple-system,sans-serif";
+  }
+  window.addEventListener("error", function (event) {
+    var msg = (event && event.message) || "Ошибка";
+    if (event && event.filename) msg += "\n" + event.filename;
+    showBootError("Не удалось открыть виджет\n" + msg);
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    var reason = event && event.reason;
+    var msg = (reason && (reason.stack || reason.message)) || String(reason || "Ошибка");
+    showBootError("Не удалось открыть виджет\n" + msg);
+  });
+  setTimeout(function () {
+    var root = document.getElementById("root");
+    if (root && !root.getAttribute("data-boot-error") && !root.firstChild) {
+      showBootError("Не удалось открыть виджет\nСкрипт страницы не запустился");
+    }
+  }, 4000);
+  var meta = document.querySelector('meta[name="bk-build"]');
+  var localId = meta && (meta.getAttribute("content") || "").trim();
+  if (!localId) return;
+  var guard = "bk-build-reload";
+  var versionUrl = new URL("version.json", document.baseURI);
+  versionUrl.searchParams.set("t", String(Date.now()));
+  fetch(versionUrl.href, { cache: "no-store" })
+    .then(function (response) { return response.ok ? response.json() : null; })
+    .then(function (data) {
+      var remoteId = data && typeof data.id === "string" ? data.id.trim() : "";
+      if (!remoteId || remoteId === localId) return;
+      var current = new URL(location.href);
+      if (current.searchParams.get("_v") === remoteId) return;
+      var tried = null;
+      try { tried = sessionStorage.getItem(guard); } catch (e) { return; }
+      if (tried === remoteId) return;
+      try { sessionStorage.setItem(guard, remoteId); } catch (e) { return; }
+      current.searchParams.set("_v", remoteId);
+      var parts = [];
+      current.searchParams.forEach(function (value, key) {
+        parts.push(value === "" ? key : key + "=" + encodeURIComponent(value));
+      });
+      var search = parts.length ? "?" + parts.join("&") : "";
+      location.replace(current.origin + current.pathname + search + current.hash);
+    })
+    .catch(function () {});
+})();</script>
+    <script type="module" src="/assets/index-DqzE4vEB.js"></script>
+    <link rel="stylesheet" href="/assets/index-CbFw--Ac.css">
   </head>
   <body>
     <div id="root"></div>

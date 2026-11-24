@@ -23,6 +23,8 @@ type SetupCalculateInput = {
   slotDuration: number | null;
   /** Цена слота — fallback, если API не вернул total. */
   slotPrice: number | null;
+  /** Проверенный промокод. Пусто — сервер считает без скидки. */
+  promoCode?: string | null;
 };
 
 /** Пауза перед /calculate при смене гостей — меньше скачков UI и лишних запросов. */
@@ -74,10 +76,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
 
     let cancelled = false;
     setError(null);
-    // Сразу прячем прошлый расчёт — иначе при смене гостей видна устаревшая сумма.
-    setBanyaCalc(null);
-    setHomesCalc(null);
-    hadCalcRef.current = false;
+    // Прошлый расчёт остаётся на экране, пока приходит новый.
     setIsLoading(true);
 
     const timer = window.setTimeout(async () => {
@@ -97,6 +96,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
             checkInDate: input.checkIn,
             checkOutDate: input.checkOut,
             personCount: guestCount,
+            ...(input.promoCode ? { promoCode: input.promoCode } : {}),
           });
           if (cancelled) return;
           const view = parseHomesCalculateResponse(res);
@@ -142,7 +142,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
             duration,
             discounts: [],
             personCount: guestCount,
-            promoCode: null,
+            promoCode: input.promoCode || null,
             contactDiscount: 0,
             discountContactType: 0,
             manualDiscount: null,
@@ -207,6 +207,7 @@ export function useSetupCalculate({ api, input, onPriceResolved }: Args) {
     input?.banyaTimeTo,
     input?.slotDuration,
     input?.slotPrice,
+    input?.promoCode,
     reloadToken,
   ]);
 

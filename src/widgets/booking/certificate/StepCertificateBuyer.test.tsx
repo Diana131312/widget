@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { clearAuthToken, saveAuthToken } from "../checkout/authToken";
 import type { SaleCertificate } from "./parseCertificates";
 import { StepCertificateBuyer } from "./StepCertificateBuyer";
 
@@ -14,6 +15,37 @@ const certificate: SaleCertificate = {
 };
 
 describe("StepCertificateBuyer", () => {
+  afterEach(() => {
+    clearAuthToken();
+  });
+
+  it("fills the buyer from the signed-in profile", () => {
+    saveAuthToken({
+      token: "jwt",
+      expiresAt: "2099-01-01T00:00:00Z",
+      phone: "79001234567",
+      firstName: "Иван",
+      lastName: "Петров",
+    });
+    render(
+      <StepCertificateBuyer
+        certificate={certificate}
+        draft={{
+          certificateId: certificate.id,
+          count: 1,
+          recipientName: "",
+          promoCode: "",
+        }}
+        discountPercent={0}
+      />
+    );
+    expect(screen.getByLabelText("Фамилия покупателя")).toHaveValue("Петров");
+    expect(screen.getByLabelText("Имя покупателя")).toHaveValue("Иван");
+    expect(screen.getByLabelText("Телефон покупателя")).toHaveValue(
+      "+7 (900) 123-45-67"
+    );
+  });
+
   it("requires email before payment", async () => {
     const user = userEvent.setup();
     const onPay = vi.fn();

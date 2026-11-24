@@ -2128,8 +2128,8 @@ button.booking-steps__dot:focus-visible {
 
 .booking-slots__list {
   list-style: none;
-  margin: 0 auto;
-  padding: 0 12px 12px;
+  margin: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
@@ -2138,9 +2138,15 @@ button.booking-steps__dot:focus-visible {
   box-sizing: border-box;
 }
 
+.booking-slots__list > li {
+  display: flex;
+  min-width: 0;
+}
+
 @media (min-width: 720px) {
   .booking-slots__list {
     grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 1fr;
   }
 }
 
@@ -2167,6 +2173,9 @@ button.booking-steps__dot:focus-visible {
 
 .booking-slots__item {
   width: 100%;
+  height: 100%;
+  min-height: 52px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -2242,12 +2251,6 @@ button.booking-steps__dot:focus-visible {
   cursor: not-allowed;
   opacity: 1;
   text-decoration: none;
-}
-
-.booking-banya-stage .booking-cal__bar-busy,
-.booking-banya-stage .booking-cal__legend-dot--busy {
-  background: #8a908c;
-  background-color: #8a908c;
 }
 
 .booking-slots__item--free .booking-slots__duration,
@@ -2847,6 +2850,39 @@ button.booking-steps__dot:focus-visible {
   background: #faf6f6;
 }
 
+.booking-setup-calc--refresh {
+  position: relative;
+}
+
+.booking-setup-calc__frozen {
+  filter: grayscale(1);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.booking-setup-calc__veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(90, 98, 94, 0.34);
+  border-radius: 10px;
+}
+
+.booking-setup-calc__veil-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.booking-setup-calc__veil-card .booking-setup-calc__state-title {
+  margin: 0;
+}
+
 .booking-setup-calc__spinner {
   flex: 0 0 auto;
   width: 20px;
@@ -3233,6 +3269,12 @@ button.booking-steps__dot:focus-visible {
   color: inherit;
   font-weight: 600;
   text-underline-offset: 2px;
+}
+
+.booking-checkout__rule {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid var(--bk-border);
 }
 
 .booking-checkout__messenger {

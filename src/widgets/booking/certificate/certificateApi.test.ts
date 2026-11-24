@@ -4,6 +4,7 @@ import {
   checkCertificatePromo,
   parseCertificatePromo,
   certificatePurchaseOutcome,
+  paymentDocumentTarget,
   saveCertificatePurchase,
 } from "./certificateApi";
 
@@ -105,6 +106,17 @@ describe("certificatePurchaseOutcome", () => {
         paid: false,
       })
     ).toBe("redirect");
+  });
+});
+
+describe("paymentDocumentTarget", () => {
+  it("opens payment in the top window when the widget sits in a frame", () => {
+    expect(paymentDocumentTarget(true, true)).toBe("top");
+  });
+
+  it("stays in the current window on a phone page and in a foreign frame", () => {
+    expect(paymentDocumentTarget(false, false)).toBe("self");
+    expect(paymentDocumentTarget(true, false)).toBe("self");
   });
 });
 

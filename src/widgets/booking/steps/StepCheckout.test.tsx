@@ -112,7 +112,7 @@ function Harness({
 
 async function fillForm(user: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => {
-    expect(screen.getByText("Предоплата")).toBeInTheDocument();
+    expect(screen.getByText("К оплате")).toBeInTheDocument();
   });
   // поля могут быть предзаполнены из токена — вводим заново
   for (const [label, value] of [
@@ -150,10 +150,12 @@ describe("StepCheckout", () => {
   it("shows prepay with products and computed extra guest surcharge", async () => {
     render(<Harness />);
     await waitFor(() => {
-      expect(screen.getByText("Предоплата")).toBeInTheDocument();
+      expect(screen.getByText("К оплате")).toBeInTheDocument();
     });
     expect(screen.getAllByText(/3[\s\u00a0]?500/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Доп\. гости/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Промокод")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Сертификат")).not.toBeInTheDocument();
     expect(screen.getAllByText(/1[\s\u00a0]?000/).length).toBeGreaterThan(0);
   });
 
@@ -162,7 +164,7 @@ describe("StepCheckout", () => {
     render(<Harness />);
 
     await waitFor(() => {
-      expect(screen.getByText("Предоплата")).toBeInTheDocument();
+      expect(screen.getByText("К оплате")).toBeInTheDocument();
     });
 
     const submit = screen.getByRole("button", { name: "Далее →" });
@@ -322,7 +324,7 @@ describe("StepCheckout", () => {
   it("shows verification channels when number is not confirmed", async () => {
     render(<Harness guestCount={1} />);
     await waitFor(() => {
-      expect(screen.getByText("Предоплата")).toBeInTheDocument();
+      expect(screen.getByText("К оплате")).toBeInTheDocument();
     });
     expect(screen.getByText("Telegram")).toBeInTheDocument();
     expect(screen.getByText("MAX")).toBeInTheDocument();

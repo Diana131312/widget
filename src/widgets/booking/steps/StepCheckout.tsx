@@ -21,6 +21,14 @@ import {
 } from "../checkout/authToken";
 import { ContactFields } from "../checkout/ContactFields";
 import {
+  CheckoutCodes,
+  type CodeMark,
+} from "../checkout/CheckoutCodes";
+import {
+  bookingPromoMessage,
+  checkBookingPromo,
+} from "../checkout/bookingPay";
+import {
   formatRuPhoneMask,
   isRuPhoneComplete,
 } from "../checkout/phone";
@@ -164,7 +172,15 @@ export const StepCheckout: React.FC<Props> = ({
   const [offerOpen, setOfferOpen] = useState(false);
   const [isBusy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState(initialContact?.promoCode ?? "");
+  const [promoMark, setPromoMark] = useState<CodeMark>(
+    initialContact?.promoCode ? "ok" : "idle"
+  );
+  const [promoPercent, setPromoPercent] = useState<number | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [codesBusy, setCodesBusy] = useState(false);
 
+  const acceptedPromo = promoMark === "ok" ? promoCode.trim() : "";
   const quote = useBookingQuote({
     api,
     categoryId,
@@ -181,6 +197,7 @@ export const StepCheckout: React.FC<Props> = ({
     productQuantities,
     basePrice,
     calcMeta,
+    promoCode: acceptedPromo || null,
     onBasePriceResolved,
   });
   const {
@@ -230,6 +247,41 @@ export const StepCheckout: React.FC<Props> = ({
     !isLoading &&
     !error;
 
+  const handleCheckPromo = async () => {
+    const code = promoCode.trim();
+    const date = categoryId === "homes" ? checkIn : banyaDate;
+    if (!code || codesBusy || isBusy) return;
+    if (!date) {
+      setPromoMark("bad");
+      setPromoPercent(null);
+      setPromoError("Сначала выберите дату");
+      return;
+    }
+    setCodesBusy(true);
+    setPromoError(null);
+    try {
+      const result = await checkBookingPromo({
+        promoCode: code,
+        roomId,
+        date,
+      });
+      if (result.discount > 0 && result.reason === "ok") {
+        setPromoMark("ok");
+        setPromoPercent(result.discount);
+        return;
+      }
+      setPromoMark("bad");
+      setPromoPercent(null);
+      setPromoError(bookingPromoMessage(result));
+    } catch (err) {
+      setPromoMark("bad");
+      setPromoPercent(null);
+      setPromoError(getWidgetApiErrorDetail(err));
+    } finally {
+      setCodesBusy(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formValid || isBusy) return;
     setBusy(true);
@@ -242,6 +294,9 @@ export const StepCheckout: React.FC<Props> = ({
       comment,
       verifyChannel,
       paymentMode,
+      ...(promoMark === "ok" && promoCode.trim()
+        ? { promoCode: promoCode.trim() }
+        : {}),
     };
 
     if (!savedToken) {
@@ -310,17 +365,6 @@ export const StepCheckout: React.FC<Props> = ({
   return (
     <div className="booking-checkout">
       <div className="booking-checkout__main">
-        <QuoteBreakdown
-          quote={quote}
-          categoryId={categoryId}
-          guestCount={guestCount}
-          banyaDate={banyaDate}
-          banyaTimeFrom={banyaTimeFrom}
-          banyaTimeTo={banyaTimeTo}
-          checkIn={checkIn}
-          checkOut={checkOut}
-        />
-
         <ContactFields
           firstName={firstName}
           lastName={lastName}
@@ -330,13 +374,10 @@ export const StepCheckout: React.FC<Props> = ({
           onLastNameChange={setLastName}
           onPhoneChange={(raw) => setPhone(formatRuPhoneMask(raw))}
           onCommentChange={setComment}
+          phoneConfirmed={Boolean(savedToken)}
         />
 
-        {savedToken ? (
-          <p className="booking-checkout__channel-note">
-            Номер уже подтверждён — повторное подтверждение не нужно
-          </p>
-        ) : (
+        {savedToken ? null : (
           <fieldset className="booking-checkout__messenger">
             <legend className="booking-checkout__label">
               Как подтвердить номер
@@ -394,6 +435,8 @@ export const StepCheckout: React.FC<Props> = ({
           </fieldset>
         )}
 
+        <hr className="booking-checkout__rule" />
+
         <fieldset className="booking-checkout__messenger">
           <legend className="booking-checkout__label">Оплата</legend>
           <div className="booking-checkout__radio-group">
@@ -424,6 +467,34 @@ export const StepCheckout: React.FC<Props> = ({
             </label>
           </div>
         </fieldset>
+
+        <CheckoutCodes
+          promoCode={promoCode}
+          promoMark={promoMark}
+          promoPercent={promoPercent}
+          promoError={promoError}
+          busy={codesBusy || isBusy}
+          onPromoChange={(value) => {
+            setPromoCode(value);
+            setPromoMark("idle");
+            setPromoPercent(null);
+            setPromoError(null);
+          }}
+          onCheckPromo={() => void handleCheckPromo()}
+        />
+
+        <QuoteBreakdown
+          quote={quote}
+          categoryId={categoryId}
+          guestCount={guestCount}
+          banyaDate={banyaDate}
+          banyaTimeFrom={banyaTimeFrom}
+          banyaTimeTo={banyaTimeTo}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          paymentMode={paymentMode}
+          promoPercent={promoMark === "ok" ? promoPercent : null}
+        />
 
         <div className="booking-checkout__consents">
           <label className="booking-checkout__privacy">

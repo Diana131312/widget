@@ -62,6 +62,7 @@ type CertificateFlowProps = {
   onRetryCatalog?: () => void;
   onChange: (patch: Partial<CertificateUrlState>) => void;
   onPickContinue: () => void;
+  authVersion?: number;
 };
 
 /** Выбор сертификата и оплата. Поля живут в адресе страницы. */
@@ -75,6 +76,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   onRetryCatalog,
   onChange,
   onPickContinue,
+  authVersion = 0,
 }) => {
   const [discount, setDiscount] = useState<number | null>(null);
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
@@ -213,6 +215,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       if (!selected) return;
       setSubmitting(true);
       setPayError(null);
+      let leavingForPayment = false;
       try {
         const code = state.promoCode.trim();
         const ids = selectedIds(state);
@@ -255,10 +258,11 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
           return;
         }
         openCertificatePayment(link);
+        leavingForPayment = true;
       } catch (error) {
         setPayError(getWidgetApiErrorDetail(error));
       } finally {
-        setSubmitting(false);
+        if (!leavingForPayment) setSubmitting(false);
       }
     },
     [selected, state, verdict]
@@ -302,6 +306,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
         payError={payError}
         busy={checking != null}
         submitting={submitting}
+        authVersion={authVersion}
         onBuyerChange={onChange}
         onPay={(buyer) => {
           void pay(buyer);

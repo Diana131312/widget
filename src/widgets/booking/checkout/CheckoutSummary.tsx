@@ -1,4 +1,5 @@
 import React from "react";
+import type { PaymentMode } from "./checkoutDraft";
 import type { BookingCategoryId } from "../types";
 import {
   BookingPriceBreakdown,
@@ -29,6 +30,9 @@ type Props = {
   discountText?: string | null;
   amountBeforeDiscount?: number | null;
   extraGuest?: ExtraGuestBreakdown | null;
+  certificateBalance?: number | null;
+  paymentMode?: PaymentMode | null;
+  promoPercent?: number | null;
 };
 
 /** Тот же блок расчёта, что на setup. */

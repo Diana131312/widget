@@ -531,6 +531,8 @@ describe("certificate purchase scenarios", () => {
     await waitFor(() =>
       expect(openPayment).toHaveBeenCalledWith("https://pay.example/cert")
     );
+    expect(screen.getByRole("button", { name: "Создаём заказ…" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Оплатить/ })).not.toBeInTheDocument();
     expect(savePurchase).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "ivan@mail.ru",

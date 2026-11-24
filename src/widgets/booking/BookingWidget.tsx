@@ -364,6 +364,7 @@ function BookingWidgetInner() {
             onRetryCatalog={reload}
             onChange={patchCertificate}
             onPickContinue={() => patchCertificate({ phase: "buyer" })}
+            authVersion={authVersion}
           />
         )}
         {stepId === "object" && categoryId && config && (

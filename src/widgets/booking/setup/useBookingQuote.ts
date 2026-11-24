@@ -27,6 +27,8 @@ export type BookingQuoteArgs = {
   productQuantities: Record<string, number>;
   basePrice: number | null;
   calcMeta: BookingCalcMeta | null;
+  /** Проверенный промокод бани или дома. */
+  promoCode?: string | null;
   onBasePriceResolved: (price: number, meta?: SetupCalcMeta) => void;
 };
 
@@ -50,6 +52,7 @@ export function useBookingQuote({
   productQuantities,
   basePrice,
   calcMeta,
+  promoCode = null,
   onBasePriceResolved,
 }: BookingQuoteArgs) {
   const calcInput = useMemo(
@@ -64,6 +67,7 @@ export function useBookingQuote({
       banyaTimeTo,
       slotDuration,
       slotPrice,
+      promoCode: promoCode?.trim() || null,
     }),
     [
       categoryId,
@@ -76,6 +80,7 @@ export function useBookingQuote({
       banyaTimeTo,
       slotDuration,
       slotPrice,
+      promoCode,
     ]
   );
 

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyCertificatePayment,
+  bookingPromoMessage,
+  certificateCoverageText,
   checkBookingCertificate,
+  checkBookingPromo,
   payBookingWithCertificate,
 } from "./bookingPay";
 import type { BookingResultDraft } from "./checkoutDraft";
@@ -25,6 +28,70 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("checkBookingPromo", () => {
+  it("asks with the room and the booking date", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ discount: 10, reason: "ok" })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      checkBookingPromo({
+        promoCode: "PROMO10",
+        roomId: "room-1",
+        date: "2026-03-15",
+      })
+    ).resolves.toMatchObject({ discount: 10, reason: "ok" });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/promo-code/check");
+    expect(JSON.parse(String(init.body))).toEqual({
+      roomId: "room-1",
+      promoCodeName: "PROMO10",
+      date: "2026-03-15",
+    });
+  });
+
+  it("explains why a code does not fit the stay", () => {
+    expect(
+      bookingPromoMessage({
+        discount: 0,
+        reason: "wrong_date",
+        dateFrom: "2026-03-01",
+        dateTo: "2026-03-31",
+        horizonDays: null,
+      })
+    ).toBe("Промокод действует с 01.03.2026 по 31.03.2026");
+    expect(
+      bookingPromoMessage({
+        discount: 0,
+        reason: "wrong_room",
+        dateFrom: null,
+        dateTo: null,
+        horizonDays: null,
+      })
+    ).toBe("Промокод не действует на выбранную баню или дом");
+    expect(
+      bookingPromoMessage({
+        discount: 0,
+        reason: "wrong_horizon",
+        dateFrom: null,
+        dateTo: null,
+        horizonDays: 3,
+      })
+    ).toBe("Промокод можно применить за 3 дн. до визита");
+  });
+});
+
+describe("certificateCoverageText", () => {
+  it("writes off the certificate and leaves the rest to pay", () => {
+    expect(certificateCoverageText(3450, 10000)).toBe(
+      "Спишется 3\u00a0450 рублей останется 6\u00a0550 рублей"
+    );
+    expect(certificateCoverageText(7000, 3000)).toBe(
+      "Спишется 3\u00a0000 рублей останется 0 рублей"
+    );
+  });
 });
 
 describe("checkBookingCertificate", () => {
@@ -74,6 +141,7 @@ describe("payBookingWithCertificate", () => {
     expect(next.prepayment).toBe(2500);
     expect(next.paymentLink).toBe("https://pay.example/rest");
     expect(next.paidByCertificate).toBe(true);
+    expect(next.certificatePaidFully).toBe(false);
   });
 
   it("clears the payment link when the certificate covers prepay", async () => {
@@ -87,5 +155,6 @@ describe("payBookingWithCertificate", () => {
     expect(next.paymentLink).toBeNull();
     expect(next.prepayment).toBe(0);
     expect(next.paidByCertificate).toBe(true);
+    expect(next.certificatePaidFully).toBe(true);
   });
 });

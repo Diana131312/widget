@@ -1,6 +1,8 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import { certificateCoverage } from "../checkout/bookingPay";
+import type { PaymentMode } from "../checkout/checkoutDraft";
 import { resolveClientPrepay } from "../setup/resolveClientPrepay";
 import { formatStayDateTime } from "./formatStay";
 import type { BookingCategoryId } from "../types";
@@ -60,6 +62,12 @@ type Props = {
   amountBeforeDiscount?: number | null;
   /** Доплата за доп. гостей (клиентский расчёт) */
   extraGuest?: ExtraGuestBreakdown | null;
+  /** Остаток проверенного сертификата, вычитается из итога. */
+  certificateBalance?: number | null;
+  /** Выбранный на оформлении режим. Задаёт строку «К оплате». */
+  paymentMode?: PaymentMode | null;
+  /** Процент проверенного промокода, если сервер не прислал его в тексте скидки. */
+  promoPercent?: number | null;
   className?: string;
 };
 
@@ -77,6 +85,20 @@ export type DiscountPart = { name: string; percent: string | null };
  * «От 2-х дней проживания (-10%) + Для двоих (-10%)» →
  * [{ name: "От 2-х дней проживания", percent: "−10%" }, …]
  */
+export function applyKnownPromoPercent(
+  parts: DiscountPart[],
+  promoPercent: number | null | undefined
+): DiscountPart[] {
+  if (promoPercent == null || !(promoPercent > 0)) return parts;
+  const badge = `−${String(promoPercent).replace(".", ",")}%`;
+  let attached = false;
+  return parts.map((part) => {
+    if (attached || part.percent || !/промокод/i.test(part.name)) return part;
+    attached = true;
+    return { ...part, percent: badge };
+  });
+}
+
 export function splitDiscountText(text: string | null | undefined): DiscountPart[] {
   if (!text?.trim()) return [];
   return text
@@ -125,6 +147,9 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
   discountText = null,
   amountBeforeDiscount = null,
   extraGuest = null,
+  certificateBalance = null,
+  paymentMode = null,
+  promoPercent = null,
   className,
 }) => {
   const rootClass = ["booking-price-breakdown", className]
@@ -144,8 +169,27 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
     extraGuest.surcharge > 0;
   const showDiscount =
     (discountAmount != null && discountAmount > 0) || Boolean(discountText);
-  const showPrepay = displayPrepay != null && displayPrepay > 0;
-  const discountParts = splitDiscountText(discountText);
+  const discountParts = applyKnownPromoPercent(
+    splitDiscountText(discountText),
+    promoPercent
+  );
+  const coverage =
+    certificateBalance != null && certificateBalance > 0
+      ? certificateCoverage(total, certificateBalance)
+      : null;
+  const payable = coverage ? coverage.remainingPay : total;
+  const shownPrepay =
+    coverage && displayPrepay != null
+      ? Math.min(displayPrepay, payable)
+      : displayPrepay;
+  const showPrepay =
+    paymentMode == null && shownPrepay != null && shownPrepay > 0;
+  const dueAmount =
+    paymentMode === "full"
+      ? payable
+      : paymentMode === "prepay"
+        ? shownPrepay ?? payable
+        : null;
 
   const costLabel =
     amountBeforeDiscount != null &&
@@ -286,17 +330,33 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
         )}
       </div>
 
+      {coverage && coverage.writeOff > 0 ? (
+        <div className="booking-price-breakdown__row">
+          <span>Сертификат</span>
+          <span className="booking-price-breakdown__num">
+            −{coverage.writeOff.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      ) : null}
       <div className="booking-price-breakdown__row booking-price-breakdown__row--total">
         <span>Итого</span>
         <span className="booking-price-breakdown__num">
-          {total.toLocaleString("ru-RU")} ₽
+          {payable.toLocaleString("ru-RU")} ₽
         </span>
       </div>
+      {dueAmount != null ? (
+        <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
+          <span>К оплате</span>
+          <span className="booking-price-breakdown__num">
+            {dueAmount.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      ) : null}
       {showPrepay ? (
         <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
           <span>Предоплата</span>
           <span className="booking-price-breakdown__num">
-            {displayPrepay!.toLocaleString("ru-RU")} ₽
+            {shownPrepay!.toLocaleString("ru-RU")} ₽
           </span>
         </div>
       ) : null}

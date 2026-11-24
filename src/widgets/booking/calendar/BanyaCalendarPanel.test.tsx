@@ -44,7 +44,7 @@ describe("BanyaCalendarPanel", () => {
         duration: 2,
         price: 3000,
         comment: "Стандарт",
-        isAvailable: true,
+        isAvailable: false,
       },
     ]);
   });
@@ -78,8 +78,15 @@ describe("BanyaCalendarPanel", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/ЧАС В ПОДАРОК/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /12:00/ })).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: /16:00/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/ЧАС В ПОДАРОК/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Показать все слоты" }));
+    expect(screen.getByText(/ЧАС В ПОДАРОК/)).toBeInTheDocument();
+    expect(screen.getByText("Стандарт")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /16:00/ })).toBeDisabled();
     expect(
       document.querySelector(".booking-banya-stage--below")
     ).toBeInTheDocument();

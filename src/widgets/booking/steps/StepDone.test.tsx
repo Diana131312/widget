@@ -7,9 +7,14 @@ import { StepDone } from "./StepDone";
 
 const cancelBooking = vi.hoisted(() => vi.fn());
 const setToken = vi.hoisted(() => vi.fn());
+const applyCertificatePayment = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../api", () => ({
   createWidgetApi: () => ({ cancelBooking, setToken }),
+}));
+
+vi.mock("../checkout/bookingPay", () => ({
+  applyCertificatePayment,
 }));
 
 const PHONE = "+7 (900) 123-45-67";
@@ -44,6 +49,7 @@ describe("StepDone", () => {
     localStorage.clear();
     cancelBooking.mockReset();
     setToken.mockReset();
+    applyCertificatePayment.mockReset();
     cancelBooking.mockResolvedValue({ success: true });
     saveAuthToken({
       token: "jwt",
@@ -130,6 +136,65 @@ describe("StepDone", () => {
     renderDone();
     expect(
       screen.queryByRole("button", { name: /Отменить бронь/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the certificate success text only when the order is fully covered", () => {
+    renderDone({
+      paymentLink: null,
+      paidByCertificate: true,
+      certificatePaidFully: true,
+    });
+    expect(
+      screen.getByText("Заказ был успешно оплачен сертификатом")
+    ).toBeInTheDocument();
+  });
+
+  it("applies a certificate on the payment step", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    applyCertificatePayment.mockResolvedValueOnce({
+      ...result,
+      paymentLink: null,
+      prepayment: 0,
+      paidByCertificate: true,
+      certificatePaidFully: true,
+    });
+    renderDone();
+
+    await user.type(screen.getByLabelText("Сертификат"), "548371");
+    await user.click(screen.getByRole("button", { name: "Применить" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Заказ был успешно оплачен сертификатом")
+      ).toBeInTheDocument();
+    });
+    expect(applyCertificatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: "bk1" }),
+      "548371"
+    );
+    expect(screen.queryByRole("button", { name: /Оплатить/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the pay button with the remainder when the certificate is partial", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    applyCertificatePayment.mockResolvedValueOnce({
+      ...result,
+      paymentLink: "https://pay.example/rest",
+      prepayment: 2500,
+      paidByCertificate: true,
+      certificatePaidFully: false,
+    });
+    renderDone();
+
+    await user.type(screen.getByLabelText("Сертификат"), "548371");
+    await user.click(screen.getByRole("button", { name: "Применить" }));
+
+    expect(
+      await screen.findByRole("button", { name: /Оплатить 2[\s\u00a0]?500 ₽/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Заказ был успешно оплачен сертификатом")
     ).not.toBeInTheDocument();
   });
 

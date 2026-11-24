@@ -34,7 +34,7 @@ describe("groupSlotsByComment", () => {
     expect(groups.map((g) => g.title)).toEqual([
       'Акция "ЧАС В ПОДАРОК"',
       'Акция "6 часов отдыха с 20% скидкой"',
-      "Стандарт",
+      "",
     ]);
     expect(groups[0].items.map((i) => i.index)).toEqual([0, 2]);
   });

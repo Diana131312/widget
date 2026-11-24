@@ -147,8 +147,36 @@ export function certificatePurchaseOutcome(
   return "missing-link";
 }
 
+/**
+ * Куда увести вкладку на оплату.
+ * top — страница оплаты во весь экран, если виджет открыт во фрейме.
+ * self — текущее окно, если фрейма нет или родитель с другого сайта.
+ */
+export function paymentDocumentTarget(
+  inFrame: boolean,
+  topAllowsNavigation: boolean
+): "top" | "self" {
+  return inFrame && topAllowsNavigation ? "top" : "self";
+}
+
 export function openCertificatePayment(link: string): void {
-  window.location.assign(link);
+  const topWindow = window.top;
+  const inFrame = Boolean(topWindow && topWindow !== window);
+  let topAllowsNavigation = false;
+  if (inFrame && topWindow) {
+    try {
+      // Чтение href бросает SecurityError, если родитель с другого домена.
+      void topWindow.location.href;
+      topAllowsNavigation = true;
+    } catch {
+      topAllowsNavigation = false;
+    }
+  }
+  const target =
+    paymentDocumentTarget(inFrame, topAllowsNavigation) === "top" && topWindow
+      ? topWindow
+      : window;
+  target.location.assign(link);
 }
 
 /** POST /save-certificates. Промокод передаём только если проверка его приняла. */

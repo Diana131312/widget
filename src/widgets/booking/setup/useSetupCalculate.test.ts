@@ -150,7 +150,7 @@ describe("useSetupCalculate", () => {
     expect(calculateRoom).toHaveBeenCalledTimes(1);
   });
 
-  it("hides previous calculation while guests change", async () => {
+  it("keeps the previous calculation while guests change", async () => {
     const calculateRoom = vi.fn().mockResolvedValue({ total: 4500 });
     const api = {
       calculateRoom,
@@ -173,16 +173,16 @@ describe("useSetupCalculate", () => {
 
     rerender({ guests: 3 });
 
-    expect(result.current.hasCalculation).toBe(false);
+    expect(result.current.hasCalculation).toBe(true);
     expect(result.current.isLoading).toBe(true);
-    expect(result.current.banyaCalc).toBeNull();
+    expect(result.current.banyaCalc).not.toBeNull();
 
     await waitFor(() => {
-      expect(result.current.hasCalculation).toBe(true);
+      expect(calculateRoom).toHaveBeenLastCalledWith(
+        expect.objectContaining({ personCount: 3 })
+      );
     });
-    expect(calculateRoom).toHaveBeenLastCalledWith(
-      expect.objectContaining({ personCount: 3 })
-    );
+    expect(result.current.hasCalculation).toBe(true);
   });
 
   it("shows friendly network error copy", async () => {

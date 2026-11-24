@@ -1,4 +1,3 @@
-import { createWidgetApi } from "../../../api";
 import { BOOKING_ALIAS } from "../constants";
 import type { BookingResultDraft } from "./checkoutDraft";
 
@@ -89,14 +88,99 @@ async function postWidget(path: string, body: unknown): Promise<unknown> {
   return parsed;
 }
 
-/** POST /promo-code/check — процент скидки, 0 если код не действует. */
-export async function checkBookingPromo(promoCode: string): Promise<number> {
-  const api = createWidgetApi({ alias: BOOKING_ALIAS });
-  const raw = await api.checkPromoCode({
-    alias: BOOKING_ALIAS,
-    promoCode,
-  });
-  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0;
+export type BookingPromoCheck = {
+  discount: number;
+  reason: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+  horizonDays: number | null;
+};
+
+function formatPromoDate(raw: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (!match) return raw;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+export function parseBookingPromo(raw: unknown): BookingPromoCheck {
+  const record = readRecord(raw) ?? {};
+  const discount = readAmount(record.discount) ?? 0;
+  const horizon = readAmount(record.horizonDays);
+  return {
+    discount,
+    reason: readText(record.reason) ?? (discount > 0 ? "ok" : "not_found"),
+    dateFrom: readText(record.dateFrom),
+    dateTo: readText(record.dateTo),
+    horizonDays: horizon,
+  };
+}
+
+/** Текст, если код не подходит к бане или дому. */
+export function bookingPromoMessage(result: BookingPromoCheck): string {
+  switch (result.reason) {
+    case "not_found":
+      return "Такого промокода нет или он выключен";
+    case "wrong_date": {
+      const from = result.dateFrom ? `с ${formatPromoDate(result.dateFrom)}` : "";
+      const to = result.dateTo ? `по ${formatPromoDate(result.dateTo)}` : "";
+      const range = [from, to].filter(Boolean).join(" ");
+      return range ? `Промокод действует ${range}` : "Промокод сейчас не действует";
+    }
+    case "wrong_day":
+      return "Промокод не действует в этот день недели";
+    case "wrong_room":
+      return "Промокод не действует на выбранную баню или дом";
+    case "wrong_horizon":
+      return result.horizonDays != null
+        ? `Промокод можно применить за ${result.horizonDays} дн. до визита`
+        : "Промокод пока нельзя применить к этой дате";
+    default:
+      return "Промокод не подходит";
+  }
+}
+
+/**
+ * POST /promo-code/check.
+ * Для общего зала вместо roomId уходит commonRoomId.
+ */
+export async function checkBookingPromo(args: {
+  promoCode: string;
+  roomId: string;
+  date: string;
+  commonRoom?: boolean;
+}): Promise<BookingPromoCheck> {
+  const body = args.commonRoom
+    ? {
+        commonRoomId: args.roomId,
+        promoCodeName: args.promoCode,
+        date: args.date,
+      }
+    : {
+        roomId: args.roomId,
+        promoCodeName: args.promoCode,
+        date: args.date,
+      };
+  return parseBookingPromo(await postWidget("/promo-code/check", body));
+}
+
+export function certificateCoverage(
+  total: number,
+  balance: number
+): { writeOff: number; remainingPay: number; remainingBalance: number } {
+  const bill = Number.isFinite(total) ? Math.max(0, total) : 0;
+  const nominal = Number.isFinite(balance) ? Math.max(0, balance) : 0;
+  const writeOff = Math.min(nominal, bill);
+  return {
+    writeOff,
+    remainingPay: bill - writeOff,
+    remainingBalance: nominal - writeOff,
+  };
+}
+
+export function certificateCoverageText(total: number, balance: number): string {
+  const { writeOff, remainingBalance } = certificateCoverage(total, balance);
+  const money = new Intl.NumberFormat("ru-RU").format;
+  return `Спишется ${money(writeOff)} рублей останется ${money(remainingBalance)} рублей`;
 }
 
 /** POST /check-certificate — название и остаток. Ошибка 400 приходит текстом. */
@@ -158,6 +242,7 @@ export async function applyCertificatePayment(
       prepayment: 0,
       paymentLink: null,
       paidByCertificate: true,
+      certificatePaidFully: true,
     };
   }
   return {
@@ -165,5 +250,11 @@ export async function applyCertificatePayment(
     prepayment: paid.remainingAmount ?? meta.prepayment,
     paymentLink: paid.paymentLink ?? meta.paymentLink,
     paidByCertificate: true,
+    certificatePaidFully: false,
   };
+}
+
+/** Переход на страницу оплаты брони. */
+export function openBookingPayment(link: string): void {
+  window.location.assign(link);
 }

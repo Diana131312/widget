@@ -117,7 +117,18 @@ export const BanyaTimeSlots: React.FC<Props> = ({
   onSelect,
   onRetry,
 }) => {
-  const [showOthers, setShowOthers] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const freeItems = useMemo(
+    () =>
+      slots
+        .map((slot, index) => ({ slot, index }))
+        .filter((item) => item.slot.isAvailable === true),
+    [slots]
+  );
+  const previewItems = freeItems.slice(0, 4);
+  const hasMore =
+    freeItems.length > previewItems.length ||
+    slots.some((slot) => slot.isAvailable !== true);
   const groups = useMemo(() => groupSlotsByComment(slots), [slots]);
 
   const slotsKey = useMemo(
@@ -125,7 +136,7 @@ export const BanyaTimeSlots: React.FC<Props> = ({
     [slots]
   );
   useEffect(() => {
-    setShowOthers(false);
+    setShowAll(false);
   }, [slotsKey]);
 
   if (isLoading) {
@@ -175,57 +186,50 @@ export const BanyaTimeSlots: React.FC<Props> = ({
     );
   }
 
-  if (slots.length === 0) {
+  if (slots.length === 0 || previewItems.length === 0) {
     return (
       <div className="booking-slots__state" role="status">
         <p className="booking-slots__state-title">Нет свободных слотов</p>
-        <p className="booking-slots__state-detail">
-          Выберите другую дату в календаре
-        </p>
       </div>
     );
   }
 
-  const [primary, ...rest] = groups;
-
   return (
     <div className="booking-slots__groups" aria-label="Слоты времени">
-      {primary ? (
-        <section className="booking-slots__group booking-slots__group--static">
-          <h5 className="booking-slots__group-title">{primary.title}</h5>
+      {showAll ? (
+        groups.map((group, groupIndex) => (
+          <section
+            key={`${group.title}-${groupIndex}`}
+            className="booking-slots__group booking-slots__group--static"
+          >
+            {group.title ? (
+              <h5 className="booking-slots__group-title">{group.title}</h5>
+            ) : null}
+            <SlotList
+              items={group.items}
+              selectedIndex={selectedIndex}
+              onSelect={onSelect}
+            />
+          </section>
+        ))
+      ) : (
+        <>
           <SlotList
-            items={primary.items}
+            items={previewItems}
             selectedIndex={selectedIndex}
             onSelect={onSelect}
           />
-        </section>
-      ) : null}
-
-      {rest.length > 0 && !showOthers ? (
-        <button
-          type="button"
-          className="booking-slots__more"
-          onClick={() => setShowOthers(true)}
-        >
-          Показать все слоты
-        </button>
-      ) : null}
-
-      {showOthers
-        ? rest.map((group) => (
-            <section
-              key={group.title}
-              className="booking-slots__group booking-slots__group--static"
+          {hasMore ? (
+            <button
+              type="button"
+              className="booking-slots__more"
+              onClick={() => setShowAll(true)}
             >
-              <h5 className="booking-slots__group-title">{group.title}</h5>
-              <SlotList
-                items={group.items}
-                selectedIndex={selectedIndex}
-                onSelect={onSelect}
-              />
-            </section>
-          ))
-        : null}
+              Показать все слоты
+            </button>
+          ) : null}
+        </>
+      )}
     </div>
   );
 };

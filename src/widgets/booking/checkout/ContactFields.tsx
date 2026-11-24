@@ -10,6 +10,7 @@ type Props = {
   onLastNameChange: (v: string) => void;
   onPhoneChange: (rawInput: string) => void;
   onCommentChange: (v: string) => void;
+  phoneConfirmed?: boolean;
 };
 
 export const ContactFields: React.FC<Props> = ({
@@ -21,6 +22,7 @@ export const ContactFields: React.FC<Props> = ({
   onLastNameChange,
   onPhoneChange,
   onCommentChange,
+  phoneConfirmed = false,
 }) => {
   const phoneOk = isRuPhoneComplete(phoneDisplay);
   const firstOk = firstName.trim().length >= 1;
@@ -78,6 +80,11 @@ export const ContactFields: React.FC<Props> = ({
         />
         {!phoneOk && phoneDisplay.length > 0 ? (
           <p className="booking-checkout__hint">Укажите полный номер</p>
+        ) : null}
+        {phoneConfirmed ? (
+          <p className="booking-checkout__hint">
+            Номер уже подтверждён — повторное подтверждение не нужно
+          </p>
         ) : null}
       </div>
 

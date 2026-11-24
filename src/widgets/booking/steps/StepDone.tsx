@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createWidgetApi } from "../../../api";
 import { getValidAuthToken } from "../checkout/authToken";
+import { applyCertificatePayment } from "../checkout/bookingPay";
 import type { BookingResultDraft } from "../checkout/checkoutDraft";
 import { BOOKING_ALIAS } from "../constants";
-import { getApiBodyMessage } from "../ui/errorMessages";
+import { getApiBodyMessage, getWidgetApiErrorDetail } from "../ui/errorMessages";
 
 type Props = {
   result: BookingResultDraft;
@@ -63,21 +64,41 @@ export const StepDone: React.FC<Props> = ({
   onBackToCart,
 }) => {
   const api = useMemo(() => createWidgetApi({ alias: BOOKING_ALIAS }), []);
-  const secondsLeft = useSecondsLeft(
-    result.timeoutMinutes,
-    result.expiresAtMs
-  );
+  const [view, setView] = useState(result);
+  const [certificateNumber, setCertificateNumber] = useState("");
+  const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [applyingCertificate, setApplyingCertificate] = useState(false);
+  const secondsLeft = useSecondsLeft(view.timeoutMinutes, view.expiresAtMs);
   const expired = secondsLeft === 0;
-  const isTemporary = Boolean(result.paymentLink) && secondsLeft != null;
+  const awaitingPayment = Boolean(view.paymentLink);
+  const isTemporary = awaitingPayment && secondsLeft != null;
   const token = contactPhone ? getValidAuthToken(contactPhone) : null;
-  const canCancel = Boolean(token && result.bookingId);
+  const canCancel = Boolean(token && view.bookingId);
+
+  useEffect(() => {
+    setView(result);
+  }, [result.bookingId]);
 
   const [isCancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   const openPayment = () => {
-    if (!result.paymentLink) return;
-    window.open(result.paymentLink, "_blank", "noopener,noreferrer");
+    if (!view.paymentLink) return;
+    window.open(view.paymentLink, "_blank", "noopener,noreferrer");
+  };
+
+  const applyCertificate = async () => {
+    const number = certificateNumber.trim();
+    if (!number || applyingCertificate) return;
+    setApplyingCertificate(true);
+    setCertificateError(null);
+    try {
+      setView(await applyCertificatePayment(view, number));
+    } catch (err) {
+      setCertificateError(getWidgetApiErrorDetail(err));
+    } finally {
+      setApplyingCertificate(false);
+    }
   };
 
   const cancelAndBack = async () => {
@@ -86,7 +107,7 @@ export const StepDone: React.FC<Props> = ({
     setCancelError(null);
     api.setToken(token);
     try {
-      const res = await api.cancelBooking(result.bookingId, { confirmed: true });
+      const res = await api.cancelBooking(view.bookingId, { confirmed: true });
       if (res && res.success === false) {
         throw new Error("Не удалось отменить бронь");
       }
@@ -101,12 +122,12 @@ export const StepDone: React.FC<Props> = ({
     }
   };
 
-  const rules = result.message ? (
+  const rules = view.message ? (
     <>
       <hr className="booking-checkout__success-divider" />
       <p className="booking-checkout__success-subtitle">Правила для гостей</p>
       <p className="booking-checkout__success-text booking-checkout__success-text--pre">
-        {result.message}
+        {view.message}
       </p>
     </>
   ) : null;
@@ -115,8 +136,8 @@ export const StepDone: React.FC<Props> = ({
     return (
       <div className="booking-checkout booking-checkout--success">
         <p className="booking-checkout__success-title">
-          {result.paidByCertificate
-            ? "Предоплата списана с сертификата"
+          {view.certificatePaidFully
+            ? "Заказ был успешно оплачен сертификатом"
             : "Бронь создана"}
         </p>
         <div className="booking-checkout__success-actions">
@@ -163,14 +184,51 @@ export const StepDone: React.FC<Props> = ({
           {formatCountdown(secondsLeft ?? 0)}
         </strong>
       </p>
+      <div className="booking-checkout__field">
+        <label className="booking-checkout__label" htmlFor="bk-done-certificate">
+          Сертификат
+        </label>
+        <div className="booking-certificate__promo-row">
+          <input
+            id="bk-done-certificate"
+            className="booking-checkout__input"
+            name="booking-certificate"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="Номер сертификата"
+            value={certificateNumber}
+            disabled={applyingCertificate || isCancelling}
+            onChange={(event) => setCertificateNumber(event.target.value)}
+          />
+          <button
+            type="button"
+            className={[
+              "booking-certificate__promo-check",
+              certificateNumber.trim() &&
+                "booking-certificate__promo-check--ready",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            disabled={!certificateNumber.trim() || applyingCertificate || isCancelling}
+            onClick={() => void applyCertificate()}
+          >
+            {applyingCertificate ? "Применяем…" : "Применить"}
+          </button>
+        </div>
+        {certificateError ? (
+          <p className="booking-certificate__promo-error" role="alert">
+            {certificateError}
+          </p>
+        ) : null}
+      </div>
       <div className="booking-checkout__success-actions">
         <button
           type="button"
           className="booking-checkout__submit"
-          disabled={isCancelling}
+          disabled={isCancelling || applyingCertificate}
           onClick={openPayment}
         >
-          Оплатить {result.prepayment.toLocaleString("ru-RU")} ₽
+          Оплатить {view.prepayment.toLocaleString("ru-RU")} ₽
         </button>
         {canCancel ? (
           <button

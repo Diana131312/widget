@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { getAuthProfile } from "../checkout/authToken";
 import { ServiceOfferModal } from "../checkout/ServiceOfferModal";
 import {
   formatRuPhoneMask,
@@ -43,6 +44,8 @@ type StepCertificateBuyerProps = {
   submitting?: boolean;
   /** false — почта уже задана на предыдущем шаге или подставляется для бумаги */
   showEmail?: boolean;
+  /** Меняется, когда профиль авторизации догрузился. */
+  authVersion?: number;
   onBuyerChange?: (buyer: Partial<CertificateBuyerValues>) => void;
   onPay?: (buyer: CertificateBuyerValues) => void;
 };
@@ -58,12 +61,21 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
   busy = false,
   submitting = false,
   showEmail = true,
+  authVersion = 0,
   onBuyerChange,
   onPay,
 }) => {
-  const [lastName, setLastName] = useState(initialBuyer?.lastName ?? "");
-  const [firstName, setFirstName] = useState(initialBuyer?.firstName ?? "");
-  const [phone, setPhone] = useState(initialBuyer?.phone ?? "");
+  const [authProfile] = useState(() => getAuthProfile());
+  const [lastName, setLastName] = useState(
+    initialBuyer?.lastName || authProfile?.lastName || ""
+  );
+  const [firstName, setFirstName] = useState(
+    initialBuyer?.firstName || authProfile?.firstName || ""
+  );
+  const [phone, setPhone] = useState(
+    initialBuyer?.phone ||
+      (authProfile ? formatRuPhoneMask(authProfile.phone) : "")
+  );
   const [email, setEmail] = useState(initialBuyer?.email ?? "");
   const [termsAccepted, setTermsAccepted] = useState(
     initialBuyer?.termsAccepted ?? false
@@ -73,6 +85,14 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
   const publish = (next: Partial<CertificateBuyerValues>) => {
     onBuyerChange?.(next);
   };
+
+  useEffect(() => {
+    const profile = getAuthProfile();
+    if (!profile) return;
+    setLastName((value) => value || profile.lastName);
+    setFirstName((value) => value || profile.firstName);
+    setPhone((value) => value || formatRuPhoneMask(profile.phone));
+  }, [authVersion]);
 
   const rows =
     items && items.length > 0

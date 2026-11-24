@@ -26,7 +26,7 @@ function sortByDurationAsc(items: SlotGroupItem[]): SlotGroupItem[] {
 export function groupSlotsByComment(slots: RoomTimeSlot[]): SlotGroup[] {
   const map = new Map<string, SlotGroup>();
   slots.forEach((slot, index) => {
-    const title = (slot.comment ?? "").trim() || "Стандарт";
+    const title = (slot.comment ?? "").trim();
     const existing = map.get(title);
     if (existing) {
       existing.items.push({ slot, index });
@@ -64,7 +64,7 @@ export function splitPromoHourGiftSlots(slots: RoomTimeSlot[]): PromoSplit {
 export function groupItemsByComment(items: SlotGroupItem[]): SlotGroup[] {
   const map = new Map<string, SlotGroup>();
   for (const item of items) {
-    const title = (item.slot.comment ?? "").trim() || "Стандарт";
+    const title = (item.slot.comment ?? "").trim();
     const existing = map.get(title);
     if (existing) existing.items.push(item);
     else map.set(title, { title, items: [item] });

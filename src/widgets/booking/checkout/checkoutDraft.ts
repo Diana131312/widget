@@ -29,8 +29,10 @@ export type BookingResultDraft = {
   paymentMode?: PaymentMode | null;
   /** Момент автоотмены неоплаченной брони (мс) — переживает перезагрузку */
   expiresAtMs?: number | null;
-  /** Предоплата списана сертификатом (полностью или частично). */
+  /** Сертификат применён к брони. */
   paidByCertificate?: boolean;
+  /** Сертификат закрыл всю выбранную сумму, доплата не нужна. */
+  certificatePaidFully?: boolean;
 };
 
 /** Мета /calculate, сохраняем для шага 4–5. */
