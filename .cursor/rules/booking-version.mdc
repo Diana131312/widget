@@ -12,7 +12,7 @@ The version lives in `package.json`, `CHANGELOG.md`, and a git tag `vX.Y.Z`. `v1
 Bump the patch number before committing. `v1.0.0` becomes `v1.0.1`.
 
 - Set `package.json` `version` to the new number.
-- Add a `CHANGELOG.md` section for that version with what changed.
+- Add a `CHANGELOG.md` section for that version. Write it for the customer, in Russian, as bullet points: one visible change per line. No file names or implementation notes.
 - Tag the commit `vX.Y.Z` and push the tag with the commit.
 
 Do not bump the minor or major number for an ordinary commit.

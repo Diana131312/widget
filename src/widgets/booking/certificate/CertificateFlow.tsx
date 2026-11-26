@@ -96,6 +96,11 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
     onChange({ phase: "pick" });
   }, [catalogStatus, onChange, selected, state.phase]);
 
+  useEffect(() => {
+    if (state.phase !== "invoice") return;
+    onChange({ phase: "buyer" });
+  }, [onChange, state.phase]);
+
   const applyPromo = useCallback(async (code: string, certificateIds: string[]) => {
     const certificateId = selectionKey(certificateIds);
     const result = await checkCertificatePromo({
@@ -131,24 +136,10 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       setPromoMessage(null);
       return;
     }
-    if (samePromo(verdict, code, selectionKey(ids))) {
-      setDiscount(verdict.discount);
-      setPromoMessage(verdict.message);
-      return;
-    }
-
-    let cancelled = false;
-    void applyPromo(code, ids)
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setDiscount(0);
-        setPromoMessage(getWidgetApiErrorDetail(error));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [applyPromo, state, verdict]);
+    if (!samePromo(verdict, code, selectionKey(ids))) return;
+    setDiscount(verdict.discount);
+    setPromoMessage(verdict.message);
+  }, [state, verdict]);
 
   const checkPromo = useCallback(
     async (code: string, certificateIds: string[]) => {
@@ -168,7 +159,7 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
   );
 
   const continuePick = useCallback(
-    async (draft: {
+    (draft: {
       certificateId: string;
       count: number;
       recipientName: string;
@@ -176,38 +167,16 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       lines: { id: string; count: number }[];
     }) => {
       setPayError(null);
-      const code = draft.promoCode.trim();
-      const ids = draft.lines.map((line) => line.id);
-      if (code) {
-        const known = samePromo(verdict, code, selectionKey(ids))
-          ? verdict
-          : null;
-        if (!known) {
-          setChecking("continue");
-          try {
-            await applyPromo(code, ids);
-          } catch (error) {
-            setPromoMessage(getWidgetApiErrorDetail(error));
-            return;
-          } finally {
-            setChecking(null);
-          }
-        }
-      } else {
-        setVerdict(null);
-        setDiscount(0);
-        setPromoMessage(null);
-      }
       onChange({
         certificateId: draft.certificateId,
         count: draft.count,
         lines: draft.lines,
         recipientName: draft.recipientName,
-        promoCode: code,
+        promoCode: draft.promoCode.trim(),
       });
       onPickContinue();
     },
-    [applyPromo, onChange, onPickContinue, verdict]
+    [onChange, onPickContinue]
   );
 
   const pay = useCallback(
@@ -225,14 +194,11 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
             : undefined;
 
         const paper = state.format === "paper";
+        const email = paper ? PAPER_CERTIFICATE_EMAIL : buyer.email.trim();
         const response = await saveCertificatePurchase({
           name: `${buyer.firstName} ${buyer.lastName}`.trim(),
           phone: toApiPhone(buyer.phone),
-          email: paper
-            ? PAPER_CERTIFICATE_EMAIL
-            : state.format === "electronic"
-              ? state.email.trim()
-              : buyer.email.trim(),
+          email,
           recipientName: "",
           messenger: "telegram",
           promoCode: accepted,
@@ -301,8 +267,39 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
         }}
         discountPercent={state.promoCode.trim() ? discount : 0}
         initialBuyer={state}
-        showEmail={state.format == null}
+        showEmail={state.format !== "paper"}
         promoMessage={promoMessage}
+        promoMark={
+          samePromo(verdict, state.promoCode.trim(), selectionKey(selectedIds(state))) &&
+          verdict.message == null &&
+          verdict.discount > 0
+            ? "ok"
+            : samePromo(verdict, state.promoCode.trim(), selectionKey(selectedIds(state))) &&
+                verdict.message
+              ? "bad"
+              : promoMessage
+                ? "bad"
+                : "idle"
+        }
+        promoPercent={
+          samePromo(verdict, state.promoCode.trim(), selectionKey(selectedIds(state))) &&
+          verdict.message == null
+            ? verdict.discount
+            : null
+        }
+        promoChecking={checking === "promo"}
+        onPromoChange={(code) => {
+          setVerdict(null);
+          setDiscount(null);
+          setPromoMessage(null);
+          onChange({ promoCode: code });
+        }}
+        onCheckPromo={() => {
+          const ids = selectedIds(state);
+          const code = state.promoCode.trim();
+          if (!code || ids.length === 0) return;
+          void checkPromo(code, ids);
+        }}
         payError={payError}
         busy={checking != null}
         submitting={submitting}
@@ -345,22 +342,9 @@ export const CertificateFlow: React.FC<CertificateFlowProps> = ({
       certificates={certificates}
       tenantId={tenantId}
       initial={state}
-      promoMessage={promoMessage}
-      promoDiscount={
-        samePromo(verdict, state.promoCode.trim(), state.certificateId) &&
-        verdict.message == null
-          ? verdict.discount
-          : null
-      }
       busy={checking != null}
-      checking={checking}
-      onCheckPromo={(code, certificateId) => {
-        void checkPromo(code, certificateId);
-      }}
       onValuesChange={(values) => {
-        const codeChanged = values.promoCode.trim() !== state.promoCode.trim();
-        const certificateChanged = values.certificateId !== state.certificateId;
-        if (codeChanged || certificateChanged) {
+        if (values.certificateId !== state.certificateId) {
           setPromoMessage(null);
           setVerdict(null);
           setDiscount(null);

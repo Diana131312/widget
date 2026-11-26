@@ -1,9 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import certImage from "../assets/cert.jpg";
 import certElectronicDesktop from "../assets/cert3.jpg";
 import certElectronicMobile from "../assets/cert2.jpg";
 import { formatCertificateAmount } from "./amounts";
-import { isCertificateEmail } from "./certificateApi";
 import {
   matchesCertificateFormat,
   type CertificateFormat,
@@ -11,7 +10,6 @@ import {
 import { MAX_CERTIFICATE_COUNT } from "./certificatePricing";
 import type { CertificateLine } from "./certificateUrl";
 import type { SaleCertificate } from "./parseCertificates";
-import { PromoCodeField } from "../ui/PromoCodeField";
 
 const FORMAT_POINTS: Record<CertificateFormat, string[]> = {
   electronic: [
@@ -70,57 +68,36 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
   certificates,
   format: formatProp,
   initial = null,
-  promoMessage = null,
-  promoDiscount = null,
   busy = false,
-  checking = null,
   onValuesChange,
-  onCheckPromo,
   onContinue,
 }) => {
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     countsFromInitial(initial)
   );
-  const [promoCode, setPromoCode] = useState(initial?.promoCode ?? "");
   const [format, setFormat] = useState<CertificateFormat>(
     initial?.format ?? formatProp ?? "electronic"
   );
-  const [email, setEmail] = useState(
-    (initial?.format ?? formatProp ?? "electronic") === "paper"
-      ? ""
-      : (initial?.email ?? "")
-  );
+  const keptEmail = initial?.email ?? "";
+  const keptPromo = initial?.promoCode ?? "";
   const visibleCertificates = certificates
     .filter((item) => matchesCertificateFormat(item.name, format))
     .slice()
     .sort((a, b) => a.price - b.price);
   const lines = linesFromCounts(counts, visibleCertificates);
-  const promo = promoCode.trim();
-  const emailOk = isCertificateEmail(email);
-  const promoOk = promoDiscount != null && promoDiscount > 0 && !promoMessage;
-  const promoBad = Boolean(promo) && Boolean(promoMessage);
   const [attempted, setAttempted] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const needsEmail = format === "electronic";
   const nominalMissing = lines.length === 0;
-  const emailMissing = needsEmail && !emailOk;
   const showNominalError = attempted && nominalMissing;
-  const showEmailError = attempted && emailMissing;
   const publish = (
     patch: Partial<CertificatePickValues>,
     nextLines: CertificateLine[] = lines
   ) => {
     const nextFormat = patch.format === undefined ? format : patch.format;
-    const nextEmail =
-      nextFormat === "paper"
-        ? ""
-        : patch.email === undefined
-          ? email
-          : patch.email;
+    const nextEmail = nextFormat === "paper" ? "" : keptEmail;
     onValuesChange?.({
       certificateId: nextLines[0]?.id ?? null,
       count: nextLines[0]?.count ?? 1,
-      promoCode,
+      promoCode: patch.promoCode === undefined ? keptPromo : patch.promoCode,
       ...patch,
       lines: patch.lines ?? nextLines,
       recipientName: "",
@@ -139,18 +116,11 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
 
   const chooseFormat = (next: CertificateFormat) => {
     setFormat(next);
-    if (next === "paper") setEmail("");
     const nextLines = linesFromCounts(
       counts,
       certificates.filter((item) => matchesCertificateFormat(item.name, next))
     );
-    publish(
-      {
-        format: next,
-        email: next === "paper" ? "" : email,
-      },
-      nextLines
-    );
+    publish({ format: next }, nextLines);
   };
 
   return (
@@ -282,69 +252,6 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
         </div>
       </div>
 
-      {needsEmail ? (
-        <div className="booking-checkout__field">
-          <label className="booking-checkout__label" htmlFor="bk-cert-email">
-            Email
-            <span className="booking-certificate__required" aria-hidden="true">
-              *
-            </span>
-          </label>
-          <p className="booking-certificate__email-note">
-            на почту придет сертификат
-          </p>
-          <input
-            ref={emailRef}
-            id="bk-cert-email"
-            className={[
-              "booking-checkout__input",
-              showEmailError && "booking-checkout__input--invalid",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            type="email"
-            inputMode="email"
-            required
-            name="certificate-email"
-            autoComplete="email"
-            placeholder="ivan@mail.ru"
-            aria-required="true"
-            aria-invalid={showEmailError}
-            value={email}
-            onChange={(event) => {
-              const next = event.target.value;
-              setEmail(next);
-              publish({ email: next });
-            }}
-          />
-          {email.length > 0 && !emailOk ? (
-            <p className="booking-checkout__hint">Укажите почту полностью</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <PromoCodeField
-        id="bk-cert-promo"
-        name="certificate-promo"
-        value={promoCode}
-        mark={promoOk ? "ok" : promoBad ? "bad" : "idle"}
-        percent={promoDiscount}
-        error={promoBad ? promoMessage : null}
-        checking={checking === "promo"}
-        checkDisabled={lines.length === 0 || busy}
-        onChange={(next) => {
-          setPromoCode(next);
-          publish({ promoCode: next });
-        }}
-        onCheck={() => {
-          if (lines.length === 0 || !promo || busy) return;
-          onCheckPromo?.(
-            promo,
-            lines.map((line) => line.id)
-          );
-        }}
-      />
-
       <button
         type="button"
         className="booking-setup__continue"
@@ -352,20 +259,17 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
         onClick={() => {
           if (busy) return;
           setAttempted(true);
-          if (nominalMissing || emailMissing) {
-            if (emailMissing) emailRef.current?.focus();
-            return;
-          }
+          if (nominalMissing) return;
           onContinue?.({
             certificateId: lines[0].id,
             count: lines[0].count,
             recipientName: "",
-            promoCode: promoCode.trim(),
+            promoCode: keptPromo.trim(),
             lines,
           });
         }}
       >
-        {checking === "continue" ? "Проверяем промокод…" : "Далее"}
+        Далее
       </button>
     </section>
   );

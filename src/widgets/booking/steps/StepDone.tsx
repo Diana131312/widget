@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createWidgetApi } from "../../../api";
 import { getValidAuthToken } from "../checkout/authToken";
-import { applyCertificatePayment } from "../checkout/bookingPay";
+import { openBookingPayment } from "../checkout/bookingPay";
+import { InvoicePaymentPanel } from "../checkout/InvoicePaymentPanel";
 import type { BookingResultDraft } from "../checkout/checkoutDraft";
 import { BOOKING_ALIAS } from "../constants";
-import { getApiBodyMessage, getWidgetApiErrorDetail } from "../ui/errorMessages";
+import { getApiBodyMessage } from "../ui/errorMessages";
 
 type Props = {
   result: BookingResultDraft;
@@ -13,6 +14,8 @@ type Props = {
   onStartOver: () => void;
   /** Бронь отменена (или истекла) → обратно в корзину. */
   onBackToCart: () => void;
+  /** Счёт выставлен → в шапке иконка дома. */
+  onInvoiceIssued?: () => void;
 };
 
 function formatCountdown(totalSeconds: number): string {
@@ -62,16 +65,15 @@ export const StepDone: React.FC<Props> = ({
   contactPhone,
   onStartOver,
   onBackToCart,
+  onInvoiceIssued,
 }) => {
   const api = useMemo(() => createWidgetApi({ alias: BOOKING_ALIAS }), []);
   const [view, setView] = useState(result);
-  const [certificateNumber, setCertificateNumber] = useState("");
-  const [certificateError, setCertificateError] = useState<string | null>(null);
-  const [applyingCertificate, setApplyingCertificate] = useState(false);
   const secondsLeft = useSecondsLeft(view.timeoutMinutes, view.expiresAtMs);
   const expired = secondsLeft === 0;
   const awaitingPayment = Boolean(view.paymentLink);
-  const isTemporary = awaitingPayment && secondsLeft != null;
+  const invoiceFlow = Boolean(view.payByInvoice);
+  const isTemporary = invoiceFlow || (awaitingPayment && secondsLeft != null);
   const token = contactPhone ? getValidAuthToken(contactPhone) : null;
   const canCancel = Boolean(token && view.bookingId);
 
@@ -79,26 +81,13 @@ export const StepDone: React.FC<Props> = ({
     setView(result);
   }, [result.bookingId]);
 
+  const [invoiceSent, setInvoiceSent] = useState(false);
   const [isCancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   const openPayment = () => {
     if (!view.paymentLink) return;
-    window.open(view.paymentLink, "_blank", "noopener,noreferrer");
-  };
-
-  const applyCertificate = async () => {
-    const number = certificateNumber.trim();
-    if (!number || applyingCertificate) return;
-    setApplyingCertificate(true);
-    setCertificateError(null);
-    try {
-      setView(await applyCertificatePayment(view, number));
-    } catch (err) {
-      setCertificateError(getWidgetApiErrorDetail(err));
-    } finally {
-      setApplyingCertificate(false);
-    }
+    openBookingPayment(view.paymentLink);
   };
 
   const cancelAndBack = async () => {
@@ -177,59 +166,47 @@ export const StepDone: React.FC<Props> = ({
 
   return (
     <div className="booking-checkout booking-checkout--success">
-      <p className="booking-checkout__success-title">Бронь ждёт оплаты</p>
-      <p className="booking-checkout__countdown">
-        Если не оплатить, она отменится через{" "}
-        <strong className="booking-checkout__countdown-time">
-          {formatCountdown(secondsLeft ?? 0)}
-        </strong>
+      <p className="booking-checkout__success-title">
+        {invoiceSent
+          ? "Счёт отправлен"
+          : invoiceFlow
+            ? "Ожидание выставления счёта"
+            : "Бронь ждёт оплаты"}
       </p>
-      <div className="booking-checkout__field">
-        <label className="booking-checkout__label" htmlFor="bk-done-certificate">
-          Оплатить подарочным сертификатом
-        </label>
-        <div className="booking-certificate__promo-row">
-          <input
-            id="bk-done-certificate"
-            className="booking-checkout__input"
-            name="booking-certificate"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="Номер сертификата"
-            value={certificateNumber}
-            disabled={applyingCertificate || isCancelling}
-            onChange={(event) => setCertificateNumber(event.target.value)}
-          />
-          <button
-            type="button"
-            className={[
-              "booking-certificate__promo-check",
-              certificateNumber.trim() &&
-                "booking-certificate__promo-check--ready",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            disabled={!certificateNumber.trim() || applyingCertificate || isCancelling}
-            onClick={() => void applyCertificate()}
-          >
-            {applyingCertificate ? "Применяем…" : "Применить"}
-          </button>
-        </div>
-        {certificateError ? (
-          <p className="booking-certificate__promo-error" role="alert">
-            {certificateError}
-          </p>
-        ) : null}
-      </div>
+      {secondsLeft != null && !invoiceSent ? (
+        <p className="booking-checkout__countdown">
+          {invoiceFlow
+            ? "Если не сформировать счёт на оплату, бронь отменится через "
+            : "Если не оплатить, она отменится через "}
+          <strong className="booking-checkout__countdown-time">
+            {formatCountdown(secondsLeft)}
+          </strong>
+        </p>
+      ) : null}
+      {invoiceFlow ? (
+        <InvoicePaymentPanel
+          bookingId={view.bookingId}
+          daily={Boolean(view.invoiceDaily)}
+          phone={contactPhone ?? ""}
+          email={view.invoiceEmail ?? ""}
+          disabled={isCancelling}
+          onIssued={() => {
+            setInvoiceSent(true);
+            onInvoiceIssued?.();
+          }}
+        />
+      ) : null}
       <div className="booking-checkout__success-actions">
+        {invoiceFlow ? null : (
         <button
           type="button"
           className="booking-checkout__submit"
-          disabled={isCancelling || applyingCertificate}
+          disabled={isCancelling}
           onClick={openPayment}
         >
           Оплатить {view.prepayment.toLocaleString("ru-RU")} ₽
         </button>
+        )}
         {canCancel ? (
           <button
             type="button"

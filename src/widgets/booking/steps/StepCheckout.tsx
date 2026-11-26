@@ -9,9 +9,12 @@ import type {
   BookingCalcMeta,
   BookingResultDraft,
   CheckoutContactDraft,
+  PayChoice,
   PaymentMode,
   VerifyChannel,
 } from "../checkout/checkoutDraft";
+import { withInvoiceIntent } from "../checkout/checkoutDraft";
+import { invoicePaymentEnabled, isInvoiceEmail } from "../checkout/invoiceApi";
 import {
   clearAuthToken,
   getAuthProfile,
@@ -23,7 +26,13 @@ import { ContactFields } from "../checkout/ContactFields";
 import { PromoCodeField, type CodeMark } from "../ui/PromoCodeField";
 import {
   bookingPromoMessage,
+  certificateApplyHint,
+  certificatePaymentPreview,
+  checkBookingCertificate,
   checkBookingPromo,
+  openBookingPayment,
+  settleBookingPayment,
+  type CheckedCertificate,
 } from "../checkout/bookingPay";
 import {
   formatRuPhoneMask,
@@ -162,12 +171,18 @@ export const StepCheckout: React.FC<Props> = ({
   const [verifyChannel, setVerifyChannel] = useState<VerifyChannel>(
     initialContact?.verifyChannel ?? "max"
   );
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(
-    initialContact?.paymentMode ?? "prepay"
+  const invoiceEnabled = invoicePaymentEnabled(config);
+  const [payChoice, setPayChoice] = useState<PayChoice>(
+    initialContact?.payByInvoice && invoicePaymentEnabled(config)
+      ? "invoice"
+      : initialContact?.paymentMode ?? "prepay"
   );
+  const [invoiceEmail, setInvoiceEmail] = useState(initialContact?.invoiceEmail ?? "");
+  const paymentMode: PaymentMode = payChoice === "invoice" ? "full" : payChoice;
   const [termsAccepted, setTermsAccepted] = useState(Boolean(initialContact));
   const [offerOpen, setOfferOpen] = useState(false);
   const [isBusy, setBusy] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState(initialContact?.promoCode ?? "");
   const [promoMark, setPromoMark] = useState<CodeMark>(
@@ -176,6 +191,16 @@ export const StepCheckout: React.FC<Props> = ({
   const [promoPercent, setPromoPercent] = useState<number | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [codesBusy, setCodesBusy] = useState(false);
+  const [certificateNumber, setCertificateNumber] = useState(
+    initialContact?.certificateNumber ?? ""
+  );
+  const [certificateMark, setCertificateMark] = useState<CodeMark>(
+    initialContact?.certificateNumber ? "ok" : "idle"
+  );
+  const [checkedCertificate, setCheckedCertificate] =
+    useState<CheckedCertificate | null>(null);
+  const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [certificateBusy, setCertificateBusy] = useState(false);
 
   const acceptedPromo = promoMark === "ok" ? promoCode.trim() : "";
   const quote = useBookingQuote({
@@ -229,6 +254,37 @@ export const StepCheckout: React.FC<Props> = ({
     productsSubtotal,
     effectiveMeta?.prepayIncludesProducts
   );
+  const certificateReady =
+    payChoice !== "invoice" &&
+    certificateMark === "ok" &&
+    certificateNumber.trim().length > 0 &&
+    checkedCertificate?.balance !== 0;
+  const certificateBalance =
+    certificateReady && checkedCertificate && checkedCertificate.balance > 0
+      ? checkedCertificate.balance
+      : null;
+  const partialDue =
+    certificateBalance != null
+      ? certificatePaymentPreview(total, prepayHint, certificateBalance, "prepay").due
+      : prepayHint;
+  const fullDue =
+    certificateBalance != null
+      ? certificatePaymentPreview(total, prepayHint, certificateBalance, "full").due
+      : total;
+  const certificateBill =
+    paymentMode === "prepay" && prepayHint != null ? prepayHint : total;
+  const certificateHint =
+    checkedCertificate && certificateBalance != null
+      ? certificateApplyHint(
+          checkedCertificate.name,
+          checkedCertificate.balance,
+          certificateBill
+        )
+      : null;
+  const certificatePending =
+    payChoice !== "invoice" &&
+    certificateNumber.trim().length > 0 &&
+    certificateMark !== "ok";
 
   const confirmMessage = (
     config.settings?.confirmMessage ?? "Спасибо! Ваша заявка принята."
@@ -239,6 +295,8 @@ export const StepCheckout: React.FC<Props> = ({
     lastName.trim().length >= 1 &&
     isRuPhoneComplete(phone) &&
     termsAccepted &&
+    (payChoice !== "invoice" || isInvoiceEmail(invoiceEmail)) &&
+    !certificatePending &&
     hasCalculation &&
     resolvedBase > 0 &&
     !isLoading &&
@@ -279,8 +337,30 @@ export const StepCheckout: React.FC<Props> = ({
     }
   };
 
+  const handleCheckCertificate = async () => {
+    const number = certificateNumber.trim();
+    if (!number || certificateBusy || isBusy || payChoice === "invoice") return;
+    setCertificateBusy(true);
+    setCertificateError(null);
+    try {
+      const checked = await checkBookingCertificate(number);
+      setCheckedCertificate(checked);
+      setCertificateMark("ok");
+    } catch (err) {
+      setCheckedCertificate(null);
+      setCertificateMark("bad");
+      setCertificateError(getWidgetApiErrorDetail(err));
+    } finally {
+      setCertificateBusy(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!formValid || isBusy) return;
+    if (isBusy) return;
+    if (!formValid) {
+      setAttempted(true);
+      return;
+    }
     setBusy(true);
     setSubmitError(null);
 
@@ -291,8 +371,14 @@ export const StepCheckout: React.FC<Props> = ({
       comment,
       verifyChannel,
       paymentMode,
+      ...(payChoice === "invoice"
+        ? { payByInvoice: true, invoiceEmail: invoiceEmail.trim() }
+        : {}),
       ...(promoMark === "ok" && promoCode.trim()
         ? { promoCode: promoCode.trim() }
+        : {}),
+      ...(certificateReady
+        ? { certificateNumber: certificateNumber.trim() }
         : {}),
     };
 
@@ -303,6 +389,7 @@ export const StepCheckout: React.FC<Props> = ({
     }
 
     api.setToken(savedToken);
+    let leavingForPayment = false;
     try {
       const built = buildSaveBodies(
         {
@@ -340,8 +427,22 @@ export const StepCheckout: React.FC<Props> = ({
         lastName: contact.lastName,
       });
 
-      const meta = readSaveMeta(res, total, confirmMessage, paymentMode);
-      onBooked(contact, meta);
+      const meta = withInvoiceIntent(
+        readSaveMeta(res, total, confirmMessage, paymentMode),
+        contact,
+        categoryId
+      );
+      try {
+        const next = await settleBookingPayment(meta, contact.certificateNumber);
+        if (next.action === "redirect") {
+          openBookingPayment(next.link);
+          leavingForPayment = true;
+          return;
+        }
+        onBooked(contact, next.result);
+      } catch {
+        onBooked(contact, meta);
+      }
     } catch (err) {
       if (isAuthRejected(err)) {
         // токен отозван/протух на сервере → подтверждаем номер заново
@@ -355,7 +456,7 @@ export const StepCheckout: React.FC<Props> = ({
       setSubmitError(detail);
       showToast(detail);
     } finally {
-      setBusy(false);
+      if (!leavingForPayment) setBusy(false);
     }
   };
 
@@ -371,7 +472,7 @@ export const StepCheckout: React.FC<Props> = ({
           onLastNameChange={setLastName}
           onPhoneChange={(raw) => setPhone(formatRuPhoneMask(raw))}
           onCommentChange={setComment}
-          phoneConfirmed={Boolean(savedToken)}
+          showErrors={attempted}
         />
 
         {savedToken ? null : (
@@ -441,14 +542,14 @@ export const StepCheckout: React.FC<Props> = ({
               <input
                 type="radio"
                 name="bk-payment-mode"
-                checked={paymentMode === "prepay"}
-                onChange={() => setPaymentMode("prepay")}
+                checked={payChoice === "prepay"}
+                onChange={() => setPayChoice("prepay")}
                 disabled={isBusy}
               />
               <span>
                 Частичная
-                {prepayHint != null
-                  ? ` — ${prepayHint.toLocaleString("ru-RU")} ₽`
+                {partialDue != null
+                  ? ` — ${partialDue.toLocaleString("ru-RU")} ₽`
                   : " (предоплата)"}
               </span>
             </label>
@@ -456,13 +557,50 @@ export const StepCheckout: React.FC<Props> = ({
               <input
                 type="radio"
                 name="bk-payment-mode"
-                checked={paymentMode === "full"}
-                onChange={() => setPaymentMode("full")}
+                checked={payChoice === "full"}
+                onChange={() => setPayChoice("full")}
                 disabled={isBusy}
               />
-              <span>Полная — {total.toLocaleString("ru-RU")} ₽</span>
+              <span>Полная — {fullDue.toLocaleString("ru-RU")} ₽</span>
             </label>
+            {invoiceEnabled ? (
+              <label className="booking-checkout__radio">
+                <input
+                  type="radio"
+                  name="bk-payment-mode"
+                  checked={payChoice === "invoice"}
+                  onChange={() => setPayChoice("invoice")}
+                  disabled={isBusy}
+                />
+                <span>Оплата с р/счета юр. лица</span>
+              </label>
+            ) : null}
           </div>
+          {payChoice === "invoice" ? (
+            <div className="booking-checkout__field booking-invoice__email">
+              <label className="booking-checkout__label" htmlFor="bk-invoice-email">
+                Почта для отправки счёта
+              </label>
+              <input
+                id="bk-invoice-email"
+                className={
+                  attempted && !isInvoiceEmail(invoiceEmail)
+                    ? "booking-checkout__input booking-checkout__input--invalid"
+                    : "booking-checkout__input"
+                }
+                aria-invalid={attempted && !isInvoiceEmail(invoiceEmail)}
+                name="invoice-email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                aria-required="true"
+                value={invoiceEmail}
+                disabled={isBusy}
+                onChange={(event) => setInvoiceEmail(event.target.value)}
+              />
+            </div>
+          ) : null}
         </fieldset>
 
         <PromoCodeField
@@ -483,6 +621,76 @@ export const StepCheckout: React.FC<Props> = ({
           onCheck={() => void handleCheckPromo()}
         />
 
+        {payChoice !== "invoice" ? (
+          <div className="booking-checkout__field">
+            <label className="booking-checkout__label" htmlFor="bk-certificate">
+              Сертификат
+            </label>
+            <div className="booking-certificate__promo-row">
+              <input
+                id="bk-certificate"
+                className={
+                  attempted && certificatePending
+                    ? "booking-checkout__input booking-checkout__input--invalid"
+                    : "booking-checkout__input"
+                }
+                aria-invalid={attempted && certificatePending}
+                name="booking-certificate"
+                inputMode="numeric"
+                autoComplete="off"
+                value={certificateNumber}
+                disabled={isBusy || certificateBusy}
+                onChange={(event) => {
+                  setCertificateNumber(event.target.value);
+                  setCertificateMark("idle");
+                  setCheckedCertificate(null);
+                  setCertificateError(null);
+                }}
+              />
+              {certificateMark === "ok" && checkedCertificate ? (
+                <span
+                  className="booking-certificate__promo-mark booking-certificate__promo-mark--ok"
+                  role="img"
+                  aria-label={certificateHint ?? checkedCertificate.name}
+                >
+                  ✓
+                </span>
+              ) : certificateMark === "bad" ? (
+                <span
+                  className="booking-certificate__promo-mark booking-certificate__promo-mark--bad"
+                  role="img"
+                  aria-label="Сертификат не подошёл"
+                >
+                  ✕
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={[
+                    "booking-certificate__promo-check",
+                    certificateNumber.trim() &&
+                      "booking-certificate__promo-check--ready",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  disabled={!certificateNumber.trim() || certificateBusy || isBusy}
+                  onClick={() => void handleCheckCertificate()}
+                >
+                  {certificateBusy ? "…" : "проверить"}
+                </button>
+              )}
+            </div>
+            {certificateHint ? (
+              <p className="booking-checkout__hint">{certificateHint}</p>
+            ) : null}
+            {certificateError ? (
+              <p className="booking-certificate__promo-error" role="alert">
+                {certificateError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <QuoteBreakdown
           quote={quote}
           categoryId={categoryId}
@@ -493,11 +701,18 @@ export const StepCheckout: React.FC<Props> = ({
           checkIn={checkIn}
           checkOut={checkOut}
           paymentMode={paymentMode}
+          certificateBalance={certificateBalance}
           promoPercent={promoMark === "ok" ? promoPercent : null}
         />
 
         <div className="booking-checkout__consents">
-          <label className="booking-checkout__privacy">
+          <label
+            className={
+              attempted && !termsAccepted
+                ? "booking-checkout__privacy booking-checkout__privacy--invalid"
+                : "booking-checkout__privacy"
+            }
+          >
             <input
               type="checkbox"
               required
@@ -532,7 +747,7 @@ export const StepCheckout: React.FC<Props> = ({
         <button
           type="button"
           className="booking-checkout__submit"
-          disabled={!formValid || isBusy}
+          disabled={isBusy}
           onClick={() => void handleSubmit()}
         >
           {isBusy

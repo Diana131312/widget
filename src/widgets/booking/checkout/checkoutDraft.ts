@@ -2,6 +2,9 @@ export type VerifyChannel = "telegram" | "max" | "call";
 
 export type PaymentMode = "prepay" | "full";
 
+/** Третий пункт на оформлении: бронь всё равно уходит с полной оплатой. */
+export type PayChoice = PaymentMode | "invoice";
+
 export type CheckoutContactDraft = {
   firstName: string;
   lastName: string;
@@ -14,6 +17,10 @@ export type CheckoutContactDraft = {
   promoCode?: string;
   /** Проверенный номер. Списание идёт после создания брони. */
   certificateNumber?: string;
+  /** Гость платит с расчётного счёта. В /save уходит paymentMode full. */
+  payByInvoice?: boolean;
+  /** Куда отправить PDF счёта. */
+  invoiceEmail?: string;
 };
 
 export type BookingResultDraft = {
@@ -33,6 +40,11 @@ export type BookingResultDraft = {
   paidByCertificate?: boolean;
   /** Сертификат закрыл всю выбранную сумму, доплата не нужна. */
   certificatePaidFully?: boolean;
+  /** Шаг 6 показывает выставление счёта, а не ссылку на оплату. */
+  payByInvoice?: boolean;
+  invoiceEmail?: string;
+  /** true — id относится к посуточной брони. */
+  invoiceDaily?: boolean;
 };
 
 /** Мета /calculate, сохраняем для шага 4–5. */
@@ -44,3 +56,19 @@ export type BookingCalcMeta = {
   discountText: string | null;
   amountBeforeDiscount: number | null;
 };
+
+/** Помечает результат брони, если гость выбрал оплату по счёту. */
+export function withInvoiceIntent(
+  result: BookingResultDraft,
+  contact: CheckoutContactDraft,
+  categoryId: "banya" | "homes"
+): BookingResultDraft {
+  if (!contact.payByInvoice) return result;
+  return {
+    ...result,
+    payByInvoice: true,
+    invoiceEmail: contact.invoiceEmail?.trim() ?? "",
+    invoiceDaily: categoryId === "homes",
+    paymentMode: "full",
+  };
+}

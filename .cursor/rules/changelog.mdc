@@ -1,0 +1,23 @@
+---
+description: Write CHANGELOG.md as short customer-facing bullet points
+alwaysApply: true
+---
+
+# Changelog for the customer
+
+`CHANGELOG.md` is for the customer and the guest, not for developers. Write it in Russian, as a list. One visible change per bullet.
+
+## How to write a version
+
+- Say what the guest can now do, see, or no longer see.
+- Use the words from the widget: «Оплатить», «Шаг 2», «Почта для отправки сертификата».
+- Keep each bullet to one or two short sentences.
+- Leave out file names, functions, requests, tests, and how the code was built.
+
+```text
+❌ Промокод бань, домов и сертификатов — одно поле: без подсказки внутри и с кнопкой «проверить». На шаге оплаты подпись сертификата — «Оплатить подарочным сертификатом».
+
+✅
+- Промокод в банях, домах и сертификатах — одно поле с кнопкой «проверить».
+- На оплате сертификат подписан «Оплатить подарочным сертификатом».
+```

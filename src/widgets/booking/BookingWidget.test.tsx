@@ -108,7 +108,8 @@ describe("BookingWidget", () => {
     await waitFor(() => {
       expect(screen.getByText("Мята")).toBeInTheDocument();
     });
-    expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
   });
 
   it("falls back to category when room id is missing from config", async () => {

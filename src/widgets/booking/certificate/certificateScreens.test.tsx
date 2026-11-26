@@ -67,12 +67,9 @@ describe("certificate screens stay mounted", () => {
     expect(document.querySelector(".booking-certificate__nominals")).toHaveClass(
       "is-invalid"
     );
-    expect(screen.getByLabelText(/Email/)).toHaveClass(
-      "booking-checkout__input--invalid"
-    );
+    expect(screen.queryByLabelText("Почта для отправки сертификата")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
 
     expect(screen.getByText("Срок сертификата")).toBeInTheDocument();
@@ -84,7 +81,7 @@ describe("certificate screens stay mounted", () => {
     const user = userEvent.setup();
     render(<Host format="paper" />);
 
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Почта для отправки сертификата")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
     await user.click(screen.getByRole("button", { name: "Далее" }));
 

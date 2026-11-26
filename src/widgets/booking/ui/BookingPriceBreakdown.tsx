@@ -1,7 +1,7 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
-import { certificateCoverage } from "../checkout/bookingPay";
+import { certificatePaymentPreview } from "../checkout/bookingPay";
 import type { PaymentMode } from "../checkout/checkoutDraft";
 import { resolveClientPrepay } from "../setup/resolveClientPrepay";
 import { formatStayDateTime } from "./formatStay";
@@ -173,23 +173,26 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
     splitDiscountText(discountText),
     promoPercent
   );
-  const coverage =
+  const preview =
     certificateBalance != null && certificateBalance > 0
-      ? certificateCoverage(total, certificateBalance)
+      ? certificatePaymentPreview(
+          total,
+          displayPrepay,
+          certificateBalance,
+          paymentMode === "prepay" ? "prepay" : "full"
+        )
       : null;
-  const payable = coverage ? coverage.remainingPay : total;
-  const shownPrepay =
-    coverage && displayPrepay != null
-      ? Math.min(displayPrepay, payable)
-      : displayPrepay;
+  const showChosenPrepay = paymentMode === "prepay" && displayPrepay != null;
   const showPrepay =
-    paymentMode == null && shownPrepay != null && shownPrepay > 0;
+    paymentMode == null && displayPrepay != null && displayPrepay > 0;
   const dueAmount =
-    paymentMode === "full"
-      ? payable
-      : paymentMode === "prepay"
-        ? shownPrepay ?? payable
-        : null;
+    paymentMode === "full" || paymentMode === "prepay"
+      ? preview
+        ? preview.due
+        : paymentMode === "prepay"
+          ? displayPrepay ?? total
+          : total
+      : null;
 
   const costLabel =
     amountBeforeDiscount != null &&
@@ -330,20 +333,28 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
         )}
       </div>
 
-      {coverage && coverage.writeOff > 0 ? (
-        <div className="booking-price-breakdown__row">
-          <span>Сертификат</span>
-          <span className="booking-price-breakdown__num">
-            −{coverage.writeOff.toLocaleString("ru-RU")} ₽
-          </span>
-        </div>
-      ) : null}
       <div className="booking-price-breakdown__row booking-price-breakdown__row--total">
         <span>Итого</span>
         <span className="booking-price-breakdown__num">
-          {payable.toLocaleString("ru-RU")} ₽
+          {total.toLocaleString("ru-RU")} ₽
         </span>
       </div>
+      {showChosenPrepay ? (
+        <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
+          <span>Предоплата</span>
+          <span className="booking-price-breakdown__num">
+            {displayPrepay!.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      ) : null}
+      {preview && preview.writeOff > 0 ? (
+        <div className="booking-price-breakdown__certificate">
+          <span>Сертификат</span>
+          <span className="booking-price-breakdown__num">
+            −{preview.writeOff.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      ) : null}
       {dueAmount != null ? (
         <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
           <span>К оплате</span>
@@ -356,7 +367,7 @@ export const BookingPriceBreakdown: React.FC<Props> = ({
         <div className="booking-price-breakdown__row booking-price-breakdown__row--prepay">
           <span>Предоплата</span>
           <span className="booking-price-breakdown__num">
-            {shownPrepay!.toLocaleString("ru-RU")} ₽
+            {displayPrepay!.toLocaleString("ru-RU")} ₽
           </span>
         </div>
       ) : null}

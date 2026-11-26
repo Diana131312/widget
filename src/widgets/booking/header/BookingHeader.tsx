@@ -1,6 +1,6 @@
 import React from "react";
 import { Home } from "lucide-react";
-import { BOOKING_STEPS, getStepIndex, type BookingStepId } from "../types";
+import { getStepIndex, type BookingStepId } from "../types";
 
 type BookingHeaderProps = {
   stepId: BookingStepId;
@@ -34,13 +34,13 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
   onHome,
   hideStepLabel = false,
   stepNumber,
-  stepTotal,
+  stepTotal: _stepTotal,
   stepNote = null,
   userLabel = null,
 }) => {
   const index = getStepIndex(stepId);
-  const total = stepTotal ?? BOOKING_STEPS.length;
   const stepNum = stepNumber ?? index + 1;
+  void _stepTotal;
 
   return (
     <header className="booking-header">
@@ -68,7 +68,6 @@ export const BookingHeader: React.FC<BookingHeaderProps> = ({
         {!hideStepLabel ? (
           <p className="booking-header__step">
             Шаг {stepNum}
-            {stepNum > 1 ? ` из ${total}` : null}
             {stepNote ? (
               <span className="booking-header__step-note">{stepNote}</span>
             ) : null}

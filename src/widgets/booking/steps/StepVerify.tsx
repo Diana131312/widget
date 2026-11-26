@@ -8,11 +8,16 @@ import {
   buildSaveBodies,
   toApiMessenger,
 } from "../checkout/buildSavePayload";
-import type {
-  BookingCalcMeta,
-  BookingResultDraft,
-  CheckoutContactDraft,
-  PaymentMode,
+import {
+  openBookingPayment,
+  settleBookingPayment,
+} from "../checkout/bookingPay";
+import {
+  withInvoiceIntent,
+  type BookingCalcMeta,
+  type BookingResultDraft,
+  type CheckoutContactDraft,
+  type PaymentMode,
 } from "../checkout/checkoutDraft";
 import {
   formatRuPhoneMask,
@@ -280,6 +285,7 @@ export const StepVerify: React.FC<Props> = ({
   const submitBooking = async (checkCode: string | undefined) => {
     setBusy(true);
     setError(null);
+    let leavingForPayment = false;
     try {
       const res = await createBooking(checkCode, paymentMode);
       const issued = readTokenFromResponse(res);
@@ -292,11 +298,26 @@ export const StepVerify: React.FC<Props> = ({
           lastName: contact.lastName,
         });
       }
-      onComplete(readSaveMeta(res, total, confirmMessage, paymentMode));
+      const meta = withInvoiceIntent(
+        readSaveMeta(res, total, confirmMessage, paymentMode),
+        contact,
+        categoryId
+      );
+      try {
+        const next = await settleBookingPayment(meta, contact.certificateNumber);
+        if (next.action === "redirect") {
+          openBookingPayment(next.link);
+          leavingForPayment = true;
+          return;
+        }
+        onComplete(next.result);
+      } catch {
+        onComplete(meta);
+      }
     } catch (err) {
       setError(getWidgetApiErrorDetail(err));
     } finally {
-      setBusy(false);
+      if (!leavingForPayment) setBusy(false);
     }
   };
 

@@ -24,7 +24,7 @@ const CERT_KEYS = [
 
 export type CertificateLine = { id: string; count: number };
 
-export type CertificatePhase = "pick" | "buyer";
+export type CertificatePhase = "pick" | "buyer" | "invoice";
 
 export type CertificateMessenger = "telegram" | "max" | "call";
 
@@ -60,7 +60,7 @@ export const EMPTY_CERTIFICATE_URL: CertificateUrlState = {
   format: null,
 };
 
-const PHASES = new Set<CertificatePhase>(["pick", "buyer"]);
+const PHASES = new Set<CertificatePhase>(["pick", "buyer", "invoice"]);
 const MESSENGERS = new Set<CertificateMessenger>(["telegram", "max", "call"]);
 
 const FORMATS = new Set<CertificateFormat>(["paper", "electronic"]);
@@ -163,7 +163,7 @@ export function parseCertificateUrl(
     ? lines[0].count
     : clampCertificateCount(Number.parseInt(readParam(params, "ccount") ?? "1", 10));
   if (lines[0]) certificateId = lines[0].id;
-  if (phase === "buyer" && !certificateId) phase = "pick";
+  if ((phase === "buyer" || phase === "invoice") && !certificateId) phase = "pick";
 
   return {
     phase,

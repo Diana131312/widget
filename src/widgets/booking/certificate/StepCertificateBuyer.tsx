@@ -5,6 +5,7 @@ import {
   formatRuPhoneMask,
   isRuPhoneComplete,
 } from "../checkout/phone";
+import { PromoCodeField, type CodeMark } from "../ui/PromoCodeField";
 import { formatCertificateAmount } from "./amounts";
 import { isCertificateEmail } from "./certificateApi";
 import type { CertificateMessenger } from "./certificateUrl";
@@ -22,10 +23,19 @@ export type CertificateBuyerValues = {
   email: string;
   messenger: CertificateMessenger;
   termsAccepted: boolean;
+  /** Счёт на юрлицо вместо перехода на ссылку оплаты. */
+  payByInvoice: boolean;
+  /** Куда отправить PDF, если выбрана оплата с р/счета. */
+  invoiceEmail: string;
 };
 
-type CertificateBuyerSeed = Omit<CertificateBuyerValues, "messenger"> & {
+type CertificateBuyerSeed = Omit<
+  CertificateBuyerValues,
+  "messenger" | "payByInvoice" | "invoiceEmail"
+> & {
   messenger: CertificateMessenger | "";
+  payByInvoice?: boolean;
+  invoiceEmail?: string;
 };
 
 type StepCertificateBuyerProps = {
@@ -42,8 +52,13 @@ type StepCertificateBuyerProps = {
   busy?: boolean;
   /** Уходит запрос на создание покупки */
   submitting?: boolean;
-  /** false — почта уже задана на предыдущем шаге или подставляется для бумаги */
+  /** Электронный сертификат: почта нужна, чтобы отправить сертификат. */
   showEmail?: boolean;
+  promoMark?: CodeMark;
+  promoPercent?: number | null;
+  promoChecking?: boolean;
+  onPromoChange?: (promoCode: string) => void;
+  onCheckPromo?: () => void;
   /** Меняется, когда профиль авторизации догрузился. */
   authVersion?: number;
   onBuyerChange?: (buyer: Partial<CertificateBuyerValues>) => void;
@@ -61,6 +76,11 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
   busy = false,
   submitting = false,
   showEmail = true,
+  promoMark = "idle",
+  promoPercent = null,
+  promoChecking = false,
+  onPromoChange,
+  onCheckPromo,
   authVersion = 0,
   onBuyerChange,
   onPay,
@@ -81,6 +101,7 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
     initialBuyer?.termsAccepted ?? false
   );
   const [offerOpen, setOfferOpen] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
   const publish = (next: Partial<CertificateBuyerValues>) => {
     onBuyerChange?.(next);
@@ -118,7 +139,11 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
     (!showEmail || emailOk) &&
     termsAccepted;
   const promoPending = Boolean(draft.promoCode) && discountPercent == null;
-  const canPay = formValid && !promoPending && !busy && !submitting;
+  const canPay = formValid && !promoPending;
+  const inputClass = (invalid: boolean) =>
+    invalid
+      ? "booking-checkout__input booking-checkout__input--invalid"
+      : "booking-checkout__input";
 
   const promoApplied = Boolean(draft.promoCode) && (discountPercent ?? 0) > 0;
 
@@ -160,12 +185,6 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
           </div>
         </div>
 
-        {promoMessage ? (
-          <p className="booking-checkout__hint" role="alert">
-            {promoMessage}
-          </p>
-        ) : null}
-
         <div className="booking-checkout__fields">
           <div className="booking-checkout__field">
             <label className="booking-checkout__label" htmlFor="bk-cert-last">
@@ -173,7 +192,8 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
             </label>
             <input
               id="bk-cert-last"
-              className="booking-checkout__input"
+              className={inputClass(attempted && lastName.trim().length < 1)}
+              aria-invalid={attempted && lastName.trim().length < 1}
               value={lastName}
               autoComplete="family-name"
               placeholder="Иванов"
@@ -190,7 +210,8 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
             </label>
             <input
               id="bk-cert-first"
-              className="booking-checkout__input"
+              className={inputClass(attempted && firstName.trim().length < 1)}
+              aria-invalid={attempted && firstName.trim().length < 1}
               value={firstName}
               autoComplete="given-name"
               placeholder="Иван"
@@ -207,7 +228,8 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
             </label>
             <input
               id="bk-cert-phone"
-              className="booking-checkout__input"
+              className={inputClass(attempted && !phoneOk)}
+              aria-invalid={attempted && !phoneOk}
               type="tel"
               inputMode="numeric"
               value={phone}
@@ -219,47 +241,67 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
                 publish({ phone: next });
               }}
             />
-            {!phoneOk && phone.length > 0 ? (
+            {(attempted || phone.length > 0) && !phoneOk ? (
               <p className="booking-checkout__hint">Укажите полный номер</p>
             ) : null}
           </div>
           {showEmail ? (
-          <div className="booking-checkout__field">
-            <label className="booking-checkout__label" htmlFor="bk-cert-email">
-              Email
-              <span className="booking-certificate__required" aria-hidden="true">
-                *
-              </span>
-            </label>
-            <p className="booking-certificate__email-note">
-              На эту почту придёт сертификат
-            </p>
-            <input
-              id="bk-cert-email"
-              className="booking-checkout__input"
-              type="email"
-              inputMode="email"
-              required
-              name="certificate-email"
-              autoComplete="email"
-              placeholder="ivan@mail.ru"
-              aria-required="true"
-              value={email}
-              onChange={(event) => {
-                const next = event.target.value;
-                setEmail(next);
-                publish({ email: next });
-              }}
-            />
-            {email.length > 0 && !emailOk ? (
-              <p className="booking-checkout__hint">Укажите почту полностью</p>
-            ) : null}
-          </div>
+            <div className="booking-checkout__field">
+              <label className="booking-checkout__label" htmlFor="bk-cert-email">
+                Почта для отправки сертификата
+                <span className="booking-certificate__required" aria-hidden="true">
+                  *
+                </span>
+              </label>
+              <input
+                id="bk-cert-email"
+                className={inputClass(attempted && !emailOk)}
+                aria-invalid={attempted && !emailOk}
+                type="email"
+                inputMode="email"
+                required
+                name="certificate-email"
+                autoComplete="email"
+                placeholder="ivan@mail.ru"
+                aria-required="true"
+                value={email}
+                disabled={submitting}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setEmail(next);
+                  publish({ email: next });
+                }}
+              />
+              {(attempted || email.length > 0) && !emailOk ? (
+                <p className="booking-checkout__hint">Укажите почту полностью</p>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
+        <hr className="booking-checkout__rule" />
+
+        <PromoCodeField
+            id="bk-cert-promo"
+            name="certificate-promo"
+            value={draft.promoCode}
+            mark={promoMark}
+            percent={promoPercent}
+            error={promoMark === "bad" ? promoMessage : null}
+            checking={promoChecking}
+            checkDisabled={busy || submitting}
+            onChange={(next) => onPromoChange?.(next)}
+            onCheck={() => onCheckPromo?.()}
+          />
+
         <div className="booking-checkout__consents">
-          <label className="booking-checkout__privacy">
+          <label
+            className={
+              attempted && !termsAccepted
+                ? "booking-checkout__privacy booking-checkout__privacy--invalid"
+                : "booking-checkout__privacy"
+            }
+          >
             <input
               type="checkbox"
               checked={termsAccepted}
@@ -297,16 +339,21 @@ export const StepCertificateBuyer: React.FC<StepCertificateBuyerProps> = ({
         <button
           type="button"
           className="booking-checkout__submit"
-          disabled={!canPay}
+          disabled={busy || submitting}
           onClick={() => {
-            if (!canPay) return;
+            if (!canPay) {
+              setAttempted(true);
+              return;
+            }
             onPay?.({
               lastName: lastName.trim(),
               firstName: firstName.trim(),
               phone,
-              email: email.trim(),
+              email: showEmail ? email.trim() : "",
+              invoiceEmail: "",
               messenger: "telegram",
               termsAccepted,
+              payByInvoice: false,
             });
           }}
         >

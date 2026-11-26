@@ -64,7 +64,15 @@ describe("StepCertificateBuyer", () => {
     );
 
     const pay = screen.getByRole("button", { name: /Оплатить/ });
-    expect(pay).toBeDisabled();
+    expect(pay).toBeEnabled();
+    await user.click(pay);
+    expect(onPay).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Фамилия покупателя")).toHaveClass(
+      "booking-checkout__input--invalid"
+    );
+    expect(screen.getByLabelText(/Почта для отправки сертификата/)).toHaveClass(
+      "booking-checkout__input--invalid"
+    );
 
     expect(screen.getByText("Срок сертификата")).toBeInTheDocument();
     expect(screen.getByText("не ограничен")).toBeInTheDocument();
@@ -78,9 +86,15 @@ describe("StepCertificateBuyer", () => {
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
     await user.type(screen.getByLabelText("Телефон покупателя"), "9001234567");
     await user.click(screen.getByRole("checkbox"));
-    expect(pay).toBeDisabled();
+    expect(pay).toBeEnabled();
+    expect(screen.getByLabelText("Фамилия покупателя")).not.toHaveClass(
+      "booking-checkout__input--invalid"
+    );
 
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
+    await user.type(
+      screen.getByLabelText(/Почта для отправки сертификата/),
+      "ivan@mail.ru"
+    );
     expect(pay).toBeEnabled();
 
     await user.click(pay);
@@ -90,7 +104,32 @@ describe("StepCertificateBuyer", () => {
         lastName: "Петров",
         email: "ivan@mail.ru",
         messenger: "telegram",
+        payByInvoice: false,
       })
     );
+  });
+
+  it("does not offer invoice payment for a certificate", () => {
+    render(
+      <StepCertificateBuyer
+        certificate={certificate}
+        draft={{
+          certificateId: certificate.id,
+          count: 1,
+          recipientName: "",
+          promoCode: "",
+        }}
+        discountPercent={0}
+        showEmail={false}
+      />
+    );
+    expect(screen.queryByRole("radio", { name: "Полная оплата" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("radio", { name: "Оплата с р/счета юр. лица" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Почта для отправки счёта")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Почта для отправки сертификата")
+    ).not.toBeInTheDocument();
   });
 });

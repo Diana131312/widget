@@ -3320,6 +3320,15 @@ button.booking-steps__dot:focus-visible {
   margin-top: 2px;
 }
 
+.booking-checkout__privacy--invalid {
+  color: #b42318;
+}
+
+.booking-checkout__privacy--invalid input {
+  outline: 2px solid #b42318;
+  outline-offset: 2px;
+}
+
 .booking-checkout__terms-link {
   margin: 0;
   padding: 0;
@@ -3420,6 +3429,18 @@ button.booking-steps__dot:focus-visible {
   margin-top: 4px;
   font-weight: 600;
   color: var(--bk-ink);
+}
+
+.booking-price-breakdown__certificate {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bk-border);
+  font-weight: 700;
+  color: var(--bk-ink-dark);
+  font-size: var(--bk-caption);
 }
 
 /* Скидка: сумма строкой, под ней — из чего она сложилась (бейджи %) */
@@ -3695,4 +3716,95 @@ button.booking-steps__dot:focus-visible {
 
 .booking-checkout__secondary:hover {
   border-color: var(--bk-ink);
+}
+
+.booking-invoice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-invoice__email {
+  margin-top: 14px;
+}
+
+.booking-invoice__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.booking-invoice__anchor {
+  position: relative;
+}
+
+.booking-invoice__suggest {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(40, 48, 44, 0.14);
+}
+
+.booking-invoice__suggest--inn {
+  left: auto;
+  right: 0;
+  width: min(420px, 72vw);
+}
+
+.booking-invoice__suggest button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: calc(var(--bk-radius) - 2px);
+  background: transparent;
+  color: var(--bk-ink-dark);
+  font-size: var(--bk-caption);
+  font-family: var(--bk-cal-font);
+  text-align: left;
+  cursor: pointer;
+}
+
+.booking-invoice__suggest button:hover {
+  background: var(--bk-muted);
+}
+
+.booking-invoice__suggest-name {
+  color: var(--bk-ink-dark);
+  font-size: var(--bk-caption);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.booking-invoice__suggest-meta {
+  color: var(--bk-ink-soft);
+  font-size: var(--bk-small);
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.booking-invoice__pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+@media (min-width: 640px) {
+  .booking-invoice__row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(160px, 0.8fr);
+  }
 }

@@ -177,10 +177,37 @@ export function certificateCoverage(
   };
 }
 
+/** Сколько сертификат снимает с выбранной оплаты и что остаётся в итоге. */
+export function certificatePaymentPreview(
+  total: number,
+  prepay: number | null,
+  balance: number,
+  mode: "prepay" | "full"
+): { writeOff: number; totalAfter: number; due: number } {
+  const bill = mode === "prepay" && prepay != null ? prepay : total;
+  const coverage = certificateCoverage(bill, balance);
+  return {
+    writeOff: coverage.writeOff,
+    totalAfter: Math.max(0, total - coverage.writeOff),
+    due: coverage.remainingPay,
+  };
+}
+
+const rub = new Intl.NumberFormat("ru-RU");
+
+/** «Электронный сертификат: спишется 3 000 ₽, останется 4 000 ₽». */
+export function certificateApplyHint(
+  name: string,
+  balance: number,
+  bill: number
+): string {
+  const { writeOff, remainingBalance } = certificateCoverage(bill, balance);
+  return `${name}: спишется ${rub.format(writeOff)} ₽, останется ${rub.format(remainingBalance)} ₽`;
+}
+
 export function certificateCoverageText(total: number, balance: number): string {
   const { writeOff, remainingBalance } = certificateCoverage(total, balance);
-  const money = new Intl.NumberFormat("ru-RU").format;
-  return `Спишется ${money(writeOff)} рублей останется ${money(remainingBalance)} рублей`;
+  return `Спишется ${rub.format(writeOff)} рублей останется ${rub.format(remainingBalance)} рублей`;
 }
 
 /** POST /check-certificate — название и остаток. Ошибка 400 приходит текстом. */
@@ -252,6 +279,28 @@ export async function applyCertificatePayment(
     paidByCertificate: true,
     certificatePaidFully: false,
   };
+}
+
+export type BookingPaymentNext =
+  | { action: "redirect"; link: string; result: BookingResultDraft }
+  | { action: "stay"; result: BookingResultDraft };
+
+/**
+ * После создания брони. Сертификат списывается сразу.
+ * Ссылка на банк уводит гостя со шага ожидания. Счёт и полная оплата
+ * сертификатом остаются в виджете.
+ */
+export async function settleBookingPayment(
+  meta: BookingResultDraft,
+  certificateNumber?: string
+): Promise<BookingPaymentNext> {
+  if (meta.payByInvoice) return { action: "stay", result: meta };
+  const number = certificateNumber?.trim() ?? "";
+  const result = number ? await applyCertificatePayment(meta, number) : meta;
+  if (result.certificatePaidFully || !result.paymentLink) {
+    return { action: "stay", result };
+  }
+  return { action: "redirect", link: result.paymentLink, result };
 }
 
 /** Переход на страницу оплаты брони. */

@@ -36,7 +36,8 @@ describe("BookingHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Шаг 2 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
   });
 
   it("hides step label when hideStepLabel", () => {
@@ -49,16 +50,17 @@ describe("BookingHeader", () => {
         onHome={vi.fn()}
       />
     );
-    expect(screen.queryByText(/Шаг \d+ из/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Шаг \d+/)).not.toBeInTheDocument();
   });
 
   it("shows verify as step 5 of 6 and done as 6 of 6", () => {
     const { rerender } = render(
       <BookingHeader stepId="verify" canGoBack onBack={vi.fn()} />
     );
-    expect(screen.getByText("Шаг 5 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 5")).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+/)).not.toBeInTheDocument();
 
     rerender(<BookingHeader stepId="done" canGoBack onBack={vi.fn()} />);
-    expect(screen.getByText("Шаг 6 из 6")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 6")).toBeInTheDocument();
   });
 });

@@ -114,6 +114,7 @@ function BookingWidgetInner() {
   const [urlReady, setUrlReady] = useState(
     () => urlCandidate.stepId === "category"
   );
+  const [invoiceHome, setInvoiceHome] = useState(false);
   const [linkIssue, setLinkIssue] = useState<{
     message: string;
     actionLabel: string;
@@ -129,6 +130,9 @@ function BookingWidgetInner() {
   );
   const certificatePhase =
     stepId === "category" ? certificate.phase : null;
+  useEffect(() => {
+    setInvoiceHome(false);
+  }, [stepId, bookingResult?.bookingId, certificate.phase]);
   const [historyBusy, setHistoryBusy] = useState(false);
   const saleCertificates = useMemo(
     () => parseSaleCertificates(config?.certificates),
@@ -465,6 +469,7 @@ function BookingWidgetInner() {
             contactPhone={contactDraft?.phone ?? null}
             onStartOver={startOverClean}
             onBackToCart={leaveDone}
+            onInvoiceIssued={() => setInvoiceHome(true)}
           />
         )}
       </>
@@ -488,16 +493,23 @@ function BookingWidgetInner() {
               ? certificateOnly
                 ? 2
                 : 3
-              : undefined
+              : certificatePhase === "invoice"
+                ? certificateOnly
+                  ? 3
+                  : 4
+                : undefined
         }
-        stepTotal={certificatePhase ? (certificateOnly ? 2 : 3) : undefined}
         title={title}
         canGoBack={
           certificateOnly
-            ? certificatePhase === "buyer"
+            ? certificatePhase === "buyer" || certificatePhase === "invoice"
             : canGoBack || certificatePhase != null
         }
         onBack={() => {
+          if (certificatePhase === "invoice") {
+            patchCertificate({ phase: "buyer" });
+            return;
+          }
           if (certificatePhase === "buyer") {
             patchCertificate({ phase: "pick" });
             return;
@@ -509,8 +521,25 @@ function BookingWidgetInner() {
           setLinkIssue(null);
           back();
         }}
-        showHome={objectFocus}
-        onHome={objectFocus ? startOverClean : undefined}
+        showHome={objectFocus || invoiceHome}
+        onHome={
+          objectFocus || invoiceHome
+            ? () => {
+                if (certificatePhase) {
+                  setCertificate(
+                    certificateOnly
+                      ? {
+                          ...EMPTY_CERTIFICATE_URL,
+                          phase: "pick",
+                          format: "electronic",
+                        }
+                      : EMPTY_CERTIFICATE_URL
+                  );
+                }
+                startOverClean();
+              }
+            : undefined
+        }
         hideStepLabel={objectFocus}
         userLabel={userLabel}
       >

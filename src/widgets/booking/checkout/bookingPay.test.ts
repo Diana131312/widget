@@ -2,10 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyCertificatePayment,
   bookingPromoMessage,
+  certificateApplyHint,
   certificateCoverageText,
+  certificatePaymentPreview,
   checkBookingCertificate,
   checkBookingPromo,
   payBookingWithCertificate,
+  settleBookingPayment,
 } from "./bookingPay";
 import type { BookingResultDraft } from "./checkoutDraft";
 
@@ -83,6 +86,14 @@ describe("checkBookingPromo", () => {
   });
 });
 
+describe("certificateApplyHint", () => {
+  it("says how much is written off and what stays on the certificate", () => {
+    expect(certificateApplyHint("Электронный сертификат", 7000, 3000)).toBe(
+      "Электронный сертификат: спишется 3\u00a0000 ₽, останется 4\u00a0000 ₽"
+    );
+  });
+});
+
 describe("certificateCoverageText", () => {
   it("writes off the certificate and leaves the rest to pay", () => {
     expect(certificateCoverageText(3450, 10000)).toBe(
@@ -94,17 +105,59 @@ describe("certificateCoverageText", () => {
   });
 });
 
-describe("checkBookingCertificate", () => {
-  it("reads name and balance", async () => {
+describe("certificatePaymentPreview", () => {
+  it("reduces the amount due and the total by the certificate", () => {
+    expect(certificatePaymentPreview(7000, 3500, 5000, "prepay")).toEqual({
+      writeOff: 3500,
+      totalAfter: 3500,
+      due: 0,
+    });
+    expect(certificatePaymentPreview(7000, 3500, 1000, "full")).toEqual({
+      writeOff: 1000,
+      totalAfter: 6000,
+      due: 6000,
+    });
+  });
+});
+
+describe("settleBookingPayment", () => {
+  it("opens the bank link when no certificate was used", async () => {
+    await expect(settleBookingPayment(meta)).resolves.toEqual({
+      action: "redirect",
+      link: "https://pay.example/card",
+      result: meta,
+    });
+  });
+
+  it("stays in the widget when the certificate covers the payment", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        jsonResponse({ name: "Электронный сертификат", balance: 5000 })
-      )
+      vi.fn(async () => jsonResponse({ paidFully: true, certificateUsed: 3500 }))
     );
+    const next = await settleBookingPayment(meta, "123456");
+    expect(next.action).toBe("stay");
+    if (next.action === "stay") {
+      expect(next.result.certificatePaidFully).toBe(true);
+      expect(next.result.paymentLink).toBeNull();
+    }
+  });
+});
+
+describe("checkBookingCertificate", () => {
+  it("reads name and balance", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ name: "Электронный сертификат", balance: 5000 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
     await expect(checkBookingCertificate("123456")).resolves.toEqual({
       name: "Электронный сертификат",
       balance: 5000,
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/check-certificate");
+    expect(JSON.parse(String(init.body))).toEqual({
+      alias: "les",
+      certificateNumber: "123456",
     });
   });
 

@@ -10,7 +10,8 @@ type Props = {
   onLastNameChange: (v: string) => void;
   onPhoneChange: (rawInput: string) => void;
   onCommentChange: (v: string) => void;
-  phoneConfirmed?: boolean;
+  /** После нажатия кнопки пустые обязательные поля красные. */
+  showErrors?: boolean;
 };
 
 export const ContactFields: React.FC<Props> = ({
@@ -22,11 +23,15 @@ export const ContactFields: React.FC<Props> = ({
   onLastNameChange,
   onPhoneChange,
   onCommentChange,
-  phoneConfirmed = false,
+  showErrors = false,
 }) => {
   const phoneOk = isRuPhoneComplete(phoneDisplay);
   const firstOk = firstName.trim().length >= 1;
   const lastOk = lastName.trim().length >= 1;
+  const inputClass = (invalid: boolean) =>
+    invalid
+      ? "booking-checkout__input booking-checkout__input--invalid"
+      : "booking-checkout__input";
 
   return (
     <div className="booking-checkout__fields">
@@ -36,13 +41,14 @@ export const ContactFields: React.FC<Props> = ({
         </label>
         <input
           id="bk-checkout-last"
-          className="booking-checkout__input"
+          className={inputClass(showErrors && !lastOk)}
+          aria-invalid={showErrors && !lastOk}
           value={lastName}
           onChange={(e) => onLastNameChange(e.target.value)}
           placeholder="Иванов"
           autoComplete="family-name"
         />
-        {!lastOk && lastName.length > 0 ? (
+        {showErrors && !lastOk ? (
           <p className="booking-checkout__hint">Укажите фамилию</p>
         ) : null}
       </div>
@@ -53,13 +59,14 @@ export const ContactFields: React.FC<Props> = ({
         </label>
         <input
           id="bk-checkout-first"
-          className="booking-checkout__input"
+          className={inputClass(showErrors && !firstOk)}
+          aria-invalid={showErrors && !firstOk}
           value={firstName}
           onChange={(e) => onFirstNameChange(e.target.value)}
           placeholder="Иван"
           autoComplete="given-name"
         />
-        {!firstOk && firstName.length > 0 ? (
+        {showErrors && !firstOk ? (
           <p className="booking-checkout__hint">Укажите имя</p>
         ) : null}
       </div>
@@ -70,7 +77,8 @@ export const ContactFields: React.FC<Props> = ({
         </label>
         <input
           id="bk-checkout-phone"
-          className="booking-checkout__input"
+          className={inputClass(showErrors && !phoneOk)}
+          aria-invalid={showErrors && !phoneOk}
           type="tel"
           inputMode="numeric"
           value={phoneDisplay}
@@ -78,13 +86,8 @@ export const ContactFields: React.FC<Props> = ({
           placeholder="+7 (900) 000-00-00"
           autoComplete="tel"
         />
-        {!phoneOk && phoneDisplay.length > 0 ? (
+        {(showErrors || phoneDisplay.length > 0) && !phoneOk ? (
           <p className="booking-checkout__hint">Укажите полный номер</p>
-        ) : null}
-        {phoneConfirmed ? (
-          <p className="booking-checkout__hint">
-            Номер уже подтверждён — повторное подтверждение не нужно
-          </p>
         ) : null}
       </div>
 

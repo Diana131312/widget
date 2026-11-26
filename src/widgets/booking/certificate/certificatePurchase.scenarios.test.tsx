@@ -110,13 +110,9 @@ describe("certificate purchase scenarios", () => {
     expect(screen.queryByRole("button", { name: "Назад" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Коттеджи" })).not.toBeInTheDocument();
     expect(screen.getByText("номинал от 1 000₽ до 99 000₽")).toBeInTheDocument();
-    expect(screen.getByText("на почту придет сертификат")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/)).toHaveAttribute(
-      "placeholder",
-      "ivan@mail.ru"
-    );
-    expect(screen.getByLabelText("Промокод")).not.toHaveAttribute("placeholder");
-    expect(screen.getByRole("button", { name: "проверить" })).toBeDisabled();
+    expect(screen.queryByLabelText(/Почта для отправки сертификата/)).not.toBeInTheDocument();
+    expect(screen.queryByText("на почту придет сертификат")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Промокод")).not.toBeInTheDocument();
 
     const prices = [
       ...document.querySelectorAll(".booking-certificate__nominal-price"),
@@ -157,7 +153,7 @@ describe("certificate purchase scenarios", () => {
       await screen.findByRole("button", { name: "Подарочные сертификаты" })
     );
 
-    expect(await screen.findByText("Шаг 2 из 3")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Бумажный" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Назад" }));
@@ -176,20 +172,25 @@ describe("certificate purchase scenarios", () => {
     await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
     await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
     await user.click(screen.getByRole("button", { name: /Добавить 20/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
 
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
     expect(screen.getAllByText("Сертификат")).toHaveLength(2);
     expect(screen.getByText(/2 шт/)).toBeInTheDocument();
     expect(screen.getByText(/1 шт/)).toBeInTheDocument();
     expect(screen.getByText("не ограничен")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Почта для отправки сертификата/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Промокод")).toBeInTheDocument();
     expect(screen.queryByLabelText("Имя получателя")).not.toBeInTheDocument();
     expect(screen.queryByText("Как подтвердить номер")).not.toBeInTheDocument();
     expect(window.location.search).toContain("bk_cq=");
-    expect(window.location.search).toContain("bk_cemail=");
+    expect(window.location.search).not.toContain("bk_cemail=");
     expect(window.location.search).not.toContain("cert_only=");
+    await user.type(
+      screen.getByLabelText(/Почта для отправки сертификата/),
+      "ivan@mail.ru"
+    );
+    expect(window.location.search).toContain("bk_cemail=");
 
     const search = window.location.search;
     view.unmount();
@@ -198,10 +199,9 @@ describe("certificate purchase scenarios", () => {
     window.history.replaceState({}, "", `/${search}`);
     render(<BookingWidget />);
 
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
     expect(screen.getByText(/2 шт/)).toBeInTheDocument();
-    expect(screen.queryByDisplayValue("ivan@mail.ru")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("ivan@mail.ru")).toBeInTheDocument();
   });
 
   it("marks a missing nominal and email, then continues once both are filled", async () => {
@@ -216,42 +216,38 @@ describe("certificate purchase scenarios", () => {
     expect(document.querySelector(".booking-certificate__nominals")).toHaveClass(
       "is-invalid"
     );
-    expect(screen.getByLabelText(/Email/)).toHaveClass(
-      "booking-checkout__input--invalid"
-    );
+    expect(screen.queryByLabelText(/Почта для отправки сертификата/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
     expect(document.querySelector(".booking-certificate__nominals")).not.toHaveClass(
       "is-invalid"
     );
-    expect(screen.getByLabelText(/Email/)).toHaveClass(
-      "booking-checkout__input--invalid"
-    );
 
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
-    expect(screen.getByLabelText(/Email/)).not.toHaveClass(
-      "booking-checkout__input--invalid"
-    );
     await user.click(next);
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
   });
 
-  it("keeps an incomplete email on the pick step", async () => {
+  it("keeps an incomplete email on the buyer step", async () => {
     const user = userEvent.setup();
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@");
+    await user.click(screen.getByRole("button", { name: "Далее" }));
 
+    const email = await screen.findByLabelText(/Почта для отправки сертификата/);
+    await user.type(email, "ivan@");
     expect(screen.getByText("Укажите почту полностью")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Далее" }));
-    expect(screen.getByLabelText(/Email/)).toHaveClass(
-      "booking-checkout__input--invalid"
-    );
-    expect(screen.queryByText("Шаг 2 из 2")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Фамилия покупателя"), "Петров");
+    await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
+    await user.type(screen.getByLabelText("Телефон покупателя"), "9001234567");
+    await user.click(screen.getByRole("checkbox"));
+    const pay = screen.getByRole("button", { name: /Оплатить/ });
+    expect(pay).toBeEnabled();
+    await user.click(pay);
+    expect(email).toHaveClass("booking-checkout__input--invalid");
 
-    await user.type(screen.getByLabelText(/Email/), "mail.ru");
-    await user.click(screen.getByRole("button", { name: "Далее" }));
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    await user.type(email, "mail.ru");
+    expect(email).not.toHaveClass("booking-checkout__input--invalid");
+    expect(pay).toBeEnabled();
   });
 
   it("sells a paper certificate without asking for an email", async () => {
@@ -264,7 +260,7 @@ describe("certificate purchase scenarios", () => {
     await openCertificateOnly();
 
     await user.click(screen.getByRole("tab", { name: "Бумажный" }));
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Почта для отправки сертификата/)).not.toBeInTheDocument();
     expect(screen.getByText("номинал 3000₽, 5000₽, 8000₽")).toBeInTheDocument();
     expect(
       screen.getByText("списание полной суммы номинала")
@@ -280,8 +276,8 @@ describe("certificate purchase scenarios", () => {
 
     await user.click(screen.getByRole("button", { name: /Добавить 3/ }));
     await user.click(screen.getByRole("button", { name: "Далее" }));
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Почта для отправки сертификата/)).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Фамилия покупателя"), "Петров");
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
@@ -337,7 +333,7 @@ describe("certificate purchase scenarios", () => {
     expect(screen.getByRole("button", { name: /Убрать 10/ })).toBeEnabled();
   });
 
-  it("rejects a promo code and still continues without sending it", async () => {
+  it("rejects a promo code on the buyer step and does not keep it in the price", async () => {
     const user = userEvent.setup();
     checkPromo.mockResolvedValue({
       discount: 0,
@@ -348,19 +344,17 @@ describe("certificate purchase scenarios", () => {
     });
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
-    await user.type(screen.getByLabelText("Промокод"), "NOPE");
+    await user.click(screen.getByRole("button", { name: "Далее" }));
+    await user.type(await screen.findByLabelText("Промокод"), "NOPE");
     await user.click(screen.getByRole("button", { name: "проверить" }));
 
     expect(
       await screen.findByText("Такого промокода нет или он выключен")
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Промокод не подошёл")).toBeInTheDocument();
-    expect(screen.getByText("Выбор номинала")).toBeInTheDocument();
+    expect(screen.getByText("Шаг 2")).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Промокод"));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
-    await user.click(screen.getByRole("button", { name: "Далее" }));
-
     expect(await screen.findByRole("button", { name: /Оплатить 10\s000/ })).toBeInTheDocument();
     expect(screen.queryByText("NOPE")).not.toBeInTheDocument();
   });
@@ -376,14 +370,13 @@ describe("certificate purchase scenarios", () => {
     });
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
+    await user.click(screen.getByRole("button", { name: "Далее" }));
+
+    expect(await screen.findByText(/1 шт/)).toHaveTextContent(/10\s000/);
     await user.type(screen.getByLabelText("Промокод"), "SALE10");
     await user.click(screen.getByRole("button", { name: "проверить" }));
 
     expect(await screen.findByText("✓ 10%")).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
-    await user.click(screen.getByRole("button", { name: "Далее" }));
-
-    expect(await screen.findByText(/1 шт/)).toHaveTextContent(/10\s000/);
     expect(screen.getByText("SALE10 10%")).toBeInTheDocument();
     expect(
       screen.getByText(/Скидка уменьшает только оплату/)
@@ -393,34 +386,37 @@ describe("certificate purchase scenarios", () => {
     ).toBeInTheDocument();
   });
 
-  it("stays on the pick step when the promo check cannot reach the server", async () => {
+  it("stays on the buyer step when the promo check cannot reach the server", async () => {
     const user = userEvent.setup();
     checkPromo.mockRejectedValue(new TypeError("Failed to fetch"));
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
-    await user.type(screen.getByLabelText("Промокод"), "SALE10");
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
+    await user.type(await screen.findByLabelText("Промокод"), "SALE10");
+    await user.click(screen.getByRole("button", { name: "проверить" }));
 
     expect(
       await screen.findByText("Проверьте интернет и попробуйте ещё раз")
     ).toBeInTheDocument();
-    expect(screen.getByText("Выбор номинала")).toBeInTheDocument();
-    expect(screen.queryByText("Шаг 2 из 2")).not.toBeInTheDocument();
+    expect(screen.getByText("Шаг 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Фамилия покупателя")).toBeInTheDocument();
   });
 
   it("enables payment only after the buyer fields are complete", async () => {
     const user = userEvent.setup();
     const view = await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 10/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
 
     const pay = await screen.findByRole("button", { name: /Оплатить 10\s000/ });
-    expect(pay).toBeDisabled();
+    expect(pay).toBeEnabled();
+    await user.click(pay);
+    expect(screen.getByLabelText("Фамилия покупателя")).toHaveClass(
+      "booking-checkout__input--invalid"
+    );
 
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
-    expect(pay).toBeDisabled();
+    expect(pay).toBeEnabled();
     await user.type(screen.getByLabelText("Телефон покупателя"), "900");
     expect(screen.getByText("Укажите полный номер")).toBeInTheDocument();
     expect(screen.getByLabelText("Телефон покупателя")).toHaveValue("+7 (900)");
@@ -437,9 +433,13 @@ describe("certificate purchase scenarios", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
     await user.click(screen.getByRole("button", { name: "Закрыть" }));
-    expect(pay).toBeDisabled();
+    expect(pay).toBeEnabled();
 
     await user.type(screen.getByLabelText("Фамилия покупателя"), "Петров");
+    await user.type(
+      screen.getByLabelText(/Почта для отправки сертификата/),
+      "ivan@mail.ru"
+    );
     await user.click(screen.getByRole("checkbox"));
     expect(pay).toBeEnabled();
 
@@ -460,19 +460,18 @@ describe("certificate purchase scenarios", () => {
     const user = userEvent.setup();
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
 
     window.history.back();
     await waitFor(() => {
       expect(screen.getByText("Выбор номинала")).toBeInTheDocument();
     });
-    expect(screen.getByLabelText(/Email/)).toHaveValue("ivan@mail.ru");
+    expect(screen.queryByLabelText(/Почта для отправки сертификата/)).not.toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
 
     window.history.forward();
-    expect(await screen.findByText("Шаг 2 из 2")).toBeInTheDocument();
+    expect(await screen.findByText("Шаг 2")).toBeInTheDocument();
     expect(screen.getByText(/1 шт/)).toBeInTheDocument();
   });
 
@@ -485,11 +484,14 @@ describe("certificate purchase scenarios", () => {
     });
     await openCertificateOnly();
     await user.click(screen.getByRole("button", { name: /Добавить 5/ }));
-    await user.type(screen.getByLabelText(/Email/), "ivan@mail.ru");
     await user.click(screen.getByRole("button", { name: "Далее" }));
     await user.type(await screen.findByLabelText("Фамилия покупателя"), "Петров");
     await user.type(screen.getByLabelText("Имя покупателя"), "Иван");
     await user.type(screen.getByLabelText("Телефон покупателя"), "9001234567");
+    await user.type(
+      screen.getByLabelText(/Почта для отправки сертификата/),
+      "ivan@mail.ru"
+    );
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /Оплатить/ }));
 

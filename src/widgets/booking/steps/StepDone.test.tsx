@@ -7,14 +7,14 @@ import { StepDone } from "./StepDone";
 
 const cancelBooking = vi.hoisted(() => vi.fn());
 const setToken = vi.hoisted(() => vi.fn());
-const applyCertificatePayment = vi.hoisted(() => vi.fn());
+const openBookingPayment = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../api", () => ({
   createWidgetApi: () => ({ cancelBooking, setToken }),
 }));
 
 vi.mock("../checkout/bookingPay", () => ({
-  applyCertificatePayment,
+  openBookingPayment,
 }));
 
 const PHONE = "+7 (900) 123-45-67";
@@ -49,7 +49,7 @@ describe("StepDone", () => {
     localStorage.clear();
     cancelBooking.mockReset();
     setToken.mockReset();
-    applyCertificatePayment.mockReset();
+    openBookingPayment.mockReset();
     cancelBooking.mockResolvedValue({ success: true });
     saveAuthToken({
       token: "jwt",
@@ -64,7 +64,6 @@ describe("StepDone", () => {
 
   it("shows temporary booking with countdown, pay button and guest rules", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     renderDone();
 
     expect(screen.getByText("Бронь ждёт оплаты")).toBeInTheDocument();
@@ -72,15 +71,11 @@ describe("StepDone", () => {
     expect(screen.getByText("30:00")).toBeInTheDocument();
     expect(screen.getByText("Правила для гостей")).toBeInTheDocument();
     expect(screen.getByText("Заезд с 14:00")).toBeInTheDocument();
-    expect(openSpy).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Сертификат")).not.toBeInTheDocument();
+    expect(openBookingPayment).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /Оплатить 3[\s ]?500 ₽/ }));
-    expect(openSpy).toHaveBeenCalledWith(
-      "https://pay.example/x",
-      "_blank",
-      "noopener,noreferrer"
-    );
-    openSpy.mockRestore();
+    expect(openBookingPayment).toHaveBeenCalledWith("https://pay.example/x");
   });
 
   it("counts down and shows expired state", () => {
@@ -150,58 +145,19 @@ describe("StepDone", () => {
     ).toBeInTheDocument();
   });
 
-  it("applies a certificate on the payment step", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    applyCertificatePayment.mockResolvedValueOnce({
-      ...result,
-      paymentLink: null,
-      prepayment: 0,
-      paidByCertificate: true,
-      certificatePaidFully: true,
+  it("waits for a company invoice instead of a payment link", () => {
+    renderDone({
+      payByInvoice: true,
+      invoiceEmail: "buh@example.com",
+      invoiceDaily: false,
     });
-    renderDone();
-
-    await user.type(
-      screen.getByLabelText("Оплатить подарочным сертификатом"),
-      "548371"
-    );
-    await user.click(screen.getByRole("button", { name: "Применить" }));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Заказ был успешно оплачен сертификатом")
-      ).toBeInTheDocument();
-    });
-    expect(applyCertificatePayment).toHaveBeenCalledWith(
-      expect.objectContaining({ bookingId: "bk1" }),
-      "548371"
-    );
-    expect(screen.queryByRole("button", { name: /Оплатить/ })).not.toBeInTheDocument();
-  });
-
-  it("keeps the pay button with the remainder when the certificate is partial", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    applyCertificatePayment.mockResolvedValueOnce({
-      ...result,
-      paymentLink: "https://pay.example/rest",
-      prepayment: 2500,
-      paidByCertificate: true,
-      certificatePaidFully: false,
-    });
-    renderDone();
-
-    await user.type(
-      screen.getByLabelText("Оплатить подарочным сертификатом"),
-      "548371"
-    );
-    await user.click(screen.getByRole("button", { name: "Применить" }));
-
+    expect(screen.getByText("Ожидание выставления счёта")).toBeInTheDocument();
+    expect(screen.getByText(/бронь отменится через/)).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: /Оплатить 2[\s\u00a0]?500 ₽/ })
+      screen.getByLabelText("Покупатель (наименование юр. лица или ИП)")
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Заказ был успешно оплачен сертификатом")
-    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("ИНН покупателя")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Оплатить/ })).not.toBeInTheDocument();
   });
 
   it("without payment link shows plain confirmation", () => {
