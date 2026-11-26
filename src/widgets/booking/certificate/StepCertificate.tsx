@@ -11,6 +11,7 @@ import {
 import { MAX_CERTIFICATE_COUNT } from "./certificatePricing";
 import type { CertificateLine } from "./certificateUrl";
 import type { SaleCertificate } from "./parseCertificates";
+import { PromoCodeField } from "../ui/PromoCodeField";
 
 const FORMAT_POINTS: Record<CertificateFormat, string[]> = {
   electronic: [
@@ -98,7 +99,6 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
   const emailOk = isCertificateEmail(email);
   const promoOk = promoDiscount != null && promoDiscount > 0 && !promoMessage;
   const promoBad = Boolean(promo) && Boolean(promoMessage);
-  const canCheck = lines.length > 0 && promo.length > 0 && !busy && !promoOk && !promoBad;
   const [attempted, setAttempted] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const needsEmail = format === "electronic";
@@ -323,68 +323,27 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
         </div>
       ) : null}
 
-      <>
-      <div className="booking-checkout__field">
-        <label className="booking-checkout__label" htmlFor="bk-cert-promo">
-          Промокод
-        </label>
-        <div className="booking-certificate__promo-row">
-          <input
-            id="bk-cert-promo"
-            className="booking-checkout__input"
-            name="certificate-promo"
-            autoComplete="off"
-            value={promoCode}
-            onChange={(event) => {
-              const next = event.target.value;
-              setPromoCode(next);
-              publish({ promoCode: next });
-            }}
-          />
-          {promoOk ? (
-            <span
-              className="booking-certificate__promo-mark booking-certificate__promo-mark--ok"
-              role="img"
-              aria-label={`Скидка ${promoDiscount}%`}
-            >
-              ✓ {promoDiscount}%
-            </span>
-          ) : promoBad ? (
-            <span
-              className="booking-certificate__promo-mark booking-certificate__promo-mark--bad"
-              role="img"
-              aria-label="Промокод не подошёл"
-            >
-              ✕
-            </span>
-          ) : (
-            <button
-              type="button"
-              className={[
-                "booking-certificate__promo-check",
-                promo && "booking-certificate__promo-check--ready",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              disabled={!canCheck}
-              onClick={() => {
-                if (lines.length === 0 || !promo || busy) return;
-                onCheckPromo?.(
-                  promo,
-                  lines.map((line) => line.id)
-                );
-              }}
-            >
-              {checking === "promo" ? "…" : "проверить"}
-            </button>
-          )}
-        </div>
-      </div>
-      {promoBad && promoMessage ? (
-        <p className="booking-certificate__promo-error" role="alert">
-          {promoMessage}
-        </p>
-      ) : null}
+      <PromoCodeField
+        id="bk-cert-promo"
+        name="certificate-promo"
+        value={promoCode}
+        mark={promoOk ? "ok" : promoBad ? "bad" : "idle"}
+        percent={promoDiscount}
+        error={promoBad ? promoMessage : null}
+        checking={checking === "promo"}
+        checkDisabled={lines.length === 0 || busy}
+        onChange={(next) => {
+          setPromoCode(next);
+          publish({ promoCode: next });
+        }}
+        onCheck={() => {
+          if (lines.length === 0 || !promo || busy) return;
+          onCheckPromo?.(
+            promo,
+            lines.map((line) => line.id)
+          );
+        }}
+      />
 
       <button
         type="button"
@@ -408,7 +367,6 @@ export const StepCertificate: React.FC<StepCertificateProps> = ({
       >
         {checking === "continue" ? "Проверяем промокод…" : "Далее"}
       </button>
-      </>
     </section>
   );
 };

@@ -20,10 +20,7 @@ import {
   saveAuthToken,
 } from "../checkout/authToken";
 import { ContactFields } from "../checkout/ContactFields";
-import {
-  CheckoutCodes,
-  type CodeMark,
-} from "../checkout/CheckoutCodes";
+import { PromoCodeField, type CodeMark } from "../ui/PromoCodeField";
 import {
   bookingPromoMessage,
   checkBookingPromo,
@@ -163,7 +160,7 @@ export const StepCheckout: React.FC<Props> = ({
   );
   const [comment, setComment] = useState(initialContact?.comment ?? "");
   const [verifyChannel, setVerifyChannel] = useState<VerifyChannel>(
-    initialContact?.verifyChannel ?? "telegram"
+    initialContact?.verifyChannel ?? "max"
   );
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(
     initialContact?.paymentMode ?? "prepay"
@@ -380,18 +377,9 @@ export const StepCheckout: React.FC<Props> = ({
         {savedToken ? null : (
           <fieldset className="booking-checkout__messenger">
             <legend className="booking-checkout__label">
-              Как подтвердить номер
+              подтвердите номер телефона
             </legend>
             <div className="booking-checkout__radio-group">
-              <label className="booking-checkout__radio">
-                <input
-                  type="radio"
-                  name="bk-verify"
-                  checked={verifyChannel === "telegram"}
-                  onChange={() => setVerifyChannel("telegram")}
-                />
-                <span>Telegram</span>
-              </label>
               <label className="booking-checkout__radio">
                 <input
                   type="radio"
@@ -400,6 +388,15 @@ export const StepCheckout: React.FC<Props> = ({
                   onChange={() => setVerifyChannel("max")}
                 />
                 <span>MAX</span>
+              </label>
+              <label className="booking-checkout__radio">
+                <input
+                  type="radio"
+                  name="bk-verify"
+                  checked={verifyChannel === "telegram"}
+                  onChange={() => setVerifyChannel("telegram")}
+                />
+                <span>Telegram</span>
               </label>
               <label className="booking-checkout__radio">
                 <input
@@ -468,19 +465,22 @@ export const StepCheckout: React.FC<Props> = ({
           </div>
         </fieldset>
 
-        <CheckoutCodes
-          promoCode={promoCode}
-          promoMark={promoMark}
-          promoPercent={promoPercent}
-          promoError={promoError}
-          busy={codesBusy || isBusy}
-          onPromoChange={(value) => {
+        <PromoCodeField
+          id="bk-promo"
+          name="booking-promo"
+          value={promoCode}
+          mark={promoMark}
+          percent={promoPercent}
+          error={promoError}
+          checking={codesBusy}
+          checkDisabled={isBusy}
+          onChange={(value) => {
             setPromoCode(value);
             setPromoMark("idle");
             setPromoPercent(null);
             setPromoError(null);
           }}
-          onCheckPromo={() => void handleCheckPromo()}
+          onCheck={() => void handleCheckPromo()}
         />
 
         <QuoteBreakdown

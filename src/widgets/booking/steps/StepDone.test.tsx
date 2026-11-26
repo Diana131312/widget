@@ -161,7 +161,10 @@ describe("StepDone", () => {
     });
     renderDone();
 
-    await user.type(screen.getByLabelText("Сертификат"), "548371");
+    await user.type(
+      screen.getByLabelText("Оплатить подарочным сертификатом"),
+      "548371"
+    );
     await user.click(screen.getByRole("button", { name: "Применить" }));
 
     await waitFor(() => {
@@ -187,7 +190,10 @@ describe("StepDone", () => {
     });
     renderDone();
 
-    await user.type(screen.getByLabelText("Сертификат"), "548371");
+    await user.type(
+      screen.getByLabelText("Оплатить подарочным сертификатом"),
+      "548371"
+    );
     await user.click(screen.getByRole("button", { name: "Применить" }));
 
     expect(

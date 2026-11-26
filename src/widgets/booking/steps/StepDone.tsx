@@ -186,7 +186,7 @@ export const StepDone: React.FC<Props> = ({
       </p>
       <div className="booking-checkout__field">
         <label className="booking-checkout__label" htmlFor="bk-done-certificate">
-          Сертификат
+          Оплатить подарочным сертификатом
         </label>
         <div className="booking-certificate__promo-row">
           <input

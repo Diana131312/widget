@@ -327,7 +327,7 @@ describe("StepCheckout", () => {
       expect(screen.getByText("К оплате")).toBeInTheDocument();
     });
     expect(screen.getByText("Telegram")).toBeInTheDocument();
-    expect(screen.getByText("MAX")).toBeInTheDocument();
+    expect(screen.getByLabelText("MAX")).toBeChecked();
     expect(screen.getByText("По телефону")).toBeInTheDocument();
     expect(screen.getByText("Оплата")).toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 {
   "name": "booking-widget",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Обособленный виджет бронирования на React",
   "main": "dist/index.js",
